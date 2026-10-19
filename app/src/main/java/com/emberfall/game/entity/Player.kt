@@ -84,9 +84,18 @@ class Player(var x: Float, var y: Float) {
         vx += (inputX * maxSpeed - vx) * blend
         vy += (inputY * maxSpeed - vy) * blend
 
-        Collision.moveAndSlide(
-            world, x, y, vx * dt, vy * dt, Config.PLAYER_RADIUS, moveResult,
-        )
+        val concreteWorld = world as? com.emberfall.game.world.World
+        val tile = concreteWorld?.tileAt(concreteWorld.tileX(x), concreteWorld.tileY(y))
+        val swimming = tile == com.emberfall.game.world.TileType.WATER || tile == com.emberfall.game.world.TileType.DEEP_WATER
+        val moveScale = if (swimming) 0.72f else 1f
+        // Water is solid to land creatures, but the player may swim through it.
+        val playerCollision = object : com.emberfall.game.world.TileQuery {
+            override fun isSolid(tx: Int, ty: Int): Boolean {
+                val type = concreteWorld?.tileAt(tx, ty)
+                return type != com.emberfall.game.world.TileType.WATER && type != com.emberfall.game.world.TileType.DEEP_WATER && world.isSolid(tx, ty)
+            }
+        }
+        Collision.moveAndSlide(playerCollision, x, y, vx * dt * moveScale, vy * dt * moveScale, Config.PLAYER_RADIUS, moveResult)
         x = moveResult.x
         y = moveResult.y
 

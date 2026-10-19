@@ -27,6 +27,7 @@ class InventoryPanelRenderer(context: Context) {
         density: Float,
         crafting: Boolean,
         craftScroll: Int,
+        inventoryScroll: Int,
     ) {
         paint.color = 0xB3000000.toInt()
         canvas.drawRect(0f, 0f, width, height, paint)
@@ -75,7 +76,7 @@ class InventoryPanelRenderer(context: Context) {
         if (crafting) {
             drawRecipes(canvas, game, width, height, density, panel, craftScroll)
         } else {
-            drawGrid(canvas, game, width, height, density, panel)
+            drawGrid(canvas, game, width, height, density, panel, inventoryScroll)
         }
     }
 
@@ -86,6 +87,7 @@ class InventoryPanelRenderer(context: Context) {
         height: Float,
         density: Float,
         panel: RectF,
+        inventoryScroll: Int,
     ) {
         val equipped = game.activeWeapon()
         for (index in 0 until UiLayout.INVENTORY_COLUMNS * UiLayout.INVENTORY_ROWS) {
@@ -93,7 +95,7 @@ class InventoryPanelRenderer(context: Context) {
             paint.color = 0xFF232D25.toInt()
             canvas.drawRoundRect(cell, 5f * density, 5f * density, paint)
 
-            val stack = game.inventory.slot(index)
+            val stack = game.inventory.slot(index + inventoryScroll)
             if (stack == null) continue
 
             val inset = 7f * density
