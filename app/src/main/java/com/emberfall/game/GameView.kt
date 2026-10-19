@@ -22,6 +22,16 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
     private val touch = TouchController(input, resources.displayMetrics.density)
     private var loop: GameThread? = null
 
+    val refreshRate: Float = runCatching {
+        if (android.os.Build.VERSION.SDK_INT >= 30) {
+            context.display?.refreshRate ?: 60f
+        } else {
+            @Suppress("DEPRECATION")
+            (context.getSystemService(android.content.Context.WINDOW_SERVICE) as android.view.WindowManager)
+                .defaultDisplay.refreshRate
+        }
+    }.getOrDefault(60f)
+
     @Volatile
     var viewWidth = 0
         private set
@@ -66,7 +76,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
 
     private fun startLoop() {
         if (loop != null) return
-        loop = GameThread(this, holder).also { it.start() }
+        loop = GameThread(this, holder, refreshRate).also { it.start() }
     }
 
     private fun stopLoop() {
@@ -83,6 +93,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
     private class GameThread(
         private val view: GameView,
         private val holder: SurfaceHolder,
+        private val refreshRate: Float,
     ) : Thread("EmberfallLoop") {
 
         @Volatile
@@ -93,9 +104,11 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         override fun run() {
             Process.setThreadPriority(Process.THREAD_PRIORITY_DISPLAY)
 
+            val targetFps = refreshRate.coerceIn(60f, 144f)
+            val stepNanos = (1_000_000_000f / targetFps).toLong()
+            val stepSeconds = stepNanos / 1_000_000_000f
             var last = System.nanoTime()
             var accumulator = 0L
-            val stepNanos = (Config.STEP_SECONDS * 1_000_000_000f).toLong()
 
             while (running) {
                 val now = System.nanoTime()
@@ -115,7 +128,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
                 accumulator += delta
                 if (accumulator > stepNanos * 5) accumulator = stepNanos * 5
                 while (accumulator >= stepNanos) {
-                    view.game.update(Config.STEP_SECONDS)
+                    view.game.update(stepSeconds)
                     accumulator -= stepNanos
                 }
 

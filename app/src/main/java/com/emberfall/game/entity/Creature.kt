@@ -16,6 +16,7 @@ abstract class Creature(
     val maxHp: Float,
 ) {
     var health: Float = maxHp
+    var freezeTimer = 0f
     var hitFlash = 0f
         protected set
 
@@ -60,6 +61,12 @@ abstract class Creature(
         x = moveResult.x
         y = moveResult.y
         return moved
+    }
+
+    fun applyImpulse(dx: Float, dy: Float, power: Float) {
+        val length = kotlin.math.sqrt(dx * dx + dy * dy).coerceAtLeast(0.001f)
+        knockbackX = dx / length * power
+        knockbackY = dy / length * power
     }
 
     protected fun applyKnockback(dt: Float, game: Game) {

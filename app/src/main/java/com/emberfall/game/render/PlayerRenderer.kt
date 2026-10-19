@@ -25,8 +25,11 @@ class PlayerRenderer {
         val py = player.y + bob
 
         // Ground shadow stays put while the body bobs.
-        paint.color = 0x40000000
-        rect.set(px - 9f, player.y + 6f, px + 9f, player.y + 12f)
+        paint.color = 0x22000000
+        rect.set(px - 11f, player.y + 5f, px + 11f, player.y + 14f)
+        canvas.drawOval(rect, paint)
+        paint.color = 0x4A000000
+        rect.set(px - 8f, player.y + 7f, px + 8f, player.y + 12f)
         canvas.drawOval(rect, paint)
 
         val step = if (moving) sin(player.walkPhase) * 2.2f else 0f

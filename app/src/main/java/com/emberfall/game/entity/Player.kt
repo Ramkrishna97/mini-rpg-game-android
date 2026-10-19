@@ -58,6 +58,14 @@ class Player(var x: Float, var y: Float) {
         return true
     }
 
+    fun faceTowards(dx: Float, dy: Float) {
+        val length = kotlin.math.sqrt(dx * dx + dy * dy)
+        if (length > 0.001f) {
+            facingX = dx / length
+            facingY = dy / length
+        }
+    }
+
     fun grantSpawnProtection() {
         invulnTimer = 2.2f
     }

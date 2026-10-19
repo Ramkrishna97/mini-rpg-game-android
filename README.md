@@ -1,22 +1,22 @@
-# Emberfall — Phase 2.1 (graphics pass)
+# Emberfall — Phase 2.2 (combat, crafting & magic)
 
 A lightweight 2D top-down open-world survival RPG for Android, built with
 **Kotlin and the Android Canvas/SurfaceView stack** — no game engine, no
 AndroidX, no native libraries.
 
 Phase 1 delivered the infinite world, movement and render loop. Phase 2 added
-the survival layer: items and inventory, wildlife and predators, loot chests,
-campfire checkpoints, XP/leveling, a minimap, five sealed bosses, death and
-respawn. **2.1 adds textured materials, AGSL night lighting, sprite-sheet
-animation and frame-paced 60 FPS rendering.**
+the survival layer: items, wildlife, loot, campfires, XP, a minimap and five
+bosses. 2.1 added textured materials, AGSL night lighting and sprite animation.
+**2.2 adds auto-aimed combat, harvestable wood/stone/fruit, weapon crafting with
+four attack styles, four high-cost spells, a full-screen region map and music.**
 
 <p>
   <img src="docs/screenshot-day.png" width="49%" alt="Textured plains with campfire and chest" />
   <img src="docs/screenshot-night.png" width="49%" alt="AGSL night lighting with player and campfire light pools" />
 </p>
 
-*Captured on an Android 15 (API 35) emulator at 50–57 FPS (SwiftShader). The
-debug APK is ~2.1 MB, including a 1.2 MB texture atlas.*
+*Captured on an Android 15 (API 35) emulator (SwiftShader). The debug APK is
+~3.2 MB, including a 1.2 MB texture atlas and a 1 MB music loop.*
 
 ## What is implemented
 
@@ -26,20 +26,26 @@ debug APK is ~2.1 MB, including a 1.2 MB texture atlas.*
 | Movement | Analog acceleration, wall sliding, circle-vs-tile collision, sprint at full stick |
 | Touch | Floating joystick, attack, contextual interact, inventory and settings buttons |
 | Survival | Health, mana, hunger, regeneration, starvation damage, death and campfire respawn |
-| Items | 11 item types: wood, stone, fiber, iron, hide, magic stones, raw/cooked meat, elixir, wooden/iron swords |
-| Inventory | 18 slots, stacking, tap-to-consume, automatic best-weapon equip |
-| Wildlife | Rabbits, deer, boars (flee when hit, drop meat/hide) and wolves (chase and bite) |
-| Loot | Eight hand-placed chests with deterministic loot, plus ground pickups with auto-collect |
-| Progression | XP, levels (+8 max HP, +4 max mana), boss bonuses |
+| Items | 16 item types: wood, stone, fiber, iron, hide, magic stones, fruit, raw/cooked meat, elixir, and six weapons |
+| Inventory | 18 slots, stacking, tap-to-consume, tap-to-equip, craft tab |
+| Combat | Auto-aim to the nearest enemy; melee, wide-arc, 360° ring, arrow and piercing gun attacks |
+| Gathering | Chop trees, mine rocks and pick fruit with the **E** button |
+| Crafting | 8 recipes: wooden/iron/cross swords, ring blade, bow, gun, cooked meat, elixir |
+| Magic | Fireball, Ice Freeze, Water Tsunami, Wind Tornado; high mana, high damage |
+| Wildlife | Rabbits, deer, boars and wolves; kills restore health, mana and XP |
+| Loot | Eight chests, ground pickups, materials from creatures and nodes |
+| Progression | XP and levels (+8 max HP, +4 max mana), boss bonuses; **level is never lost on death** |
 | Bosses | Five named bosses in sealed arenas, telegraphed dash attacks, permanent rewards |
 | Checkpoints | Five campfires; resting heals, saves and sets the respawn point |
-| Minimap | North-up terrain sample with player arrow, boss/chest/campfire/wildlife markers |
+| Minimap | Tap it for a full-screen region map with all five boss locations |
 | Textures | 1024×1024 atlas, 12 material types × 4 variants at 128 px, bilinear-filtered |
 | Lighting | AGSL RuntimeShader (API 33+) with ambient darkness and three dynamic light pools; legacy fallback |
 | Animation | SpriteAnimation frame parser; 8-frame flame sheet; shimmering water variants |
-| Loop | `lockHardwareCanvas`, `System.nanoTime` fixed 1/60 s step, `update(deltaTime)` + `render(Canvas)`, sleep-based cap |
-| Graphics options | LOW/MEDIUM/HIGH quality, smooth textures, anti-aliasing, particles — applied live |
-| Save | Versioned JSON, atomic write, autosave + save on pause; v1 files still load |
+| Shadows | Soft two-layer character shadows and baked tile-object shadows |
+| Audio | 24-second generated ambient loop (`MediaPlayer`, pause on background) |
+| Loop | `lockHardwareCanvas`, `System.nanoTime`, device refresh rate up to 144 Hz, `update(deltaTime)` + `render(Canvas)` |
+| Graphics options | HIGH by default; LOW/MEDIUM/HIGH, smooth textures, anti-aliasing, particles — applied live |
+| Save | Versioned JSON, atomic write, autosave + save on pause; equipped weapon persisted |
 
 ## Graphics & performance pass
 
@@ -67,6 +73,51 @@ cycles atlas variants over time.
 exponential smoothing with a small look-ahead. The loop sleeps out the remainder
 of each 16.6 ms budget instead of spinning.
 
+## Combat, gathering & magic
+
+**Auto-aim.** Tapping attack snaps the player toward the nearest enemy within
+melee range (14 tiles for ranged weapons) before the swing, so touch combat
+does not require precise facing.
+
+**Weapon styles.** Melee swords use the classic arc. The **Cross Sword** sweeps
+a 180° arc, the **Ring Blade** hits everything within 360°, the **Hunting Bow**
+fires an arrow, and the **Flintlock Gun** fires a piercing shot. Damage values:
+wooden 8, iron 14, bow 16, ring 18, cross 22, gun 26 (plus the 10 base).
+
+**Gathering.** Stand near a tree, rock or flower patch and press **E**:
+- trees → Wood (+ Fiber chance)
+- rocks → Stone (+ Iron chance)
+- flowers → Wild Fruit
+
+Harvested nodes disappear for the session; the world regrows them after a
+restart (node persistence is a Phase 3 item).
+
+**Crafting.** Open the bag and tap **CRAFT**. Recipes:
+
+| Result | Cost | Style |
+| --- | --- | --- |
+| Wooden Sword | 4 Wood, 2 Fiber | melee |
+| Iron Sword | 6 Iron, 3 Wood | melee |
+| Hunting Bow | 6 Wood, 4 Fiber | projectile |
+| Cross Sword | 8 Iron, 4 Wood, 2 Stone | wide arc |
+| Ring Blade | 10 Iron, 6 Stone, 2 Magic Stone | 360° |
+| Flintlock Gun | 12 Iron, 8 Stone, 3 Magic Stone | piercing projectile |
+| Cooked Meat | 1 Raw Meat, 1 Wood | heal |
+| Elixir | 1 Magic Stone, 2 Fruit | heal + mana |
+
+**Spells.** Tap the **FIRE/ICE/WAVE/WIND** button to open the four-spell picker:
+
+| Spell | Cost | Damage | Effect |
+| --- | --- | --- | --- |
+| Fireball | 35 MP | 78 | Exploding projectile, 95-unit blast |
+| Ice Freeze | 30 MP | 52 | Freezes a cluster for 2.6 s |
+| Water Tsunami | 45 MP | 68 | Cone wave with knockback |
+| Wind Tornado | 42 MP | 60 | 360° vortex with knockback |
+
+Killing any creature restores mana (+6 to +10; bosses +60). Each boss defeated
+permanently reduces spell costs by 10% (multiplicative). Eating fruit or meat
+restores health immediately; animal kills also heal the player and grant XP.
+
 ## The five bosses
 
 | Boss | Arena (tile coords) | HP | Contact damage | Reward |
@@ -89,6 +140,8 @@ the last campfire. Boss kills are saved permanently.
 | Sword button | Melee swing (best owned weapon is used automatically) |
 | **E** button | Contextual interact: open chest, rest at campfire |
 | Bag button | Inventory (pauses the world) |
+| Magic button | Opens the four-spell picker (FIRE / ICE / WAVE / WIND) |
+| Tap the minimap | Opens the full-screen region map |
 | Gear button | Graphics settings |
 | Tap outside a panel | Close it |
 
@@ -221,9 +274,9 @@ CraftPix) and the native upgrade path.
 
 ## Tests
 
-36 JVM tests cover noise determinism, biome/tile rules, boss-arena carving,
+41 JVM tests cover noise determinism, biome/tile rules, boss-arena carving,
 chunking and eviction, spawn safety, collision/sliding, inventory stacking and
-overflow, and XP/level/boss-reward math.
+overflow, XP/level/boss-reward math, recipe integrity, spell data and weapon styles.
 
 ## Roadmap
 

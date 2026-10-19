@@ -33,6 +33,12 @@ class WorldRenderer(context: Context) {
         isDither = false
     }
 
+    fun drawVignette(canvas: Canvas, screenW: Float, screenH: Float) {
+        vignetteMatrix.setScale(screenW, screenH)
+        vignetteShader.setLocalMatrix(vignetteMatrix)
+        canvas.drawRect(0f, 0f, screenW, screenH, vignettePaint)
+    }
+
     fun configure(graphics: com.emberfall.game.core.GraphicsSettings) {
         // Tile bitmaps stay point-sampled/without AA: smoothing them produces
         // visible seams at the atlas edges.
@@ -42,6 +48,16 @@ class WorldRenderer(context: Context) {
     private val glowPaint = Paint(Paint.FILTER_BITMAP_FLAG)
     private val glowBitmap = createGlowBitmap()
     private val glowRect = RectF()
+    private val vignetteMatrix = android.graphics.Matrix()
+    private val vignetteShader = RadialGradient(
+        0.5f,
+        0.5f,
+        0.72f,
+        intArrayOf(Color.TRANSPARENT, Color.TRANSPARENT, Color.argb(95, 0, 0, 0)),
+        floatArrayOf(0f, 0.55f, 1f),
+        Shader.TileMode.CLAMP,
+    )
+    private val vignettePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { shader = vignetteShader }
     private val tileDst = RectF()
     private val ambient = FloatArray(4)
 

@@ -29,6 +29,7 @@ data class SaveState(
     val campfireY: Float = 0f,
     val defeatedBosses: Set<String> = emptySet(),
     val openedChests: Set<Int> = emptySet(),
+    val equippedWeapon: String? = null,
     val graphics: GraphicsSettings = GraphicsSettings(),
 )
 
@@ -83,6 +84,7 @@ class SaveManager(context: Context) {
                     campfireY = json.optDouble("campfireY", 0.0).toFloat(),
                     defeatedBosses = json.optJSONArray("defeatedBosses").toStringSet(),
                     openedChests = json.optJSONArray("openedChests").toIntSet(),
+                    equippedWeapon = json.optString("equippedWeapon").takeIf { it.isNotBlank() },
                     graphics = json.optJSONObject("graphics").toGraphics(),
                 )
             }
@@ -124,6 +126,7 @@ class SaveManager(context: Context) {
                 .put("campfireY", state.campfireY.toDouble())
                 .put("defeatedBosses", bossesJson)
                 .put("openedChests", chestsJson)
+                .put("equippedWeapon", state.equippedWeapon ?: "")
                 .put(
                     "graphics",
                     JSONObject()
@@ -163,7 +166,7 @@ class SaveManager(context: Context) {
         val settings = GraphicsSettings()
         if (this == null) return settings
         settings.quality = runCatching {
-            GraphicsQuality.valueOf(optString("quality", GraphicsQuality.MEDIUM.name))
+            GraphicsQuality.valueOf(optString("quality", GraphicsQuality.HIGH.name))
         }.getOrDefault(GraphicsQuality.MEDIUM)
         settings.smoothTextures = optBoolean("smoothTextures", true)
         settings.antiAliasing = optBoolean("antiAliasing", true)

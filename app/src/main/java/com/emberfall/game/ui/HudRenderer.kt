@@ -45,6 +45,8 @@ class HudRenderer(context: Context) {
     private val minimap = MinimapRenderer()
     private val inventoryPanel = InventoryPanelRenderer()
     private val settingsPanel = SettingsPanelRenderer()
+    private val spellPicker = SpellPickerRenderer()
+    private val worldMap = WorldMapRenderer()
 
     private var cachedMinute = -1
     private var cachedTime = "07:30"
@@ -56,8 +58,18 @@ class HudRenderer(context: Context) {
     fun draw(canvas: Canvas, game: Game, input: InputState, width: Float, height: Float) {
         drawHurtFlash(canvas, game, width, height)
 
+        if (input.mapOpen) {
+            worldMap.draw(canvas, game, width, height, density)
+            return
+        }
+
         if (input.inventoryOpen) {
-            inventoryPanel.draw(canvas, game, width, height, density)
+            inventoryPanel.draw(canvas, game, width, height, density, input.craftingOpen)
+            return
+        }
+
+        if (input.spellPickerOpen) {
+            spellPicker.draw(canvas, game, width, height, density)
             return
         }
         if (input.settingsOpen) {
@@ -282,6 +294,21 @@ class HudRenderer(context: Context) {
         ringPaint.color = 0x55FFFFFF
         canvas.drawCircle(gearX, gearY, gearRadius, ringPaint)
         paintGear(canvas, gearX, gearY, gearRadius * 0.55f, 0xCCF0F0E6.toInt())
+
+        // Magic button (opens the four-spell picker).
+        val magicX = UiLayout.magicX(width.toInt(), density)
+        val magicY = UiLayout.magicY(height.toInt(), density)
+        val magicRadius = UiLayout.magicRadius(density)
+        val spell = game.lastSpell
+        fillPaint.color = 0x4D0B120F
+        canvas.drawCircle(magicX, magicY, magicRadius, fillPaint)
+        ringPaint.color = spell.color
+        ringPaint.strokeWidth = dp(2.5f)
+        canvas.drawCircle(magicX, magicY, magicRadius, ringPaint)
+        textPaint.color = spell.color
+        textPaint.textAlign = Paint.Align.CENTER
+        textPaint.textSize = dp(8f)
+        canvas.drawText(spell.shortName, magicX, magicY + dp(2.5f), textPaint)
     }
 
     private fun drawPrompt(canvas: Canvas, game: Game, width: Float, height: Float) {

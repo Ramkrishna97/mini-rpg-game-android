@@ -35,6 +35,7 @@ class Animal(
 
     override fun update(dt: Float, game: Game) {
         super.update(dt, game)
+        if (freezeTimer > 0f) { freezeTimer -= dt; applyKnockback(dt, game); return }
         fleeTimer = max(0f, fleeTimer - dt)
         wanderTimer -= dt
 

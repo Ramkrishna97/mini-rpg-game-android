@@ -208,8 +208,11 @@ class CreatureRenderer {
     }
 
     private fun shadow(canvas: Canvas, x: Float, y: Float, r: Float) {
-        paint.color = 0x40000000
-        rect.set(x - r, y - r * 0.35f, x + r, y + r * 0.35f)
+        paint.color = 0x22000000
+        rect.set(x - r * 1.15f, y - r * 0.45f, x + r * 1.15f, y + r * 0.5f)
+        canvas.drawOval(rect, paint)
+        paint.color = 0x4A000000
+        rect.set(x - r * 0.85f, y - r * 0.28f, x + r * 0.85f, y + r * 0.38f)
         canvas.drawOval(rect, paint)
     }
 

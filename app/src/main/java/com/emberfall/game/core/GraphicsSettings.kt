@@ -7,7 +7,7 @@ enum class GraphicsQuality { LOW, MEDIUM, HIGH }
  * renderer reads them every frame, so no restart is needed.
  */
 class GraphicsSettings {
-    var quality = GraphicsQuality.MEDIUM
+    var quality = GraphicsQuality.HIGH
     var smoothTextures = true
     var antiAliasing = true
     var particles = true

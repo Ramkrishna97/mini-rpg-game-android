@@ -148,7 +148,9 @@ class TouchController(
             )
             if (row >= 0) {
                 input.pushCommand(UiCommand.CRAFT_BASE + row)
-            } else if (!UiLayout.craftButton(width.toFloat(), height.toFloat(), density).contains(x, y)) {
+            } else if (UiLayout.craftButton(width.toFloat(), height.toFloat(), density).contains(x, y)) {
+                input.craftingOpen = false
+            } else {
                 val panel = UiLayout.inventoryPanel(width.toFloat(), height.toFloat(), density)
                 if (!panel.contains(x, y)) {
                     input.inventoryOpen = false

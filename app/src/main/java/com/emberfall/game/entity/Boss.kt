@@ -68,6 +68,7 @@ class Boss(val def: BossDef) : Creature(
     override fun update(dt: Float, game: Game) {
         if (defeated) return
         super.update(dt, game)
+        if (freezeTimer > 0f) { freezeTimer -= dt; return }
 
         val player = game.player
         val dx = player.x - x

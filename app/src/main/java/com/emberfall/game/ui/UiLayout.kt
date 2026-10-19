@@ -200,9 +200,9 @@ object UiLayout {
     fun craftRow(index: Int, width: Float, height: Float, density: Float): RectF {
         val panel = inventoryPanel(width, height, density)
         val padding = 18f * density
-        val rowHeight = 34f * density
-        val gap = 6f * density
-        val top = panel.top + 62f * density + index * (rowHeight + gap)
+        val rowHeight = 30f * density
+        val gap = 4f * density
+        val top = panel.top + 58f * density + index * (rowHeight + gap)
         return RectF(panel.left + padding, top, panel.right - padding, top + rowHeight)
     }
 

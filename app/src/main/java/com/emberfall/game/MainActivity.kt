@@ -7,6 +7,7 @@ import android.view.View
 import android.view.WindowInsets
 import android.view.WindowInsetsController
 import android.view.WindowManager
+import com.emberfall.game.audio.MusicPlayer
 
 /**
  * Single-activity host. Locks into landscape and hides every system bar so the
@@ -15,6 +16,7 @@ import android.view.WindowManager
 class MainActivity : Activity() {
 
     private lateinit var gameView: GameView
+    private val music by lazy { MusicPlayer(this) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,9 +40,11 @@ class MainActivity : Activity() {
         super.onResume()
         hideSystemUi()
         gameView.onResumeGame()
+        music.start()
     }
 
     override fun onPause() {
+        music.pause()
         gameView.onPauseGame()
         super.onPause()
     }

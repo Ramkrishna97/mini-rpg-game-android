@@ -12,6 +12,7 @@ import com.emberfall.game.entity.FloatingText
 import com.emberfall.game.entity.LootChest
 import com.emberfall.game.entity.Particle
 import com.emberfall.game.entity.Pickup
+import com.emberfall.game.entity.Projectile
 import com.emberfall.game.entity.Player
 import com.emberfall.game.entity.Wolf
 import com.emberfall.game.entity.cap
@@ -20,6 +21,8 @@ import com.emberfall.game.input.UiCommand
 import com.emberfall.game.item.Inventory
 import com.emberfall.game.item.ItemCategory
 import com.emberfall.game.item.ItemId
+import com.emberfall.game.item.Recipes
+import com.emberfall.game.item.WeaponStyle
 import com.emberfall.game.render.CreatureRenderer
 import com.emberfall.game.render.ObjectRenderer
 import com.emberfall.game.render.PlayerRenderer
@@ -29,6 +32,8 @@ import com.emberfall.game.save.SaveState
 import com.emberfall.game.ui.HudRenderer
 import com.emberfall.game.world.Bosses
 import com.emberfall.game.world.Collision
+import com.emberfall.game.world.TilePos
+import com.emberfall.game.world.TileType
 import com.emberfall.game.world.World
 import com.emberfall.game.world.WorldPoints
 import kotlin.math.PI
@@ -37,6 +42,7 @@ import kotlin.math.cos
 import kotlin.math.floor
 import kotlin.math.hypot
 import kotlin.math.max
+import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.random.Random
 
@@ -63,6 +69,12 @@ class Game(context: Context, private val input: InputState) {
     val chests = mutableListOf<LootChest>()
     val texts = mutableListOf<FloatingText>()
     val particles = mutableListOf<Particle>()
+    val projectiles = mutableListOf<Projectile>()
+
+    var equippedWeapon: ItemId? = null
+        private set
+    var lastSpell = Spell.FIREBALL
+        private set
 
     private val defeatedBosses = mutableSetOf<String>()
     private val openedChests = mutableSetOf<Int>()
@@ -119,6 +131,7 @@ class Game(context: Context, private val input: InputState) {
     private var spawnTimer = 0f
     private var elapsedSeconds = 0f
     private var deathDuration = 1.8f
+    private var spellCooldown = 0f
 
     init {
         val spawnX = (world.spawn.x + 0.5f) * Config.TILE
@@ -188,6 +201,10 @@ class Game(context: Context, private val input: InputState) {
         defeatedBosses.addAll(state.defeatedBosses)
         openedChests.addAll(state.openedChests)
 
+        equippedWeapon = state.equippedWeapon?.let { name ->
+            runCatching { ItemId.valueOf(name) }.getOrNull()
+        }
+
         if (state.campfireX != 0f || state.campfireY != 0f) {
             respawnX = state.campfireX
             respawnY = state.campfireY
@@ -228,7 +245,9 @@ class Game(context: Context, private val input: InputState) {
     fun update(dt: Float) {
         processCommands()
 
-        if (input.inventoryOpen || input.settingsOpen) {
+        if (input.inventoryOpen || input.settingsOpen ||
+            input.spellPickerOpen || input.mapOpen
+        ) {
             return
         }
 
@@ -240,6 +259,8 @@ class Game(context: Context, private val input: InputState) {
             if (deathTimer <= 0f) respawn()
             return
         }
+
+        if (spellCooldown > 0f) spellCooldown = max(0f, spellCooldown - dt)
 
         if (input.consumeAttackRequest()) playerAttack()
         val interactRequested = input.consumeInteractRequest()
@@ -258,6 +279,7 @@ class Game(context: Context, private val input: InputState) {
         camera.update(player.x, player.y, player.facingX, player.facingY, dt)
 
         updateCreatures(dt)
+        updateProjectiles(dt)
         updateEffects(dt)
         objectRenderer.update(dt)
         updateSpawns(dt)
@@ -313,6 +335,19 @@ class Game(context: Context, private val input: InputState) {
                     graphics.particles = !graphics.particles
                 }
 
+                command in UiCommand.CAST_BASE until UiCommand.CRAFT_BASE -> {
+                    val spell = Spell.values().getOrNull(command - UiCommand.CAST_BASE)
+                    if (spell != null) castSpell(spell)
+                }
+
+                command in UiCommand.CRAFT_BASE until UiCommand.TOGGLE_CRAFT -> {
+                    craft(command - UiCommand.CRAFT_BASE)
+                }
+
+                command == UiCommand.TOGGLE_CRAFT -> {
+                    input.craftingOpen = !input.craftingOpen
+                }
+
                 command == UiCommand.CLOSE_PANELS -> input.closePanels()
             }
         }
@@ -322,7 +357,10 @@ class Game(context: Context, private val input: InputState) {
         val stack = inventory.slot(index) ?: return
         val id = stack.id
         when (id.category) {
-            ItemCategory.WEAPON -> toast("${id.displayName} equipped")
+            ItemCategory.WEAPON -> {
+                equippedWeapon = id
+                toast("${id.displayName} equipped")
+            }
             ItemCategory.MATERIAL -> toast("${id.displayName}: crafting material")
             ItemCategory.CONSUMABLE, ItemCategory.VALUABLE -> {
                 if (id.heal > 0f) player.stats.heal(id.heal)
@@ -335,86 +373,360 @@ class Game(context: Context, private val input: InputState) {
         }
     }
 
+    private fun craft(index: Int) {
+        val recipe = Recipes.ALL.getOrNull(index) ?: return
+        for ((id, count) in recipe.costs) {
+            if (inventory.count(id) < count) {
+                toast("Need ${count - inventory.count(id)} more ${id.displayName}")
+                return
+            }
+        }
+        for ((id, count) in recipe.costs) inventory.remove(id, count)
+        inventory.add(recipe.result, 1)
+        if (recipe.result.category == ItemCategory.WEAPON) {
+            equippedWeapon = recipe.result
+        }
+        banner("CRAFTED ${recipe.result.displayName.uppercase()}")
+        toast("${recipe.result.displayName} ready")
+        spawnParticles(player.x, player.y, recipe.result.color, 16)
+    }
+
     // ---- Combat ------------------------------------------------------------
+
+    fun activeWeapon(): ItemId? {
+        val equipped = equippedWeapon
+        if (equipped != null && inventory.count(equipped) > 0) return equipped
+        return inventory.bestWeapon()
+    }
+
+    fun magicCost(spell: Spell): Float = spell.manaCost * 0.9f.pow(defeatedBosses.size)
+
+    fun defeatedBossIds(): Set<String> = defeatedBosses
 
     private fun playerAttack() {
         if (!player.isAlive) return
+        val weapon = activeWeapon()
+        val style = weapon?.style ?: WeaponStyle.MELEE
+
+        // Auto-aim: snap toward the closest enemy before committing the swing.
+        val target = nearestEnemy(if (style == WeaponStyle.PROJECTILE) 14f * Config.TILE else 6f * Config.TILE)
+        if (target != null) player.faceTowards(target.x - player.x, target.y - player.y)
+
         player.swing()
 
-        val weaponDamage = inventory.bestWeapon()?.damage ?: 0f
-        val damage = 10f + weaponDamage
-
-        val deadAnimals = mutableListOf<Animal>()
-        for (animal in animals) {
-            if (!inAttackArc(animal)) continue
-            animal.hurt(damage, player.x, player.y)
-            damageText(animal.x, animal.y - animal.radius, damage)
-            spawnParticles(animal.x, animal.y, 0xFFC26262.toInt(), 5)
-            if (!animal.alive) deadAnimals.add(animal)
+        if (style == WeaponStyle.PROJECTILE) {
+            fireProjectile(weapon)
+            return
         }
+
+        val damage = 10f + (weapon?.damage ?: 0f)
+        val range = when (style) {
+            WeaponStyle.ARC -> 70f
+            WeaponStyle.RING -> 64f
+            else -> 54f
+        }
+
+        for (animal in animals) {
+            if (inWeaponArc(animal, style, range)) damageCreature(animal, damage)
+        }
+        for (wolf in wolves) {
+            if (inWeaponArc(wolf, style, range)) damageCreature(wolf, damage)
+        }
+        for (boss in bosses) {
+            if (boss.defeated || !boss.engaged) continue
+            if (inWeaponArc(boss, style, range)) damageCreature(boss, damage)
+        }
+        processDeaths()
+    }
+
+    private fun nearestEnemy(maxDistance: Float): Creature? {
+        var best: Creature? = null
+        var bestDistance = maxDistance
+        for (animal in animals) {
+            if (!animal.alive) continue
+            val distance = hypot(
+                (animal.x - player.x).toDouble(),
+                (animal.y - player.y).toDouble(),
+            ).toFloat()
+            if (distance < bestDistance) {
+                bestDistance = distance
+                best = animal
+            }
+        }
+        for (wolf in wolves) {
+            if (!wolf.alive) continue
+            val distance = hypot(
+                (wolf.x - player.x).toDouble(),
+                (wolf.y - player.y).toDouble(),
+            ).toFloat()
+            if (distance < bestDistance) {
+                bestDistance = distance
+                best = wolf
+            }
+        }
+        for (boss in bosses) {
+            if (boss.defeated || !boss.engaged) continue
+            val distance = hypot(
+                (boss.x - player.x).toDouble(),
+                (boss.y - player.y).toDouble(),
+            ).toFloat()
+            if (distance < bestDistance) {
+                bestDistance = distance
+                best = boss
+            }
+        }
+        return best
+    }
+
+    private fun inWeaponArc(creature: Creature, style: WeaponStyle, range: Float): Boolean {
+        val dx = creature.x - player.x
+        val dy = creature.y - player.y
+        val distance = hypot(dx.toDouble(), dy.toDouble()).toFloat()
+        if (distance > range + creature.radius) return false
+        if (style == WeaponStyle.RING) return true
+        if (distance < 1f) return true
+        val dot = (dx * player.facingX + dy * player.facingY) / distance
+        return if (style == WeaponStyle.ARC) dot > -0.2f else dot > 0.15f
+    }
+
+    private fun damageCreature(creature: Creature, damage: Float) {
+        if (!creature.alive) return
+        creature.hurt(damage, player.x, player.y)
+        damageText(creature.x, creature.y - creature.radius, damage)
+        val color = when (creature) {
+            is Boss -> creature.def.color
+            is Wolf -> 0xFF767C86.toInt()
+            else -> 0xFFC26262.toInt()
+        }
+        spawnParticles(creature.x, creature.y, color, 5)
+    }
+
+    private fun processDeaths() {
+        val deadAnimals = animals.filter { !it.alive }
         for (animal in deadAnimals) {
             animals.remove(animal)
             killAnimal(animal)
         }
-
-        val deadWolves = mutableListOf<Wolf>()
-        for (wolf in wolves) {
-            if (!inAttackArc(wolf)) continue
-            wolf.hurt(damage, player.x, player.y)
-            damageText(wolf.x, wolf.y - wolf.radius, damage)
-            spawnParticles(wolf.x, wolf.y, 0xFF767C86.toInt(), 5)
-            if (!wolf.alive) deadWolves.add(wolf)
-        }
+        val deadWolves = wolves.filter { !it.alive }
         for (wolf in deadWolves) {
             wolves.remove(wolf)
-            addXp(30)
-            dropLoot(wolf.x, wolf.y, ItemId.HIDE, 2)
-            dropLoot(wolf.x, wolf.y, ItemId.RAW_MEAT, 1 + Random.nextInt(2))
-            if (Random.nextFloat() < 0.2f) dropLoot(wolf.x, wolf.y, ItemId.MAGIC_STONE, 1)
-            spawnParticles(wolf.x, wolf.y, 0xFF767C86.toInt(), 10)
+            killWolf(wolf)
         }
-
         for (boss in bosses) {
-            if (boss.defeated || !boss.engaged) continue
-            if (!inAttackArc(boss)) continue
-            boss.hurt(damage, player.x, player.y)
-            damageText(boss.x, boss.y - boss.radius, damage)
-            spawnParticles(boss.x, boss.y, boss.def.color, 8)
-            if (boss.health <= 0f) defeatBoss(boss)
+            if (!boss.defeated && boss.health <= 0f) defeatBoss(boss)
         }
     }
 
-    private fun inAttackArc(creature: Creature): Boolean {
-        val dx = creature.x - player.x
-        val dy = creature.y - player.y
-        val distance = hypot(dx.toDouble(), dy.toDouble()).toFloat()
-        if (distance > 54f + creature.radius) return false
-        if (distance < 1f) return true
-        val dot = (dx * player.facingX + dy * player.facingY) / distance
-        return dot > 0.15f
+    private fun fireProjectile(weapon: ItemId?) {
+        val speed = 560f
+        val damage = 10f + (weapon?.damage ?: 0f)
+        val color = if (weapon == ItemId.GUN) 0xFFFFD45A.toInt() else 0xFFD9C08A.toInt()
+        projectiles.add(
+            Projectile(
+                x = player.x + player.facingX * 18f,
+                y = player.y + player.facingY * 18f,
+                vx = player.facingX * speed,
+                vy = player.facingY * speed,
+                damage = damage,
+                color = color,
+                pierces = weapon?.pierces == true,
+                life = 1.1f,
+            ),
+        )
+        spawnParticles(player.x + player.facingX * 20f, player.y + player.facingY * 20f, color, 5)
+    }
+
+    private fun updateProjectiles(dt: Float) {
+        if (projectiles.isEmpty()) return
+        val iterator = projectiles.iterator()
+        while (iterator.hasNext()) {
+            val projectile = iterator.next()
+            projectile.update(dt)
+
+            var finished = projectile.dead
+            if (!finished && world.isSolid(
+                    world.tileX(projectile.x),
+                    world.tileY(projectile.y),
+                )
+            ) {
+                finished = true
+            }
+
+            if (!finished) {
+                for (creature in allCreatures()) {
+                    if (!creature.alive || projectile.hitCreatures.contains(creature)) continue
+                    val distance = hypot(
+                        (creature.x - projectile.x).toDouble(),
+                        (creature.y - projectile.y).toDouble(),
+                    ).toFloat()
+                    if (distance > projectile.radius + creature.radius) continue
+                    damageCreature(creature, projectile.damage)
+                    projectile.hitCreatures.add(creature)
+                    if (projectile.explosive) {
+                        finished = true
+                    } else if (!projectile.pierces) {
+                        finished = true
+                    }
+                    break
+                }
+            }
+
+            if (finished) {
+                if (projectile.explosive && !projectile.dead) explode(projectile)
+                iterator.remove()
+            }
+        }
+        processDeaths()
+    }
+
+    private fun allCreatures(): List<Creature> {
+        val list = ArrayList<Creature>(animals.size + wolves.size + bosses.size)
+        list.addAll(animals)
+        list.addAll(wolves)
+        for (boss in bosses) if (!boss.defeated) list.add(boss)
+        return list
+    }
+
+    private fun explode(projectile: Projectile) {
+        if (projectile.aoeRadius <= 0f) return
+        spawnParticles(projectile.x, projectile.y, projectile.color, 20)
+        applySpellAoE(projectile.x, projectile.y, projectile.aoeRadius, projectile.damage, 0f, 0f)
+    }
+
+    private fun castSpell(spell: Spell) {
+        lastSpell = spell
+        if (!player.isAlive) return
+        val cost = magicCost(spell)
+        if (spellCooldown > 0f) {
+            toast("Spell is still recharging")
+            return
+        }
+        if (player.stats.mana < cost) {
+            toast("Not enough mana (${cost.toInt()} MP)")
+            return
+        }
+        player.stats.mana -= cost
+        spellCooldown = 0.85f
+
+        val target = nearestEnemy(20f * Config.TILE)
+        if (target != null) player.faceTowards(target.x - player.x, target.y - player.y)
+
+        when (spell) {
+            Spell.FIREBALL -> {
+                projectiles.add(
+                    Projectile(
+                        x = player.x + player.facingX * 18f,
+                        y = player.y + player.facingY * 18f,
+                        vx = player.facingX * 520f,
+                        vy = player.facingY * 520f,
+                        damage = spell.damage,
+                        color = spell.color,
+                        radius = 9f,
+                        explosive = true,
+                        aoeRadius = 95f,
+                        life = 1.4f,
+                    ),
+                )
+            }
+
+            Spell.ICE_FREEZE -> {
+                val centerX = target?.x ?: (player.x + player.facingX * 140f)
+                val centerY = target?.y ?: (player.y + player.facingY * 140f)
+                spawnParticles(centerX, centerY, spell.color, 24)
+                applySpellAoE(centerX, centerY, 115f, spell.damage, freeze = 2.6f, knockback = 0f)
+            }
+
+            Spell.WATER_TSUNAMI -> {
+                for (creature in allCreatures()) {
+                    if (!creature.alive) continue
+                    val dx = creature.x - player.x
+                    val dy = creature.y - player.y
+                    val distance = hypot(dx.toDouble(), dy.toDouble()).toFloat()
+                    if (distance > 280f + creature.radius || distance < 1f) continue
+                    val dot = (dx * player.facingX + dy * player.facingY) / distance
+                    if (dot < 0.35f) continue
+                    damageCreature(creature, spell.damage)
+                    creature.applyImpulse(dx, dy, 180f)
+                }
+                for (i in 1..8) {
+                    spawnParticles(
+                        player.x + player.facingX * i * 28f + (Random.nextFloat() - 0.5f) * 40f,
+                        player.y + player.facingY * i * 28f + (Random.nextFloat() - 0.5f) * 40f,
+                        spell.color,
+                        5,
+                    )
+                }
+                processDeaths()
+            }
+
+            Spell.WIND_TORNADO -> {
+                spawnParticles(player.x, player.y, spell.color, 30)
+                applySpellAoE(player.x, player.y, 150f, spell.damage, 0f, knockback = 220f)
+            }
+        }
+
+        spawnParticles(player.x, player.y, spell.color, 12)
+        toast("${spell.displayName}  -${cost.toInt()} MP")
+    }
+
+    private fun applySpellAoE(
+        x: Float,
+        y: Float,
+        radius: Float,
+        damage: Float,
+        freeze: Float,
+        knockback: Float,
+    ) {
+        for (creature in allCreatures()) {
+            if (!creature.alive) continue
+            val dx = creature.x - x
+            val dy = creature.y - y
+            val distance = hypot(dx.toDouble(), dy.toDouble()).toFloat()
+            if (distance > radius + creature.radius) continue
+            damageCreature(creature, damage)
+            if (freeze > 0f) creature.freezeTimer = max(creature.freezeTimer, freeze)
+            if (knockback > 0f) creature.applyImpulse(dx, dy, knockback)
+        }
+        processDeaths()
     }
 
     private fun killAnimal(animal: Animal) {
         when (animal.species) {
             AnimalSpecies.RABBIT -> {
-                addXp(6)
+                addXp(8)
+                player.stats.heal(6f)
+                player.stats.restoreMana(6f)
                 dropLoot(animal.x, animal.y, ItemId.RAW_MEAT, 1)
                 if (Random.nextFloat() < 0.6f) dropLoot(animal.x, animal.y, ItemId.HIDE, 1)
             }
 
             AnimalSpecies.DEER -> {
-                addXp(12)
+                addXp(14)
+                player.stats.heal(10f)
+                player.stats.restoreMana(8f)
                 dropLoot(animal.x, animal.y, ItemId.RAW_MEAT, 2)
                 dropLoot(animal.x, animal.y, ItemId.HIDE, 1 + Random.nextInt(2))
             }
 
             AnimalSpecies.BOAR -> {
-                addXp(20)
+                addXp(22)
+                player.stats.heal(14f)
+                player.stats.restoreMana(10f)
                 dropLoot(animal.x, animal.y, ItemId.RAW_MEAT, 3)
                 dropLoot(animal.x, animal.y, ItemId.HIDE, 2)
             }
         }
         spawnParticles(animal.x, animal.y, 0xFFB5793F.toInt(), 8)
+    }
+
+    private fun killWolf(wolf: Wolf) {
+        addXp(32)
+        player.stats.heal(5f)
+        player.stats.restoreMana(10f)
+        dropLoot(wolf.x, wolf.y, ItemId.HIDE, 2)
+        dropLoot(wolf.x, wolf.y, ItemId.RAW_MEAT, 1 + Random.nextInt(2))
+        if (Random.nextFloat() < 0.2f) dropLoot(wolf.x, wolf.y, ItemId.MAGIC_STONE, 1)
+        spawnParticles(wolf.x, wolf.y, 0xFF767C86.toInt(), 10)
     }
 
     private fun defeatBoss(boss: Boss) {
@@ -426,6 +738,7 @@ class Game(context: Context, private val input: InputState) {
         val stats = player.stats
         stats.addXp(boss.def.xpReward)
         stats.grantBossReward(boss.def.healthReward, boss.def.manaReward)
+        stats.restoreMana(60f)
         for ((id, count) in boss.def.loot) giveItem(id, count)
 
         banner("${boss.def.name.uppercase()} DEFEATED")
@@ -491,6 +804,15 @@ class Game(context: Context, private val input: InputState) {
         if (chest != null) return if (chest.opened) null else "OPEN CHEST"
         val fire = nearestCampfire(56f)
         if (fire != null) return "REST AT CAMPFIRE"
+        val node = harvestTarget()
+        if (node != null) {
+            return when (world.tileAt(node.x, node.y)) {
+                TileType.TREE, TileType.FOREST_TREE -> "CHOP TREE"
+                TileType.ROCK -> "MINE ROCK"
+                TileType.FLOWERS -> "PICK FRUIT"
+                else -> null
+            }
+        }
         return null
     }
 
@@ -505,7 +827,76 @@ class Game(context: Context, private val input: InputState) {
             restAtCampfire(fire)
             return
         }
+        val node = harvestTarget()
+        if (node != null) {
+            harvest(node)
+            return
+        }
         toast("Nothing to interact with")
+    }
+
+    private fun harvestTarget(): TilePos? {
+        val ptx = floor(player.x / Config.TILE).toInt()
+        val pty = floor(player.y / Config.TILE).toInt()
+        var best: TilePos? = null
+        var bestDistance = Float.MAX_VALUE
+        for (dy in -2..2) {
+            for (dx in -2..2) {
+                val tx = ptx + dx
+                val ty = pty + dy
+                val type = world.tileAt(tx, ty)
+                if (type != TileType.TREE && type != TileType.FOREST_TREE &&
+                    type != TileType.ROCK && type != TileType.FLOWERS
+                ) {
+                    continue
+                }
+                val cx = (tx + 0.5f) * Config.TILE
+                val cy = (ty + 0.5f) * Config.TILE
+                val distance = hypot(
+                    (cx - player.x).toDouble(),
+                    (cy - player.y).toDouble(),
+                ).toFloat()
+                if (distance < bestDistance) {
+                    bestDistance = distance
+                    best = TilePos(tx, ty)
+                }
+            }
+        }
+        return best
+    }
+
+    private fun harvest(node: TilePos) {
+        val type = world.tileAt(node.x, node.y)
+        val cx = (node.x + 0.5f) * Config.TILE
+        val cy = (node.y + 0.5f) * Config.TILE
+        when (type) {
+            TileType.TREE, TileType.FOREST_TREE -> {
+                giveItem(ItemId.WOOD, 2 + Random.nextInt(2))
+                if (Random.nextFloat() < 0.45f) giveItem(ItemId.FIBER, 1)
+                world.setTile(
+                    node.x,
+                    node.y,
+                    if (type == TileType.TREE) TileType.GRASS else TileType.FOREST_FLOOR,
+                )
+                spawnParticles(cx, cy, 0xFF8A6A43.toInt(), 10)
+            }
+
+            TileType.ROCK -> {
+                giveItem(ItemId.STONE, 2 + Random.nextInt(2))
+                if (Random.nextFloat() < 0.35f) giveItem(ItemId.IRON, 1)
+                world.setTile(node.x, node.y, TileType.GRASS)
+                spawnParticles(cx, cy, 0xFF8C8C94.toInt(), 10)
+            }
+
+            TileType.FLOWERS -> {
+                giveItem(ItemId.FRUIT, 1 + Random.nextInt(2))
+                world.setTile(node.x, node.y, TileType.GRASS)
+                spawnParticles(cx, cy, 0xFFD95F6A.toInt(), 8)
+            }
+
+            else -> return
+        }
+        addXp(2)
     }
 
     private fun nearestChest(range: Float): LootChest? {
@@ -817,6 +1208,21 @@ class Game(context: Context, private val input: InputState) {
             }
         }
 
+        for (projectile in projectiles) {
+            arenaPaint.style = Paint.Style.STROKE
+            arenaPaint.strokeWidth = 3f
+            arenaPaint.color = projectile.color
+            canvas.drawLine(
+                projectile.x,
+                projectile.y,
+                projectile.x - projectile.vx * 0.018f,
+                projectile.y - projectile.vy * 0.018f,
+                arenaPaint,
+            )
+            arenaPaint.style = Paint.Style.FILL
+            canvas.drawCircle(projectile.x, projectile.y, projectile.radius * 0.55f, arenaPaint)
+        }
+
         if (onScreen(player.x, player.y)) playerRenderer.draw(canvas, player)
 
         for (text in texts) objectRenderer.drawFloatingText(canvas, text)
@@ -872,6 +1278,7 @@ class Game(context: Context, private val input: InputState) {
                 campfireY = respawnY,
                 defeatedBosses = defeatedBosses.toSet(),
                 openedChests = openedChests.toSet(),
+                equippedWeapon = equippedWeapon?.name,
                 graphics = graphics,
             ),
         )

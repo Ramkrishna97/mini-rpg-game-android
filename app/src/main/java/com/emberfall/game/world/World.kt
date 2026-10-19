@@ -137,7 +137,7 @@ class World(val seed: Int, private val generator: WorldGenerator = WorldGenerato
         }
     }
 
-    private fun setTile(tx: Int, ty: Int, type: TileType) {
+    fun setTile(tx: Int, ty: Int, type: TileType) {
         val cx = Math.floorDiv(tx, Config.CHUNK_TILES)
         val cy = Math.floorDiv(ty, Config.CHUNK_TILES)
         val lx = tx - cx * Config.CHUNK_TILES
