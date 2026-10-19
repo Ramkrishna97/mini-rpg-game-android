@@ -3,17 +3,19 @@ package com.emberfall.game.ui
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.RectF
-import android.graphics.Typeface
+import android.content.Context
 import com.emberfall.game.core.Game
 import com.emberfall.game.item.ItemCategory
 import com.emberfall.game.item.Recipes
 
 /** Inventory and crafting overlay. Simulation is paused while it is open. */
-class InventoryPanelRenderer {
+class InventoryPanelRenderer(context: Context) {
+
+    private val art = UiArt(context)
 
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
+        typeface = art.font
     }
     private val rect = RectF()
 
@@ -29,13 +31,7 @@ class InventoryPanelRenderer {
         canvas.drawRect(0f, 0f, width, height, paint)
 
         val panel = UiLayout.inventoryPanel(width, height, density)
-        paint.color = 0xF21A231C.toInt()
-        canvas.drawRoundRect(panel, 12f * density, 12f * density, paint)
-        paint.style = Paint.Style.STROKE
-        paint.strokeWidth = 1.5f * density
-        paint.color = 0x55E8A64C
-        canvas.drawRoundRect(panel, 12f * density, 12f * density, paint)
-        paint.style = Paint.Style.FILL
+        art.panel(canvas, panel, density)
 
         textPaint.textAlign = Paint.Align.LEFT
         textPaint.color = 0xFFE8A64C.toInt()
@@ -101,18 +97,10 @@ class InventoryPanelRenderer {
 
             val inset = 7f * density
             rect.set(cell.left + inset, cell.top + inset, cell.right - inset, cell.top + cell.height() * 0.68f)
-            paint.color = stack.id.color
+            paint.color = 0xFF17221D.toInt()
             canvas.drawRoundRect(rect, 4f * density, 4f * density, paint)
-
-            textPaint.textAlign = Paint.Align.CENTER
-            textPaint.color = 0xFF10140F.toInt()
-            textPaint.textSize = 16f * density
-            canvas.drawText(
-                stack.id.iconLetter,
-                cell.centerX(),
-                cell.top + cell.height() * 0.47f,
-                textPaint,
-            )
+            art.item(canvas, stack.id, cell.centerX(), cell.top + cell.height() * .36f,
+                minOf(rect.width(), rect.height(), 36f * density))
 
             textPaint.color = 0xFFE8E8DE.toInt()
             textPaint.textSize = 7.5f * density
@@ -171,6 +159,7 @@ class InventoryPanelRenderer {
             val affordable = recipe.costs.all { (id, count) -> game.inventory.count(id) >= count }
             paint.color = if (affordable) 0x332F6B3A else 0x33231C1C
             canvas.drawRoundRect(row, 5f * density, 5f * density, paint)
+            art.item(canvas, recipe.result, row.left + 16f*density, row.centerY(), 25f*density)
 
             textPaint.textAlign = Paint.Align.LEFT
             textPaint.color = if (affordable) 0xFFE8E8DE.toInt() else 0xFF8A8A82.toInt()
@@ -182,7 +171,7 @@ class InventoryPanelRenderer {
             }
             canvas.drawText(
                 recipe.result.displayName + styleLabel,
-                row.left + 10f * density,
+                row.left + 34f * density,
                 row.centerY() + 3.5f * density,
                 textPaint,
             )

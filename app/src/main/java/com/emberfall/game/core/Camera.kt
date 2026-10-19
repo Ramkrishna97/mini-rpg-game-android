@@ -2,6 +2,7 @@ package com.emberfall.game.core
 
 import com.emberfall.game.util.clamp
 import com.emberfall.game.util.damp
+import com.emberfall.game.render.IsoMath
 import kotlin.math.min
 
 /**
@@ -27,9 +28,9 @@ class Camera {
         viewWidth = width.toFloat()
         viewHeight = height.toFloat()
         // Always show at least 9 tiles across and 10 down; wider screens see more.
-        val byWidth = width / (9f * Config.TILE)
-        val byHeight = height / (11f * Config.TILE)
-        zoom = clamp(min(byWidth, byHeight), 1.6f, 6f)
+        val byWidth = width / (9f * IsoMath.TILE_WIDTH)
+        val byHeight = height / (11f * IsoMath.TILE_HEIGHT)
+        zoom = clamp(min(byWidth, byHeight), 1.4f, 5f)
     }
 
     fun snapTo(targetX: Float, targetY: Float) {

@@ -10,7 +10,7 @@ import kotlin.random.Random
  * Hostile predator. Idles until the player gets close, then chases and bites
  * on a short cooldown. Slow enough to outrun, dangerous in pairs.
  */
-class Wolf(x: Float, y: Float) : Creature(x, y, 9f, 46f) {
+class Wolf(x: Float, y: Float, val level: Int = 1) : Creature(x, y, 9f, 46f * (1f + .25f * (level - 1))) {
 
     private var attackCooldown = 0f
     private var wanderTimer = 0f
@@ -38,7 +38,7 @@ class Wolf(x: Float, y: Float) : Creature(x, y, 9f, 46f) {
         if (aggro && distance > 1f) {
             dirX = dx / distance
             dirY = dy / distance
-            val speed = if (distance > 28f) 92f else 70f
+            val speed = (if (distance > 28f) 92f else 70f) * (1f + .04f * (level - 1))
             moveWithCollision(game, dirX * speed * dt, dirY * speed * dt)
         } else {
             if (wanderTimer <= 0f) {
@@ -53,7 +53,7 @@ class Wolf(x: Float, y: Float) : Creature(x, y, 9f, 46f) {
         applyKnockback(dt, game)
 
         if (aggro && distance < radius + Config.PLAYER_RADIUS + 8f && attackCooldown <= 0f) {
-            game.hurtPlayer(9f, x, y)
+            game.hurtPlayer(9f * (1f + .16f * (level - 1)), x, y)
             attackCooldown = 1.15f
         }
     }

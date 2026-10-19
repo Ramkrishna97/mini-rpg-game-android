@@ -1,5 +1,6 @@
 package com.emberfall.game.render
 
+import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
@@ -18,7 +19,15 @@ import kotlin.math.sin
  * scales cleanly with the camera; quality settings drop small details on
  * low-end devices (the 2D equivalent of a low-poly LOD).
  */
-class CreatureRenderer {
+class CreatureRenderer(context: Context) {
+
+    private val bossSprites = mapOf(
+        "gloomfang" to IsoAnimation(context, "gloomfang"),
+        "stonewarden" to IsoAnimation(context, "stonewarden"),
+        "mirewitch" to IsoAnimation(context, "mirewitch"),
+        "ashtitan" to IsoAnimation(context, "ashtitan"),
+        "hollowking" to IsoAnimation(context, "hollowking"),
+    )
 
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val rect = RectF()
@@ -136,11 +145,10 @@ class CreatureRenderer {
         flash(canvas, x, y, r, wolf.hitFlash)
     }
 
-    fun drawBoss(canvas: Canvas, boss: Boss, graphics: GraphicsSettings) {
+    fun drawBoss(canvas: Canvas, boss: Boss, graphics: GraphicsSettings, elapsed: Float) {
         val x = boss.x
         val y = boss.y
         val r = boss.radius
-        val detailed = graphics.quality == com.emberfall.game.core.GraphicsQuality.HIGH
 
         // Telegraph: a red corridor in the locked lunge direction.
         if (boss.engaged && boss.phase == BossPhase.TELEGRAPH) {
@@ -150,61 +158,20 @@ class CreatureRenderer {
             canvas.drawLine(
                 x,
                 y,
-                x + boss.chargeDirX * 150f,
-                y + boss.chargeDirY * 150f,
+                x + (boss.chargeDirX - boss.chargeDirY) * 150f,
+                y + (boss.chargeDirX + boss.chargeDirY) * 75f,
                 paint,
             )
         }
 
-        // Aura.
-        paint.style = Paint.Style.STROKE
-        paint.color = Color.argb(90, 255, 90, 70)
-        paint.strokeWidth = 2f
-        canvas.drawCircle(x, y, r + 10f, paint)
-        paint.style = Paint.Style.FILL
-
-        shadow(canvas, x, y + r * 0.75f, r * 1.05f)
-
-        paint.color = boss.def.color
-        canvas.drawCircle(x, y, r, paint)
-
-        paint.color = Color.rgb(
-            ((boss.def.color shr 16 and 0xFF) * 0.8f).toInt(),
-            ((boss.def.color shr 8 and 0xFF) * 0.8f).toInt(),
-            ((boss.def.color and 0xFF) * 0.8f).toInt(),
-        )
-        rect.set(x - r * 0.55f, y - r * 0.5f, x + r * 0.55f, y + r * 0.7f)
-        canvas.drawOval(rect, paint)
-
-        // Horns.
-        paint.color = 0xFFE8E0D0.toInt()
-        path.reset()
-        path.moveTo(x - r * 0.55f, y - r * 0.75f)
-        path.lineTo(x - r * 1.1f, y - r * 1.45f)
-        path.lineTo(x - r * 0.2f, y - r * 0.95f)
-        path.close()
-        canvas.drawPath(path, paint)
-        path.reset()
-        path.moveTo(x + r * 0.55f, y - r * 0.75f)
-        path.lineTo(x + r * 1.1f, y - r * 1.45f)
-        path.lineTo(x + r * 0.2f, y - r * 0.95f)
-        path.close()
-        canvas.drawPath(path, paint)
-
-        // Eyes.
-        paint.color = 0xFFFF4A3A.toInt()
-        canvas.drawCircle(x - r * 0.35f, y - r * 0.2f, r * 0.16f, paint)
-        canvas.drawCircle(x + r * 0.35f, y - r * 0.2f, r * 0.16f, paint)
-
-        if (detailed) {
-            paint.style = Paint.Style.STROKE
-            paint.color = 0x55FFFFFF
-            paint.strokeWidth = 1.5f
-            canvas.drawCircle(x, y, r * 0.8f, paint)
-            paint.style = Paint.Style.FILL
+        shadow(canvas, x, y, r * 1.15f)
+        val state = when (boss.phase) {
+            BossPhase.CHASE -> if (boss.engaged) AnimationState.WALK else AnimationState.IDLE
+            BossPhase.TELEGRAPH, BossPhase.DASH -> AnimationState.ATTACK
+            BossPhase.RECOVER -> AnimationState.IDLE
         }
-
-        flash(canvas, x, y, r, boss.hitFlash)
+        bossSprites[boss.def.id]?.draw(canvas, x, y, boss.facingX, boss.facingY, state, elapsed, 52f)
+        flash(canvas, x, y - 15f, r, boss.hitFlash)
     }
 
     private fun shadow(canvas: Canvas, x: Float, y: Float, r: Float) {

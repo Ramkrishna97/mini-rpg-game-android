@@ -13,7 +13,7 @@ abstract class Creature(
     var x: Float,
     var y: Float,
     val radius: Float,
-    val maxHp: Float,
+    var maxHp: Float,
 ) {
     var health: Float = maxHp
     var freezeTimer = 0f

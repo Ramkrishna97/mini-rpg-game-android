@@ -40,6 +40,16 @@ class Boss(val def: BossDef) : Creature(
 
     val displayName: String get() = def.name
 
+    var level = 1
+        private set
+
+    fun setLevel(newLevel: Int) {
+        val healthRatio = if (maxHp > 0f) health / maxHp else 1f
+        level = newLevel.coerceAtLeast(1)
+        maxHp = def.maxHealth * (1f + .22f * (level - 1))
+        if (!defeated) health = maxHp * healthRatio
+    }
+
     fun engage() {
         if (defeated) return
         engaged = true
@@ -55,7 +65,7 @@ class Boss(val def: BossDef) : Creature(
 
     fun resetFight() {
         if (defeated) return
-        health = def.maxHealth
+        health = maxHp
         engaged = false
         phase = BossPhase.CHASE
         phaseTimer = 2.4f
@@ -91,8 +101,8 @@ class Boss(val def: BossDef) : Creature(
                 if (distance > 1f) {
                     moveWithCollision(
                         game,
-                        dx / distance * def.speed * dt,
-                        dy / distance * def.speed * dt,
+                        dx / distance * def.speed * (1f + .04f * (level - 1)) * dt,
+                        dy / distance * def.speed * (1f + .04f * (level - 1)) * dt,
                     )
                 }
                 if (phaseTimer <= 0f) {
@@ -114,8 +124,8 @@ class Boss(val def: BossDef) : Creature(
             BossPhase.DASH -> {
                 moveWithCollision(
                     game,
-                    chargeX * def.speed * 3.4f * dt,
-                    chargeY * def.speed * 3.4f * dt,
+                    chargeX * def.speed * (1f + .04f * (level - 1)) * 3.4f * dt,
+                    chargeY * def.speed * (1f + .04f * (level - 1)) * 3.4f * dt,
                 )
                 if (phaseTimer <= 0f) {
                     phase = BossPhase.RECOVER
@@ -132,7 +142,7 @@ class Boss(val def: BossDef) : Creature(
         }
 
         if (distance < radius + Config.PLAYER_RADIUS + 6f && contactCooldown <= 0f) {
-            game.hurtPlayer(def.damage, x, y)
+            game.hurtPlayer(def.damage * (1f + .15f * (level - 1)), x, y)
             contactCooldown = 1.35f
         }
     }

@@ -60,9 +60,17 @@ class FloatingText(
     var life: Float = 1.1f,
     val rise: Float = 30f,
 ) {
+    val maxLife = life
+    var offsetX = 0f
+    var offsetY = 0f
+    private val driftX = (Math.random().toFloat() - .5f) * 25f
+    private var velocityY = -rise
+
     fun update(dt: Float): Boolean {
         life -= dt
-        y -= rise * dt
+        offsetX += driftX * dt
+        offsetY += velocityY * dt
+        velocityY += if (maxLife <= .8f) 120f * dt else 25f * dt
         return life > 0f
     }
 }

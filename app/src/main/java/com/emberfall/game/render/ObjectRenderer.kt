@@ -165,7 +165,7 @@ class ObjectRenderer {
     }
 
     fun drawFloatingText(canvas: Canvas, text: FloatingText) {
-        val alpha = (text.life.coerceIn(0f, 1f) * 255).toInt().coerceIn(0, 255)
+        val alpha = ((text.life / text.maxLife).coerceIn(0f, 1f) * 255).toInt().coerceIn(0, 255)
         textPaint.color = Color.argb(
             alpha,
             (text.color shr 16) and 0xFF,
@@ -173,7 +173,7 @@ class ObjectRenderer {
             text.color and 0xFF,
         )
         textPaint.textSize = 9.5f
-        canvas.drawText(text.text, text.x, text.y, textPaint)
+        canvas.drawText(text.text, text.x + text.offsetX, text.y + text.offsetY, textPaint)
     }
 
     fun drawParticle(canvas: Canvas, particle: Particle) {

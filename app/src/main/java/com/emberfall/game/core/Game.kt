@@ -27,6 +27,8 @@ import com.emberfall.game.render.CreatureRenderer
 import com.emberfall.game.render.ObjectRenderer
 import com.emberfall.game.render.PlayerRenderer
 import com.emberfall.game.render.WorldRenderer
+import com.emberfall.game.render.IsoMath
+import com.emberfall.game.render.Renderable
 import com.emberfall.game.save.SaveManager
 import com.emberfall.game.save.SaveState
 import com.emberfall.game.ui.HudRenderer
@@ -88,6 +90,11 @@ class Game(private val context: Context, private val input: InputState) {
         private set
     var day: Int = restored?.day ?: 1
         private set
+    var stage: Int = restored?.stage ?: 1
+        private set
+    var victoryTimer = 0f
+        private set
+    private var stageAdvancePending = false
 
     var screenWidth = 0
         private set
@@ -120,11 +127,12 @@ class Game(private val context: Context, private val input: InputState) {
         private set
 
     private val worldRenderer = WorldRenderer(context)
-    private val playerRenderer = PlayerRenderer()
-    private val creatureRenderer = CreatureRenderer()
+    private val playerRenderer = PlayerRenderer(context)
+    private val creatureRenderer = CreatureRenderer(context)
     private val objectRenderer = ObjectRenderer()
     private val hud = HudRenderer(context)
     private val arenaPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val juice = JuiceManager()
 
     private var biomeTimer = 0f
     private var saveTimer = 0f
@@ -181,6 +189,7 @@ class Game(private val context: Context, private val input: InputState) {
 
         for (def in Bosses.ALL) {
             val boss = Boss(def)
+            boss.setLevel(stage + defeatedBosses.size)
             if (defeatedBosses.contains(def.id)) boss.markDefeated()
             bosses.add(boss)
         }
@@ -252,10 +261,12 @@ class Game(private val context: Context, private val input: InputState) {
 
     fun update(dt: Float) {
         processCommands()
+        juice.update(dt)
 
         if (input.inventoryOpen || input.settingsOpen ||
-            input.spellPickerOpen || input.mapOpen || input.campMenuOpen
+            input.spellPickerOpen || input.weaponPickerOpen || input.mapOpen || input.campMenuOpen
         ) return
+        if (juice.isFrozen()) return
 
         hud.update(dt, this)
 
@@ -274,7 +285,14 @@ class Game(private val context: Context, private val input: InputState) {
         if (input.consumeMagicRequest()) castSelectedSpell()
         val interactRequested = input.consumeInteractRequest()
 
-        player.update(dt, input.moveX, input.moveY, input.run, world)
+        val screenMoveX = input.moveX
+        val screenMoveY = input.moveY
+        val gridMoveX = screenMoveX * .5f + screenMoveY
+        val gridMoveY = screenMoveY - screenMoveX * .5f
+        val gridMoveLength = hypot(gridMoveX.toDouble(), gridMoveY.toDouble()).toFloat()
+        val screenMoveLength = hypot(screenMoveX.toDouble(), screenMoveY.toDouble()).toFloat()
+        val moveScale = if (gridMoveLength > .001f) screenMoveLength / gridMoveLength else 0f
+        player.update(dt, gridMoveX * moveScale, gridMoveY * moveScale, input.run, world)
         player.stats.update(dt)
         clampToArena()
 
@@ -289,6 +307,7 @@ class Game(private val context: Context, private val input: InputState) {
 
         updateCreatures(dt)
         updateProjectiles(dt)
+        if (stageAdvancePending) advanceStage()
         updateEffects(dt)
         objectRenderer.update(dt)
         updateSpawns(dt)
@@ -302,6 +321,7 @@ class Game(private val context: Context, private val input: InputState) {
 
         if (hintTimer > 0f) hintTimer -= dt
         if (bossBannerTimer > 0f) bossBannerTimer -= dt
+        if (victoryTimer > 0f) victoryTimer -= dt
         if (toastTimer > 0f) toastTimer -= dt
 
         biomeTimer -= dt
@@ -442,6 +462,7 @@ class Game(private val context: Context, private val input: InputState) {
         if (target != null) player.faceTowards(target.x - player.x, target.y - player.y)
 
         player.swing()
+        juice.triggerShake(1.3f, 90)
 
         if (style == WeaponStyle.PROJECTILE) {
             fireProjectile(weapon)
@@ -522,6 +543,8 @@ class Game(private val context: Context, private val input: InputState) {
     private fun damageCreature(creature: Creature, damage: Float) {
         if (!creature.alive || campfires.any { it.isSafe(creature.x, creature.y) }) return
         creature.hurt(damage, player.x, player.y)
+        juice.triggerHitstop(if (creature is Boss) 35 else 22)
+        juice.triggerShake(if (creature is Boss) 3f else 1.7f, 120)
         damageText(creature.x, creature.y - creature.radius, damage)
         val color = when (creature) {
             is Boss -> creature.def.color
@@ -639,6 +662,8 @@ class Game(private val context: Context, private val input: InputState) {
         }
         player.stats.mana -= cost
         spellCooldown = 0.85f
+        juice.triggerShake(1.8f, 130)
+        spawnParticles(player.x, player.y, spell.color, 12)
 
         val target = nearestEnemy(20f * Config.TILE)
         if (target != null) player.faceTowards(target.x - player.x, target.y - player.y)
@@ -757,7 +782,7 @@ class Game(private val context: Context, private val input: InputState) {
         player.stats.restoreMana(10f)
         dropLoot(wolf.x, wolf.y, ItemId.HIDE, 2)
         dropLoot(wolf.x, wolf.y, ItemId.RAW_MEAT, 1 + Random.nextInt(2))
-        if (Random.nextFloat() < 0.2f) dropLoot(wolf.x, wolf.y, ItemId.MAGIC_STONE, 1)
+        if (Random.nextFloat() < 0.35f) dropLoot(wolf.x, wolf.y, ItemId.MAGIC_STONE, 1)
         if (Random.nextFloat() < 0.18f) dropLoot(wolf.x, wolf.y, ItemId.MANA_POTION, 1)
         if (Random.nextFloat() < 0.12f) dropLoot(wolf.x, wolf.y, ItemId.POWER_POTION, 1)
         if (Random.nextFloat() < 0.08f) dropLoot(wolf.x, wolf.y, ItemId.REGEN_POTION, 1)
@@ -775,10 +800,35 @@ class Game(private val context: Context, private val input: InputState) {
         stats.grantBossReward(boss.def.healthReward, boss.def.manaReward)
         stats.restoreMana(60f)
         for ((id, count) in boss.def.loot) giveItem(id, count)
+        for (material in ItemId.values().filter { it.category == ItemCategory.MATERIAL || it == ItemId.MAGIC_STONE }) {
+            giveItem(material, 1)
+            dropLoot(boss.x, boss.y, material, 1)
+        }
+        val newLevel = stage + defeatedBosses.size
+        for (other in bosses) if (!other.defeated) other.setLevel(newLevel)
 
         banner("${boss.def.name.uppercase()} DEFEATED")
         toast("+${boss.def.xpReward} XP   MAX HP +${boss.def.healthReward.toInt()}   MAX MANA +${boss.def.manaReward.toInt()}")
         spawnParticles(boss.x, boss.y, boss.def.color, 28)
+        if (defeatedBosses.size == Bosses.ALL.size) stageAdvancePending = true else saveNow()
+    }
+
+    private fun advanceStage() {
+        stageAdvancePending = false
+        stage += 1
+        victoryTimer = 4f
+        banner("VICTORY! LEVEL $stage")
+        defeatedBosses.clear()
+        bosses.clear()
+        for (def in Bosses.ALL) bosses.add(Boss(def).also { it.setLevel(stage) })
+        wolves.clear()
+        projectiles.clear()
+        openedChests.clear()
+        for (chest in chests) chest.opened = false
+        player.x = respawnX; player.y = respawnY
+        player.stats.health = player.stats.maxHealth
+        player.stats.mana = player.stats.maxMana
+        camera.snapTo(player.x, player.y)
         saveNow()
     }
 
@@ -813,6 +863,7 @@ class Game(private val context: Context, private val input: InputState) {
     fun hurtPlayer(amount: Float, sourceX: Float, sourceY: Float) {
         if (deathTimer > 0f || !player.isAlive) return
         if (player.takeDamage(amount)) {
+            juice.triggerShake(2.2f, 120)
             hapticHit()
             spawnParticles(player.x, player.y, 0xFFD9534F.toInt(), 5)
             if (!player.isAlive) startDeath()
@@ -932,6 +983,7 @@ class Game(private val context: Context, private val input: InputState) {
             TileType.ROCK -> {
                 giveItem(ItemId.STONE, 2 + Random.nextInt(2))
                 if (Random.nextFloat() < 0.35f) giveItem(ItemId.IRON, 1)
+                if (Random.nextFloat() < 0.12f) giveItem(ItemId.MAGIC_STONE, 1)
                 world.setTile(node.x, node.y, TileType.GRASS)
                 spawnParticles(cx, cy, 0xFF8C8C94.toInt(), 10)
             }
@@ -999,6 +1051,7 @@ class Game(private val context: Context, private val input: InputState) {
             giveItem(id, count)
         }
         if (chest.id % 3 == 1) giveItem(ItemId.WOODEN_SWORD, 1)
+        if (chest.id == 0) giveItem(ItemId.MAGIC_STONE, 1)
         if (chest.id == 5) giveItem(ItemId.IRON_SWORD, 1)
 
         banner("CHEST OPENED")
@@ -1133,7 +1186,7 @@ class Game(private val context: Context, private val input: InputState) {
 
     private fun spawnWolf() {
         val point = randomSpawnPoint(16f, 28f) ?: return
-        wolves.add(Wolf(point.first, point.second))
+        wolves.add(Wolf(point.first, point.second, stage))
     }
 
     private fun randomSpawnPoint(minTiles: Float, maxTiles: Float): Pair<Float, Float>? {
@@ -1144,7 +1197,7 @@ class Game(private val context: Context, private val input: InputState) {
             val y = player.y + sin(angle) * distance
             val tileX = world.tileX(x)
             val tileY = world.tileY(y)
-            if (!world.isSolid(tileX, tileY)) return x to y
+            if (!world.isSolid(tileX, tileY) && campfires.none { it.isSafe(x, y) }) return x to y
         }
         return null
     }
@@ -1174,10 +1227,12 @@ class Game(private val context: Context, private val input: InputState) {
     }
 
     private fun dropLoot(x: Float, y: Float, id: ItemId, count: Int) {
+        val bonus = if (stage >= 2) (1.2f + Random.nextFloat() * .8f).pow(stage - 1) else 1f
+        val adjustedCount = max(1, kotlin.math.ceil(count * bonus).toInt())
         pickups.add(
             Pickup(
                 id,
-                count,
+                adjustedCount,
                 x + (Random.nextFloat() - 0.5f) * 18f,
                 y + (Random.nextFloat() - 0.5f) * 18f,
             ),
@@ -1206,16 +1261,7 @@ class Game(private val context: Context, private val input: InputState) {
     }
 
     private fun damageText(x: Float, y: Float, damage: Float) {
-        texts.add(
-            FloatingText(
-                x,
-                y,
-                "-${damage.toInt()}",
-                0xFFFFD5C8.toInt(),
-                0.8f,
-                42f,
-            ),
-        )
+        texts.add(juice.spawnFloatingText("-${damage.toInt()} HP", x, y, 0xFFFFD565.toInt()))
     }
 
     private fun banner(text: String) {
@@ -1241,54 +1287,58 @@ class Game(private val context: Context, private val input: InputState) {
         canvas.drawColor(0xFF0B100E.toInt())
 
         canvas.save()
-        canvas.translate(width * 0.5f, height * 0.5f)
+        val shake = juice.shakeOffset()
+        canvas.translate(width * 0.5f + shake.x, height * 0.5f + shake.y)
         canvas.scale(camera.zoom, camera.zoom)
-        canvas.translate(-camera.x, -camera.y)
+        val cameraIso = IsoMath.worldToIso(camera.x, camera.y)
+        canvas.translate(-cameraIso.x, -cameraIso.y)
 
         worldRenderer.drawTiles(canvas, world, camera, width, height, elapsedSeconds)
 
         drawArenaSeal(canvas)
 
-        for (fire in campfires) objectRenderer.drawCampfire(canvas, fire, graphics)
-        for (chest in chests) objectRenderer.drawChest(canvas, chest)
-        for (pickup in pickups) objectRenderer.drawPickup(canvas, pickup)
-
-        for (animal in animals) {
-            if (onScreen(animal.x, animal.y)) creatureRenderer.drawAnimal(canvas, animal, graphics)
+        val renderables = ArrayList<Renderable>()
+        fun add(x: Float, y: Float, action: () -> Unit) {
+            if (onScreen(x, y)) renderables.add(Renderable((x + y) / Config.TILE,
+                IsoMath.worldToIso(x, y).x, action))
         }
-        for (wolf in wolves) {
-            if (onScreen(wolf.x, wolf.y)) creatureRenderer.drawWolf(canvas, wolf)
+        for (prop in worldRenderer.visibleProps(world, camera, width, height)) {
+            add(prop.x, prop.y) { drawAtIso(canvas, prop.x, prop.y) {
+                worldRenderer.drawProp(canvas, prop.type, prop.x, prop.y)
+            } }
         }
-        for (boss in bosses) {
-            if (!boss.defeated && onScreen(boss.x, boss.y)) {
-                creatureRenderer.drawBoss(canvas, boss, graphics)
-            }
-        }
-
-        for (projectile in projectiles) {
-            arenaPaint.style = Paint.Style.STROKE
-            arenaPaint.strokeWidth = 3f
-            arenaPaint.color = projectile.color
-            canvas.drawLine(
-                projectile.x,
-                projectile.y,
-                projectile.x - projectile.vx * 0.018f,
-                projectile.y - projectile.vy * 0.018f,
-                arenaPaint,
-            )
+        for (fire in campfires) add(fire.x, fire.y) { drawAtIso(canvas, fire.x, fire.y) { objectRenderer.drawCampfire(canvas, fire, graphics) } }
+        for (chest in chests) add(chest.x, chest.y) { drawAtIso(canvas, chest.x, chest.y) { objectRenderer.drawChest(canvas, chest) } }
+        for (pickup in pickups) add(pickup.x, pickup.y) { drawAtIso(canvas, pickup.x, pickup.y) { objectRenderer.drawPickup(canvas, pickup) } }
+        for (animal in animals) add(animal.x, animal.y) { drawAtIso(canvas, animal.x, animal.y) { creatureRenderer.drawAnimal(canvas, animal, graphics) } }
+        for (wolf in wolves) add(wolf.x, wolf.y) { drawAtIso(canvas, wolf.x, wolf.y) { creatureRenderer.drawWolf(canvas, wolf) } }
+        for (boss in bosses) if (!boss.defeated) add(boss.x, boss.y) { drawAtIso(canvas, boss.x, boss.y) { creatureRenderer.drawBoss(canvas, boss, graphics, elapsedSeconds) } }
+        add(player.x, player.y) { drawAtIso(canvas, player.x, player.y) { playerRenderer.draw(canvas, player, elapsedSeconds) } }
+        for (projectile in projectiles) add(projectile.x, projectile.y) {
+            arenaPaint.style = Paint.Style.STROKE; arenaPaint.strokeWidth = 3f; arenaPaint.color = projectile.color
+            val head = IsoMath.worldToIso(projectile.x, projectile.y)
+            val tail = IsoMath.worldToIso(projectile.x - projectile.vx * .018f, projectile.y - projectile.vy * .018f)
+            canvas.drawLine(head.x, head.y, tail.x, tail.y, arenaPaint)
             arenaPaint.style = Paint.Style.FILL
-            canvas.drawCircle(projectile.x, projectile.y, projectile.radius * 0.55f, arenaPaint)
+            canvas.drawCircle(head.x, head.y, projectile.radius * .55f, arenaPaint)
         }
-
-        if (onScreen(player.x, player.y)) playerRenderer.draw(canvas, player)
-
-        for (text in texts) objectRenderer.drawFloatingText(canvas, text)
-        for (particle in particles) objectRenderer.drawParticle(canvas, particle)
+        renderables.sortWith(compareBy<Renderable> { it.gridDepth }.thenBy { it.isoX })
+        for (item in renderables) item.draw()
+        for (text in texts) drawAtIso(canvas, text.x, text.y) { objectRenderer.drawFloatingText(canvas, text) }
+        for (particle in particles) drawAtIso(canvas, particle.x, particle.y) { objectRenderer.drawParticle(canvas, particle) }
 
         canvas.restore()
 
         worldRenderer.drawNight(canvas, camera, player, campfires, minutes, width, height)
         hud.draw(canvas, this, input, width, height)
+    }
+
+    private inline fun drawAtIso(canvas: Canvas, worldX: Float, worldY: Float, draw: () -> Unit) {
+        val iso = IsoMath.worldToIso(worldX, worldY)
+        canvas.save()
+        canvas.translate(iso.x - worldX, iso.y - worldY)
+        draw()
+        canvas.restore()
     }
 
     private fun drawArenaSeal(canvas: Canvas) {
@@ -1297,14 +1347,23 @@ class Game(private val context: Context, private val input: InputState) {
         arenaPaint.style = Paint.Style.STROKE
         arenaPaint.strokeWidth = 5f
         arenaPaint.color = 0x66FF4A3A
-        canvas.drawCircle(boss.arenaX, boss.arenaY, boss.arenaRadius - 8f, arenaPaint)
+        val ring = android.graphics.Path()
+        for (i in 0..48) {
+            val angle = i * (PI * 2).toFloat() / 48f
+            val point = IsoMath.worldToIso(boss.arenaX + cos(angle) * (boss.arenaRadius - 8f),
+                boss.arenaY + sin(angle) * (boss.arenaRadius - 8f))
+            if (i == 0) ring.moveTo(point.x, point.y) else ring.lineTo(point.x, point.y)
+        }
+        canvas.drawPath(ring, arenaPaint)
         arenaPaint.style = Paint.Style.FILL
     }
 
     private fun onScreen(worldX: Float, worldY: Float): Boolean {
+        val point = IsoMath.worldToIso(worldX, worldY)
+        val center = IsoMath.worldToIso(camera.x, camera.y)
         val halfW = screenWidth / (2f * camera.zoom) + 80f
         val halfH = screenHeight / (2f * camera.zoom) + 80f
-        return abs(worldX - camera.x) <= halfW && abs(worldY - camera.y) <= halfH
+        return abs(point.x - center.x) <= halfW && abs(point.y - center.y) <= halfH
     }
 
     // ---- Persistence -------------------------------------------------------
@@ -1343,7 +1402,10 @@ class Game(private val context: Context, private val input: InputState) {
         player.stats.maxHealth = state.maxHealth; player.stats.maxMana = state.maxMana
         player.stats.bonusHealth = state.bonusHealth; player.stats.bonusMana = state.bonusMana
         defeatedBosses.clear(); defeatedBosses.addAll(state.defeatedBosses)
+        stage = state.stage
+        bosses.clear(); for (def in Bosses.ALL) bosses.add(Boss(def).also { it.setLevel(stage + defeatedBosses.size); if (defeatedBosses.contains(def.id)) it.markDefeated() })
         openedChests.clear(); openedChests.addAll(state.openedChests)
+        for (chest in chests) chest.opened = openedChests.contains(chest.id)
         weaponLevels.clear(); state.weaponLevels.forEach { (name, value) -> runCatching { ItemId.valueOf(name) }.getOrNull()?.let { weaponLevels[it] = value } }
         weaponStars.clear(); state.weaponStars.forEach { (name, value) -> runCatching { ItemId.valueOf(name) }.getOrNull()?.let { weaponStars[it] = value } }
         minutes = state.minutes; day = state.day
@@ -1377,6 +1439,7 @@ class Game(private val context: Context, private val input: InputState) {
                 y = player.y,
                 minutes = minutes,
                 day = day,
+                stage = stage,
                 level = player.stats.level,
                 xp = player.stats.xp,
                 maxHealth = player.stats.maxHealth,

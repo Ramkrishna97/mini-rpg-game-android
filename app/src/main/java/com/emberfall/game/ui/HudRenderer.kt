@@ -21,6 +21,7 @@ import kotlin.math.sin
 class HudRenderer(context: Context) {
 
     private val density = context.resources.displayMetrics.density
+    private val art = UiArt(context)
 
     private val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val ringPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -28,24 +29,24 @@ class HudRenderer(context: Context) {
         strokeWidth = dp(2f)
     }
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
+        typeface = art.font
         textSize = dp(11f)
     }
     private val smallPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        typeface = Typeface.create(Typeface.MONOSPACE, Typeface.NORMAL)
+        typeface = art.font
         textSize = dp(8.5f)
     }
     private val bigPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
+        typeface = art.font
         textSize = dp(20f)
         textAlign = Paint.Align.CENTER
     }
     private val rect = RectF()
 
     private val minimap = MinimapRenderer()
-    private val inventoryPanel = InventoryPanelRenderer()
-    private val settingsPanel = SettingsPanelRenderer()
-    private val spellPicker = SpellPickerRenderer()
+    private val inventoryPanel = InventoryPanelRenderer(context)
+    private val settingsPanel = SettingsPanelRenderer(context)
+    private val spellPicker = SpellPickerRenderer(context)
     private val worldMap = WorldMapRenderer()
 
     private var cachedMinute = -1
@@ -73,6 +74,7 @@ class HudRenderer(context: Context) {
             spellPicker.draw(canvas, game, width, height, density)
             return
         }
+        if (input.weaponPickerOpen) { drawWeaponPicker(canvas, game, width, height); return }
         if (input.settingsOpen) {
             settingsPanel.draw(canvas, game, input.settingsScroll, width, height, density)
             return
@@ -86,6 +88,7 @@ class HudRenderer(context: Context) {
         drawButtons(canvas, game, input, width, height)
         drawPrompt(canvas, game, width, height)
         drawBanner(canvas, game, width, height)
+        if (game.victoryTimer > 0f) drawVictory(canvas, game, width, height)
         drawToast(canvas, game, width, height)
         drawHint(canvas, game, width, height)
 
@@ -95,7 +98,7 @@ class HudRenderer(context: Context) {
     private fun drawCampMenu(canvas: Canvas, game: Game, width: Float, height: Float) {
         fillPaint.color = 0xD9000000.toInt(); canvas.drawRect(0f, 0f, width, height, fillPaint)
         val panel = UiLayout.inventoryPanel(width, height, density)
-        fillPaint.color = 0xF21A231C.toInt(); canvas.drawRoundRect(panel, dp(12f), dp(12f), fillPaint)
+        art.panel(canvas, panel, density)
         textPaint.color = 0xFFFFD08A.toInt(); textPaint.textAlign = Paint.Align.CENTER; textPaint.textSize = dp(15f)
         canvas.drawText("CAMPFIRE WORKBENCH", width/2f, panel.top+dp(27f), textPaint)
         textPaint.textAlign=Paint.Align.RIGHT; textPaint.textSize=dp(9f); canvas.drawText("CLOSE",panel.right-dp(18f),panel.top+dp(28f),textPaint)
@@ -114,6 +117,25 @@ class HudRenderer(context: Context) {
         textPaint.color=0xFFFFD08A.toInt(); textPaint.textSize=dp(9f)
         canvas.drawText("UPGRADE: TAP LEFT  |  COMBINE: TAP RIGHT",width/2f,panel.bottom-dp(26f),textPaint)
         canvas.drawText("TAP ANYWHERE TO CLOSE",width/2f,panel.bottom-dp(10f),textPaint)
+    }
+
+    private fun drawWeaponPicker(canvas: Canvas, game: Game, width: Float, height: Float) {
+        fillPaint.color = 0xB9000000.toInt(); canvas.drawRect(0f, 0f, width, height, fillPaint)
+        val panel = UiLayout.inventoryPanel(width, height, density)
+        fillPaint.color = 0xFF1A231C.toInt(); canvas.drawRoundRect(panel, dp(10f), dp(10f), fillPaint)
+        ringPaint.color = 0xFFE8A64C.toInt(); canvas.drawRoundRect(panel, dp(10f), dp(10f), ringPaint)
+        textPaint.color = 0xFFFFD08A.toInt(); textPaint.textAlign = Paint.Align.CENTER; textPaint.textSize = dp(14f)
+        canvas.drawText("SET ATTACK WEAPON", panel.centerX(), panel.top + dp(29f), textPaint)
+        val weapons = com.emberfall.game.item.ItemId.values().filter { it.category == com.emberfall.game.item.ItemCategory.WEAPON }
+        weapons.forEachIndexed { index, weapon ->
+            val row = UiLayout.weaponRow(index, width, height, density)
+            val owned = game.inventory.count(weapon) > 0
+            fillPaint.color = if (weapon == game.activeWeapon()) 0xFF34583C.toInt() else 0xFF273329.toInt()
+            canvas.drawRoundRect(row, dp(4f), dp(4f), fillPaint)
+            smallPaint.color = if (owned) 0xFFF0E5D0.toInt() else 0xFF788779.toInt()
+            smallPaint.textAlign = Paint.Align.LEFT; smallPaint.textSize = dp(10f)
+            canvas.drawText("${weapon.displayName}  ${if (owned) "Lv.${game.weaponLevels[weapon] ?: 1}" else "LOCKED"}", row.left + dp(12f), row.centerY() + dp(3f), smallPaint)
+        }
     }
 
     private fun drawVitals(canvas: Canvas, game: Game) {
@@ -253,17 +275,19 @@ class HudRenderer(context: Context) {
             return
         }
 
-        fillPaint.color = 0x1FFFFFFF
+        fillPaint.color = 0x0FFFFFFF
         canvas.drawCircle(input.joystickBaseX, input.joystickBaseY, radius, fillPaint)
-        ringPaint.color = 0x66FFFFFF
+        ringPaint.color = 0xAAE8C85A.toInt()
+        ringPaint.strokeWidth = dp(3f)
         canvas.drawCircle(input.joystickBaseX, input.joystickBaseY, radius, ringPaint)
-        ringPaint.color = 0x33FFFFFF
+        ringPaint.color = 0x55FFD98A
         canvas.drawCircle(input.joystickBaseX, input.joystickBaseY, radius * 0.62f, ringPaint)
 
-        fillPaint.color = 0xCCF0F0E6.toInt()
+        fillPaint.color = 0xAAE8C85A.toInt()
         canvas.drawCircle(input.joystickKnobX, input.joystickKnobY, dp(23f), fillPaint)
-        ringPaint.color = 0x88FFFFFF.toInt()
+        ringPaint.color = 0xDDFFF0B0.toInt()
         canvas.drawCircle(input.joystickKnobX, input.joystickKnobY, dp(23f), ringPaint)
+        ringPaint.strokeWidth = dp(2f)
     }
 
     private fun drawButtons(
@@ -285,6 +309,13 @@ class HudRenderer(context: Context) {
         canvas.drawCircle(attackX, attackY, attackRadius, ringPaint)
         ringPaint.strokeWidth = dp(2f)
         paintSword(canvas, attackX, attackY, if (pressed) 0xFF2A1A08.toInt() else 0xE6F0F0E6.toInt())
+
+        val weaponX = UiLayout.weaponSelectX(width.toInt(), density)
+        val weaponY = UiLayout.weaponSelectY(height.toInt(), density)
+        fillPaint.color = 0x770B120F; canvas.drawCircle(weaponX, weaponY, UiLayout.weaponSelectRadius(density), fillPaint)
+        ringPaint.color = 0xFFE8A64C.toInt(); canvas.drawCircle(weaponX, weaponY, UiLayout.weaponSelectRadius(density), ringPaint)
+        textPaint.color = 0xFFFFD08A.toInt(); textPaint.textAlign = Paint.Align.CENTER; textPaint.textSize = dp(7f)
+        canvas.drawText("SET", weaponX, weaponY + dp(2f), textPaint)
 
         // Interact.
         val interactX = UiLayout.interactX(width.toInt(), density)
@@ -381,6 +412,18 @@ class HudRenderer(context: Context) {
         smallPaint.textSize = dp(9.5f)
         smallPaint.color = Color.argb(alpha, 240, 240, 230)
         canvas.drawText(game.toastText, width / 2f, height - dp(56f), smallPaint)
+    }
+
+    private fun drawVictory(canvas: Canvas, game: Game, width: Float, height: Float) {
+        val alpha = (min(1f, game.victoryTimer) * 210f).toInt().coerceIn(0, 210)
+        fillPaint.color = Color.argb(alpha / 2, 10, 24, 12)
+        canvas.drawRect(0f, height * .32f, width, height * .66f, fillPaint)
+        bigPaint.color = Color.argb(alpha, 255, 216, 104)
+        bigPaint.textSize = dp(28f)
+        canvas.drawText("VICTORY", width / 2f, height * .46f, bigPaint)
+        bigPaint.textSize = dp(16f)
+        canvas.drawText("LEVEL ${game.stage} UNLOCKED", width / 2f, height * .55f, bigPaint)
+        bigPaint.textSize = dp(20f)
     }
 
     private fun drawHint(canvas: Canvas, game: Game, width: Float, height: Float) {

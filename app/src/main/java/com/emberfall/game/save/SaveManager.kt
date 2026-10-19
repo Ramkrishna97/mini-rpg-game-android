@@ -15,6 +15,7 @@ data class SaveState(
     val y: Float,
     val minutes: Float,
     val day: Int,
+    val stage: Int = 1,
     val level: Int = 1,
     val xp: Int = 0,
     val maxHealth: Float = 100f,
@@ -72,6 +73,7 @@ class SaveManager(context: Context) {
                     y = json.optDouble("y", 0.0).toFloat(),
                     minutes = json.optDouble("minutes", 450.0).toFloat(),
                     day = json.optInt("day", 1).coerceAtLeast(1),
+                    stage = json.optInt("stage", 1).coerceAtLeast(1),
                     level = json.optInt("level", 1).coerceAtLeast(1),
                     xp = json.optInt("xp", 0).coerceAtLeast(0),
                     maxHealth = json.optDouble("maxHealth", 100.0).toFloat(),
@@ -116,6 +118,7 @@ class SaveManager(context: Context) {
                 .put("y", state.y.toDouble())
                 .put("minutes", state.minutes.toDouble())
                 .put("day", state.day)
+                .put("stage", state.stage)
                 .put("level", state.level)
                 .put("xp", state.xp)
                 .put("maxHealth", state.maxHealth.toDouble())

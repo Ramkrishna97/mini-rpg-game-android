@@ -32,7 +32,7 @@ class TouchController(
             MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
                 if (event.actionMasked == MotionEvent.ACTION_POINTER_DOWN) {
                     if (input.inventoryOpen || input.settingsOpen ||
-                        input.spellPickerOpen || input.mapOpen || input.campMenuOpen
+                        input.spellPickerOpen || input.weaponPickerOpen || input.mapOpen || input.campMenuOpen
                     ) {
                         return true
                     }
@@ -54,6 +54,14 @@ class TouchController(
                         )
                         if (card >= 0) input.pushCommand(UiCommand.CAST_BASE + card)
                         input.spellPickerOpen = false
+                        return true
+                    }
+
+                    input.weaponPickerOpen -> {
+                        val row = UiLayout.weaponRowAt(x, y, width.toFloat(), height.toFloat(), density)
+                        val weapon = com.emberfall.game.item.ItemId.values().filter { it.category == com.emberfall.game.item.ItemCategory.WEAPON }.getOrNull(row)
+                        if (weapon != null) input.pushCommand(UiCommand.EQUIP_WEAPON_BASE + weapon.ordinal)
+                        input.weaponPickerOpen = false
                         return true
                     }
 
@@ -94,6 +102,12 @@ class TouchController(
 
                     isOnSpellSelect(x, y, width, height) -> {
                         input.spellPickerOpen = true
+                        resetJoystick()
+                        joystickPointerId = -1
+                    }
+
+                    isOnWeaponSelect(x, y, width, height) -> {
+                        input.weaponPickerOpen = true
                         resetJoystick()
                         joystickPointerId = -1
                     }
@@ -147,7 +161,7 @@ class TouchController(
                     }
                     return true
                 }
-                if (input.inventoryOpen || input.spellPickerOpen || input.mapOpen || input.campMenuOpen) return true
+                if (input.inventoryOpen || input.spellPickerOpen || input.weaponPickerOpen || input.mapOpen || input.campMenuOpen) return true
                 val joystickIndex = event.findPointerIndex(joystickPointerId)
                 if (joystickIndex >= 0) {
                     moveJoystick(
@@ -260,6 +274,9 @@ class TouchController(
     private fun isOnSpellSelect(x: Float, y: Float, width: Int, height: Int): Boolean {
         return hypot(x - UiLayout.spellSelectX(width, density), y - UiLayout.spellSelectY(height, density)) <= UiLayout.spellSelectRadius(density) * 1.3f
     }
+
+    private fun isOnWeaponSelect(x: Float, y: Float, width: Int, height: Int): Boolean =
+        hypot(x - UiLayout.weaponSelectX(width, density), y - UiLayout.weaponSelectY(height, density)) <= UiLayout.weaponSelectRadius(density) * 1.15f
 
     private fun isOnInteract(x: Float, y: Float, width: Int, height: Int): Boolean {
         val radius = UiLayout.interactRadius(density) * 1.3f

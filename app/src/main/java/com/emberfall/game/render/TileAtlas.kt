@@ -32,6 +32,10 @@ class TileAtlas(context: Context) {
 
     private val sheets: Array<Array<Bitmap?>> =
         Array(TileType.values().size) { arrayOfNulls<Bitmap>(VARIANTS) }
+    private val isoSheets: Array<Array<Bitmap?>> =
+        Array(TileType.values().size) { arrayOfNulls<Bitmap>(VARIANTS) }
+    private val transitionSheets: Array<MutableMap<Int, Bitmap>> =
+        Array(TileType.values().size) { HashMap() }
 
     init {
         val atlas = loadAtlas(context)
@@ -64,6 +68,31 @@ class TileAtlas(context: Context) {
 
     fun bitmap(type: TileType, variant: Int): Bitmap =
         sheets[type.ordinal][variant and (VARIANTS - 1)]!!
+
+    fun isoBitmap(type: TileType, variant: Int): Bitmap {
+        val slot = variant and (VARIANTS - 1)
+        isoSheets[type.ordinal][slot]?.let { return it }
+        val source = bitmap(type, slot)
+        val result = Bitmap.createBitmap(IsoMath.TILE_WIDTH.toInt(), IsoMath.TILE_HEIGHT.toInt(), Bitmap.Config.ARGB_8888)
+        for (y in 0 until result.height) for (x in 0 until result.width) {
+            val sx = (x + .5f) / result.width * 2f - 1f
+            val sy = (y + .5f) / result.height * 2f - 1f
+            val u = (sx + sy + 1f) * .5f
+            val v = (sy - sx + 1f) * .5f
+            if (u >= 0f && u < 1f && v >= 0f && v < 1f) {
+                result.setPixel(x, y, source.getPixel((u * source.width).toInt(), (v * source.height).toInt()))
+            }
+        }
+        isoSheets[type.ordinal][slot] = result
+        return result
+    }
+
+    fun transitionBitmap(target: TileType, mask: Int): Bitmap {
+        val index = IsoAutotile.variant(mask)
+        return transitionSheets[target.ordinal].getOrPut(index) {
+            IsoAutotile.overlay(isoBitmap(target, 0), IsoAutotile.masks[index])
+        }
+    }
 
     private fun paintTile(type: TileType, variant: Int): Bitmap {
         val bitmap = Bitmap.createBitmap(TILE_PX, TILE_PX, Bitmap.Config.ARGB_8888)

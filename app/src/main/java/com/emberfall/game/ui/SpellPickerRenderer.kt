@@ -4,15 +4,18 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.Typeface
+import android.content.Context
 import com.emberfall.game.core.Game
 import com.emberfall.game.core.Spell
 
 /** Four-card spell picker. Tapping a card selects the magic used by the action button. */
-class SpellPickerRenderer {
+class SpellPickerRenderer(context: Context) {
+
+    private val art = UiArt(context)
 
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
+        typeface = art.font
     }
     private val rect = RectF()
 
@@ -21,13 +24,7 @@ class SpellPickerRenderer {
         canvas.drawRect(0f, 0f, width, height, paint)
 
         val panel = UiLayout.spellPanel(width, height, density)
-        paint.color = 0xF21A231C.toInt()
-        canvas.drawRoundRect(panel, 12f * density, 12f * density, paint)
-        paint.style = Paint.Style.STROKE
-        paint.strokeWidth = 1.5f * density
-        paint.color = 0x55E8A64C
-        canvas.drawRoundRect(panel, 12f * density, 12f * density, paint)
-        paint.style = Paint.Style.FILL
+        art.panel(canvas, panel, density)
 
         textPaint.textAlign = Paint.Align.LEFT
         textPaint.color = 0xFFE8A64C.toInt()
@@ -58,8 +55,7 @@ class SpellPickerRenderer {
                 paint.style = Paint.Style.FILL
             }
 
-            paint.color = spell.color
-            canvas.drawCircle(card.left + 24f * density, card.top + 24f * density, 13f * density, paint)
+            art.spell(canvas, spell, card.left + 24f*density, card.top + 25f*density, 32f*density)
 
             textPaint.textAlign = Paint.Align.LEFT
             textPaint.color = 0xFFE8E8DE.toInt()

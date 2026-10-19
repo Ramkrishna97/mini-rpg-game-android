@@ -28,6 +28,7 @@ class InputState {
     @Volatile var spellPickerOpen = false
     @Volatile var mapOpen = false
     @Volatile var campMenuOpen = false
+    @Volatile var weaponPickerOpen = false
     @Volatile var musicEnabled = true
     @Volatile var soundEnabled = false
 
@@ -67,5 +68,6 @@ class InputState {
         spellPickerOpen = false
         mapOpen = false
         campMenuOpen = false
+        weaponPickerOpen = false
     }
 }

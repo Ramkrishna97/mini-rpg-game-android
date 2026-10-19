@@ -26,7 +26,7 @@ enum class ItemId(
     FIBER("Fiber", ItemCategory.MATERIAL, 50, 0xFF9BB56A.toInt(), "Crafting material"),
     IRON("Iron Ore", ItemCategory.MATERIAL, 50, 0xFFC9A27A.toInt(), "Rare crafting material"),
     HIDE("Hide", ItemCategory.MATERIAL, 30, 0xFFA9794F.toInt(), "Crafting material"),
-    MAGIC_STONE("Magic Stone", ItemCategory.VALUABLE, 20, 0xFF7A6BD9.toInt(), "Hums with power", mana = 25f),
+    MAGIC_STONE("Magic Stone", ItemCategory.MATERIAL, 20, 0xFF7A6BD9.toInt(), "Hums with crafting power"),
 
     FRUIT("Wild Fruit", ItemCategory.CONSUMABLE, 20, 0xFFD95F6A.toInt(), "Restores health and hunger", heal = 12f, food = 18f),
     RAW_MEAT("Raw Meat", ItemCategory.CONSUMABLE, 20, 0xFFC26262.toInt(), "Restores a little health and hunger", heal = 6f, food = 20f),

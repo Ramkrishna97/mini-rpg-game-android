@@ -49,7 +49,7 @@ object UiLayout {
 
     fun gearX(width: Int, density: Float): Float = width - 33f * density
 
-    fun gearY(height: Int, density: Float): Float = 36f * density
+    fun gearY(height: Int, density: Float): Float = (14f + 122f + 26f) * density
 
     // ---- Minimap -----------------------------------------------------------
 
@@ -158,6 +158,20 @@ object UiLayout {
     fun spellSelectX(width: Int, density: Float): Float = width - 248f * density
     fun spellSelectY(height: Int, density: Float): Float = height - 198f * density
     fun spellSelectRadius(density: Float): Float = 24f * density
+
+    fun weaponSelectX(width: Int, density: Float): Float = width - 35f * density
+    fun weaponSelectY(height: Int, density: Float): Float = height - 175f * density
+    fun weaponSelectRadius(density: Float): Float = 22f * density
+
+    fun weaponRow(index: Int, width: Float, height: Float, density: Float): RectF {
+        val panel = inventoryPanel(width, height, density)
+        val rowHeight = (panel.height() - 75f * density) / 6f
+        val top = panel.top + 48f * density + index * rowHeight
+        return RectF(panel.left + 20f * density, top, panel.right - 20f * density, top + rowHeight - 3f * density)
+    }
+
+    fun weaponRowAt(x: Float, y: Float, width: Float, height: Float, density: Float): Int =
+        (0 until 6).firstOrNull { weaponRow(it, width, height, density).contains(x, y) } ?: -1
 
     fun spellPanel(width: Float, height: Float, density: Float): RectF {
         val panelWidth = min(width * 0.56f, 520f * density)
