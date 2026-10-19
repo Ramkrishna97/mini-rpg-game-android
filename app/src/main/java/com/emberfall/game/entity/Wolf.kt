@@ -20,6 +20,8 @@ class Wolf(x: Float, y: Float) : Creature(x, y, 9f, 46f) {
     var aggro = false
         private set
 
+    fun disengage() { aggro = false }
+
     override fun update(dt: Float, game: Game) {
         super.update(dt, game)
         if (freezeTimer > 0f) { freezeTimer -= dt; applyKnockback(dt, game); return }

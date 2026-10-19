@@ -32,6 +32,9 @@ enum class ItemId(
     RAW_MEAT("Raw Meat", ItemCategory.CONSUMABLE, 20, 0xFFC26262.toInt(), "Restores a little health and hunger", heal = 6f, food = 20f),
     COOKED_MEAT("Cooked Meat", ItemCategory.CONSUMABLE, 20, 0xFFB5793F.toInt(), "Restores health and hunger", heal = 20f, food = 40f),
     ELIXIR("Elixir", ItemCategory.CONSUMABLE, 10, 0xFF5FD3C4.toInt(), "Restores health and mana", heal = 30f, mana = 50f),
+    MANA_POTION("Mana Potion", ItemCategory.CONSUMABLE, 10, 0xFF6B84E8.toInt(), "Restores 45 mana", mana = 45f),
+    POWER_POTION("Power Potion", ItemCategory.CONSUMABLE, 10, 0xFFE28B4D.toInt(), "Temporarily empowers attacks", food = 0f),
+    REGEN_POTION("Regen Potion", ItemCategory.CONSUMABLE, 10, 0xFF69C879.toInt(), "Regenerates health for 15 seconds"),
 
     WOODEN_SWORD("Wooden Sword", ItemCategory.WEAPON, 1, 0xFF9A7446.toInt(), "A simple blade", damage = 8f),
     IRON_SWORD("Iron Sword", ItemCategory.WEAPON, 1, 0xFFB9C3D0.toInt(), "Forged for the frontier", damage = 14f),

@@ -21,6 +21,10 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
 
     private val touch = TouchController(input, resources.displayMetrics.density)
     private var loop: GameThread? = null
+    private var audioSync: ((Boolean, Boolean) -> Unit)? = null
+
+    fun setAudioSync(callback: (Boolean, Boolean) -> Unit) { audioSync = callback }
+
 
     val refreshRate: Float = runCatching {
         if (android.os.Build.VERSION.SDK_INT >= 30) {
@@ -104,13 +108,32 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         override fun run() {
             Process.setThreadPriority(Process.THREAD_PRIORITY_DISPLAY)
 
-            val targetFps = refreshRate.coerceIn(60f, 144f)
-            val stepNanos = (1_000_000_000f / targetFps).toLong()
-            val stepSeconds = stepNanos / 1_000_000_000f
+            var targetFps = minOf(refreshRate.coerceIn(30f, 120f), view.game.graphics.targetFps.toFloat())
+            var stepNanos = (1_000_000_000f / targetFps).toLong()
+            var stepSeconds = stepNanos / 1_000_000_000f
+            var observedCap = targetFps
+            var settingsCheck = 0
+            var syncedMusic = !view.input.musicEnabled
+            var syncedSound = !view.input.soundEnabled
             var last = System.nanoTime()
             var accumulator = 0L
 
             while (running) {
+                if (view.input.musicEnabled != syncedMusic || view.input.soundEnabled != syncedSound) {
+                    syncedMusic = view.input.musicEnabled
+                    syncedSound = view.input.soundEnabled
+                    view.audioSync?.invoke(syncedMusic, syncedSound)
+                }
+                if (++settingsCheck >= 30) {
+                    settingsCheck = 0
+                    val requested = minOf(refreshRate.coerceIn(30f, 120f), view.game.graphics.targetFps.toFloat())
+                    if (requested != observedCap) {
+                        targetFps = requested
+                        observedCap = requested
+                        stepNanos = (1_000_000_000f / targetFps).toLong()
+                        stepSeconds = stepNanos / 1_000_000_000f
+                    }
+                }
                 val now = System.nanoTime()
                 var delta = now - last
                 last = now

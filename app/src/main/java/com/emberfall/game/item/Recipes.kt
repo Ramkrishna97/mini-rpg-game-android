@@ -35,9 +35,9 @@ object Recipes {
             ItemId.COOKED_MEAT,
             listOf(ItemId.RAW_MEAT to 1, ItemId.WOOD to 1),
         ),
-        Recipe(
-            ItemId.ELIXIR,
-            listOf(ItemId.MAGIC_STONE to 1, ItemId.FRUIT to 2),
-        ),
+        Recipe(ItemId.ELIXIR, listOf(ItemId.MAGIC_STONE to 1, ItemId.FRUIT to 2)),
+        Recipe(ItemId.MANA_POTION, listOf(ItemId.MAGIC_STONE to 1, ItemId.FIBER to 2)),
+        Recipe(ItemId.POWER_POTION, listOf(ItemId.MAGIC_STONE to 1, ItemId.RAW_MEAT to 1)),
+        Recipe(ItemId.REGEN_POTION, listOf(ItemId.FRUIT to 2, ItemId.FIBER to 2)),
     )
 }

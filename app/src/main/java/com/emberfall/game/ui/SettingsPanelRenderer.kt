@@ -16,7 +16,7 @@ class SettingsPanelRenderer {
     }
     private val rect = RectF()
 
-    fun draw(canvas: Canvas, game: Game, width: Float, height: Float, density: Float) {
+    fun draw(canvas: Canvas, game: Game, scroll: Int, width: Float, height: Float, density: Float) {
         paint.color = 0xB3000000.toInt()
         canvas.drawRect(0f, 0f, width, height, paint)
 
@@ -32,11 +32,14 @@ class SettingsPanelRenderer {
         textPaint.textAlign = Paint.Align.LEFT
         textPaint.color = 0xFFE8A64C.toInt()
         textPaint.textSize = 14f * density
-        canvas.drawText("GRAPHICS", panel.left + 18f * density, panel.top + 30f * density, textPaint)
+        canvas.drawText("SETTINGS", panel.left + 18f * density, panel.top + 30f * density, textPaint)
 
         val labels = arrayOf("QUALITY: LOW", "QUALITY: MEDIUM", "QUALITY: HIGH")
+        textPaint.color = 0xFF90A090.toInt(); textPaint.textSize = 7f*density; textPaint.textAlign = Paint.Align.RIGHT
+        canvas.drawText("SCROLL FOR MORE",panel.right-18f*density,panel.top+29f*density,textPaint)
+        canvas.save(); canvas.clipRect(panel.left, panel.top + 42f*density, panel.right, panel.bottom - 8f*density)
         for (index in 0..UiLayout.SETTINGS_CLOSE) {
-            val row = UiLayout.settingsRow(index, width, height, density)
+            val row = UiLayout.settingsRow(index, scroll, width, height, density)
             val selected = when (index) {
                 0 -> game.graphics.quality == GraphicsQuality.LOW
                 1 -> game.graphics.quality == GraphicsQuality.MEDIUM
@@ -54,6 +57,13 @@ class SettingsPanelRenderer {
                 3 -> "SMOOTH TEXTURES: ${onOff(game.graphics.smoothTextures)}"
                 4 -> "ANTI-ALIASING: ${onOff(game.graphics.antiAliasing)}"
                 5 -> "PARTICLES: ${onOff(game.graphics.particles)}"
+                6 -> "MUSIC: ${onOff(game.graphics.music)}"
+                7 -> "SOUND: ${onOff(game.graphics.sound)}"
+                8 -> "VIBRATION: ${onOff(game.graphics.vibration)}"
+                9 -> "RENDER SCALE: ${game.graphics.resolutionScale}X  TAP TO CYCLE"
+                10 -> "FRAME CAP: ${game.graphics.targetFps} HZ  TAP TO CYCLE"
+                11 -> "SAVE GAME NOW"
+                12 -> "LOAD SAVED GAME"
                 else -> "CLOSE"
             }
             canvas.drawText(label, row.left + 12f * density, row.centerY() + 4f * density, textPaint)
@@ -70,6 +80,7 @@ class SettingsPanelRenderer {
                 )
             }
         }
+        canvas.restore()
     }
 
     private fun onOff(value: Boolean): String = if (value) "ON" else "OFF"

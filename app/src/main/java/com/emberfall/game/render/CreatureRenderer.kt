@@ -73,7 +73,7 @@ class CreatureRenderer {
             paint.color = 0xFF4A3A2C.toInt()
             paint.strokeWidth = 1.4f
             paint.style = Paint.Style.STROKE
-            val step = sin(animal.x * 0.1f)
+            val step = sin(animal.walkCycle)
             canvas.drawLine(x - r * 0.5f, y + r * 0.4f, x - r * 0.5f + step, y + r * 0.95f, paint)
             canvas.drawLine(x + r * 0.4f, y + r * 0.4f, x + r * 0.4f - step, y + r * 0.95f, paint)
             paint.style = Paint.Style.FILL

@@ -24,11 +24,16 @@ class InputState {
     @Volatile var inventoryOpen = false
     @Volatile var craftingOpen = false
     @Volatile var settingsOpen = false
+    @Volatile var settingsScroll = 0
     @Volatile var spellPickerOpen = false
     @Volatile var mapOpen = false
+    @Volatile var campMenuOpen = false
+    @Volatile var musicEnabled = true
+    @Volatile var soundEnabled = false
 
     private val attackRequested = AtomicBoolean(false)
     private val interactRequested = AtomicBoolean(false)
+    private val magicRequested = AtomicBoolean(false)
     private val commands = ConcurrentLinkedQueue<Int>()
 
     fun requestAttack() {
@@ -43,6 +48,11 @@ class InputState {
 
     fun consumeInteractRequest(): Boolean = interactRequested.getAndSet(false)
 
+    fun requestMagic() { magicRequested.set(true) }
+    fun consumeMagicRequest(): Boolean = magicRequested.getAndSet(false)
+
+    fun pushAudioState(music: Boolean, sound: Boolean) { musicEnabled = music; soundEnabled = sound }
+
     fun pushCommand(code: Int) {
         commands.add(code)
     }
@@ -53,7 +63,9 @@ class InputState {
         inventoryOpen = false
         craftingOpen = false
         settingsOpen = false
+        settingsScroll = 0
         spellPickerOpen = false
         mapOpen = false
+        campMenuOpen = false
     }
 }

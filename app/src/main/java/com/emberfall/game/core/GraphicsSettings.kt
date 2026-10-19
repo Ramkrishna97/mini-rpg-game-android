@@ -11,6 +11,13 @@ class GraphicsSettings {
     var smoothTextures = true
     var antiAliasing = true
     var particles = true
+    var music = true
+    var sound = false
+    var vibration = true
+    var resolutionScale = 1f
+    var targetFps = 60
+    var maxRenderWidth = 3840
+    var maxRenderHeight = 2160
 
     fun particleScale(): Float = when (quality) {
         GraphicsQuality.LOW -> 0.35f

@@ -21,6 +21,9 @@ class TouchController(
 
     private var joystickPointerId = -1
     private var attackPointerId = -1
+    private var lastSettingsY = Float.NaN
+    private var resolutionTap = 0
+    private var fpsTap = 0
 
     fun handle(event: MotionEvent, width: Int, height: Int): Boolean {
         if (width == 0 || height == 0) return false
@@ -29,7 +32,7 @@ class TouchController(
             MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
                 if (event.actionMasked == MotionEvent.ACTION_POINTER_DOWN) {
                     if (input.inventoryOpen || input.settingsOpen ||
-                        input.spellPickerOpen || input.mapOpen
+                        input.spellPickerOpen || input.mapOpen || input.campMenuOpen
                     ) {
                         return true
                     }
@@ -49,9 +52,7 @@ class TouchController(
                         val card = UiLayout.spellCardAt(
                             x, y, width.toFloat(), height.toFloat(), density,
                         )
-                        if (card >= 0) {
-                            input.pushCommand(UiCommand.CAST_BASE + card)
-                        }
+                        if (card >= 0) input.pushCommand(UiCommand.CAST_BASE + card)
                         input.spellPickerOpen = false
                         return true
                     }
@@ -62,20 +63,43 @@ class TouchController(
                     }
 
                     input.settingsOpen -> {
+                        lastSettingsY = y
                         handleSettingsTap(x, y, width, height)
                         return true
                     }
                 }
 
                 when {
+                    input.campMenuOpen -> {
+                        val owned = com.emberfall.game.item.ItemId.values().filter { it.category == com.emberfall.game.item.ItemCategory.WEAPON }
+                        val panel = UiLayout.inventoryPanel(width.toFloat(), height.toFloat(), density)
+                        val close = UiLayout.campCloseButton(width.toFloat(), height.toFloat(), density)
+                        if (close.contains(x, y) || !panel.contains(x, y)) { input.campMenuOpen = false; return true }
+                        val spellButton = UiLayout.campSpellButton(width.toFloat(), height.toFloat(), density)
+                        if (spellButton.contains(x, y)) { input.campMenuOpen = false; input.spellPickerOpen = true; return true }
+                        if (y >= panel.top + 58f*density && y < panel.top + 58f*density + 6*32f*density) {
+                            val row = ((y - panel.top - 58f*density)/(32f*density)).toInt()
+                            val weapon = owned.getOrNull(row)
+                            if (weapon != null && weapon.category == com.emberfall.game.item.ItemCategory.WEAPON) input.pushCommand(UiCommand.EQUIP_WEAPON_BASE + weapon.ordinal)
+                        } else if (y >= panel.bottom-40f*density) {
+                            input.pushCommand(if (x < width/2f) UiCommand.UPGRADE_WEAPON else UiCommand.COMBINE_WEAPON)
+                        }
+                        return true
+                    }
                     UiLayout.minimapContains(x, y, width, height, density) -> {
                         input.mapOpen = true
                         resetJoystick()
                         joystickPointerId = -1
                     }
 
-                    isOnMagic(x, y, width, height) -> {
+                    isOnSpellSelect(x, y, width, height) -> {
                         input.spellPickerOpen = true
+                        resetJoystick()
+                        joystickPointerId = -1
+                    }
+
+                    isOnMagic(x, y, width, height) -> {
+                        input.requestMagic()
                         resetJoystick()
                         joystickPointerId = -1
                     }
@@ -111,11 +135,19 @@ class TouchController(
             }
 
             MotionEvent.ACTION_MOVE -> {
-                if (input.inventoryOpen || input.settingsOpen ||
-                    input.spellPickerOpen || input.mapOpen
-                ) {
+                if (input.settingsOpen) {
+                    val pointer = event.actionIndex
+                    val y = event.getY(pointer)
+                    if (!lastSettingsY.isNaN()) {
+                        val delta = lastSettingsY - y
+                        if (kotlin.math.abs(delta) > 3f*density) {
+                            input.settingsScroll = (input.settingsScroll + if (delta > 0f) 1 else -1).coerceIn(0, 7)
+                            lastSettingsY = y
+                        }
+                    }
                     return true
                 }
+                if (input.inventoryOpen || input.spellPickerOpen || input.mapOpen || input.campMenuOpen) return true
                 val joystickIndex = event.findPointerIndex(joystickPointerId)
                 if (joystickIndex >= 0) {
                     moveJoystick(
@@ -176,7 +208,8 @@ class TouchController(
     }
 
     private fun handleSettingsTap(x: Float, y: Float, width: Int, height: Int) {
-        val row = UiLayout.settingsRowAt(x, y, width.toFloat(), height.toFloat(), density)
+        val panel = UiLayout.settingsPanel(width.toFloat(), height.toFloat(), density)
+        val row = UiLayout.settingsRowAt(x, y, input.settingsScroll, width.toFloat(), height.toFloat(), density)
         when (row) {
             UiLayout.SETTINGS_LOW,
             UiLayout.SETTINGS_MEDIUM,
@@ -185,8 +218,15 @@ class TouchController(
             UiLayout.SETTINGS_SMOOTH -> input.pushCommand(UiCommand.TOGGLE_SMOOTH)
             UiLayout.SETTINGS_ANTIALIAS -> input.pushCommand(UiCommand.TOGGLE_ANTIALIAS)
             UiLayout.SETTINGS_PARTICLES -> input.pushCommand(UiCommand.TOGGLE_PARTICLES)
+            UiLayout.SETTINGS_MUSIC -> input.pushCommand(UiCommand.TOGGLE_MUSIC)
+            UiLayout.SETTINGS_SOUND -> input.pushCommand(UiCommand.TOGGLE_SOUND)
+            UiLayout.SETTINGS_VIBRATION -> input.pushCommand(UiCommand.TOGGLE_VIBRATION)
+            UiLayout.SETTINGS_RESOLUTION -> { resolutionTap = (resolutionTap + 1) % 5; input.pushCommand(UiCommand.RESOLUTION_BASE + resolutionTap) }
+            UiLayout.SETTINGS_FPS -> { fpsTap = (fpsTap + 1) % 4; input.pushCommand(UiCommand.FPS_BASE + fpsTap) }
+            UiLayout.SETTINGS_SAVE -> input.pushCommand(UiCommand.SAVE_NOW)
+            UiLayout.SETTINGS_LOAD -> input.pushCommand(UiCommand.LOAD_SAVE)
             UiLayout.SETTINGS_CLOSE -> input.settingsOpen = false
-            -1 -> input.settingsOpen = false
+            -1 -> if (!panel.contains(x, y)) input.settingsOpen = false
         }
     }
 
@@ -215,6 +255,10 @@ class TouchController(
             x - UiLayout.magicX(width, density),
             y - UiLayout.magicY(height, density),
         ) <= radius
+    }
+
+    private fun isOnSpellSelect(x: Float, y: Float, width: Int, height: Int): Boolean {
+        return hypot(x - UiLayout.spellSelectX(width, density), y - UiLayout.spellSelectY(height, density)) <= UiLayout.spellSelectRadius(density) * 1.3f
     }
 
     private fun isOnInteract(x: Float, y: Float, width: Int, height: Int): Boolean {

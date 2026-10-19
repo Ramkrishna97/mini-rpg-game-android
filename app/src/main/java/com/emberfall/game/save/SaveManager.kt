@@ -30,6 +30,8 @@ data class SaveState(
     val defeatedBosses: Set<String> = emptySet(),
     val openedChests: Set<Int> = emptySet(),
     val equippedWeapon: String? = null,
+    val weaponLevels: Map<String, Int> = emptyMap(),
+    val weaponStars: Map<String, Int> = emptyMap(),
     val graphics: GraphicsSettings = GraphicsSettings(),
 )
 
@@ -85,6 +87,8 @@ class SaveManager(context: Context) {
                     defeatedBosses = json.optJSONArray("defeatedBosses").toStringSet(),
                     openedChests = json.optJSONArray("openedChests").toIntSet(),
                     equippedWeapon = json.optString("equippedWeapon").takeIf { it.isNotBlank() },
+                    weaponLevels = json.optJSONObject("weaponLevels").toIntMap(),
+                    weaponStars = json.optJSONObject("weaponStars").toIntMap(),
                     graphics = json.optJSONObject("graphics").toGraphics(),
                 )
             }
@@ -127,13 +131,20 @@ class SaveManager(context: Context) {
                 .put("defeatedBosses", bossesJson)
                 .put("openedChests", chestsJson)
                 .put("equippedWeapon", state.equippedWeapon ?: "")
+                .put("weaponLevels", JSONObject(state.weaponLevels))
+                .put("weaponStars", JSONObject(state.weaponStars))
                 .put(
                     "graphics",
                     JSONObject()
                         .put("quality", state.graphics.quality.name)
                         .put("smoothTextures", state.graphics.smoothTextures)
                         .put("antiAliasing", state.graphics.antiAliasing)
-                        .put("particles", state.graphics.particles),
+                        .put("particles", state.graphics.particles)
+                        .put("music", state.graphics.music)
+                        .put("sound", state.graphics.sound)
+                        .put("vibration", state.graphics.vibration)
+                        .put("resolutionScale", state.graphics.resolutionScale)
+                        .put("targetFps", state.graphics.targetFps),
                 )
 
             // Write-then-rename keeps the save intact if the process dies mid-write.
@@ -162,6 +173,14 @@ class SaveManager(context: Context) {
         return out
     }
 
+    private fun JSONObject?.toIntMap(): Map<String, Int> {
+        if (this == null) return emptyMap()
+        val result = mutableMapOf<String, Int>()
+        val keys = keys()
+        while (keys.hasNext()) { val key = keys.next(); result[key] = optInt(key, 1) }
+        return result
+    }
+
     private fun JSONObject?.toGraphics(): GraphicsSettings {
         val settings = GraphicsSettings()
         if (this == null) return settings
@@ -171,6 +190,11 @@ class SaveManager(context: Context) {
         settings.smoothTextures = optBoolean("smoothTextures", true)
         settings.antiAliasing = optBoolean("antiAliasing", true)
         settings.particles = optBoolean("particles", true)
+        settings.music = optBoolean("music", true)
+        settings.sound = optBoolean("sound", false)
+        settings.vibration = optBoolean("vibration", true)
+        settings.resolutionScale = optDouble("resolutionScale", 1.0).toFloat().coerceIn(0.5f, 2f)
+        settings.targetFps = optInt("targetFps", 60).coerceIn(30, 120)
         return settings
     }
 }

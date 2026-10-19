@@ -11,4 +11,14 @@ object UiCommand {
     const val CAST_BASE = 500
     const val CRAFT_BASE = 600
     const val TOGGLE_CRAFT = 700
+    const val TOGGLE_MUSIC = 701
+    const val TOGGLE_SOUND = 702
+    const val TOGGLE_VIBRATION = 703
+    const val RESOLUTION_BASE = 710
+    const val FPS_BASE = 720
+    const val SAVE_NOW = 730
+    const val LOAD_SAVE = 731
+    const val UPGRADE_WEAPON = 732
+    const val COMBINE_WEAPON = 733
+    const val EQUIP_WEAPON_BASE = 740
 }

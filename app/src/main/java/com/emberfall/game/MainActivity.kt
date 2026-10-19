@@ -30,6 +30,7 @@ class MainActivity : Activity() {
 
         gameView = GameView(this)
         setContentView(gameView)
+        gameView.setAudioSync { enabled, _ -> runOnUiThread { if (enabled) music.start() else music.pause() } }
 
         // Must run after setContentView: the window's insets controller does not
         // exist until the decor view has been created.
@@ -40,7 +41,7 @@ class MainActivity : Activity() {
         super.onResume()
         hideSystemUi()
         gameView.onResumeGame()
-        music.start()
+        if (gameView.game.graphics.music) music.start() else music.pause()
     }
 
     override fun onPause() {
@@ -51,7 +52,12 @@ class MainActivity : Activity() {
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        if (hasFocus) hideSystemUi()
+        if (hasFocus) {
+            hideSystemUi()
+            if (::gameView.isInitialized) {
+                if (gameView.game.graphics.music) music.start() else music.pause()
+            }
+        }
     }
 
     @Suppress("DEPRECATION")

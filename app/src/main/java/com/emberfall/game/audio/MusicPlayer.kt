@@ -12,6 +12,7 @@ class MusicPlayer(private val context: Context) {
 
     private var player: MediaPlayer? = null
 
+    @Synchronized
     fun start() {
         val existing = player
         if (existing != null) {
@@ -29,6 +30,7 @@ class MusicPlayer(private val context: Context) {
         }
     }
 
+    @Synchronized
     fun pause() {
         runCatching {
             player?.takeIf { it.isPlaying }?.pause()

@@ -136,6 +136,10 @@ class InventoryPanelRenderer {
                 )
             }
 
+            if (stack.id.category == ItemCategory.WEAPON) {
+                textPaint.textAlign = Paint.Align.LEFT; textPaint.color = 0xFFFFD08A.toInt(); textPaint.textSize = 7f*density
+                canvas.drawText("${"*".repeat(game.weaponStars[stack.id] ?: 1)}  Lv.${game.weaponLevels[stack.id] ?: 1}", cell.left+5f*density, cell.top+10f*density, textPaint)
+            }
             if (stack.id == equipped) {
                 paint.style = Paint.Style.STROKE
                 paint.strokeWidth = 2f * density
@@ -197,7 +201,7 @@ class InventoryPanelRenderer {
         textPaint.color = 0xFF90A090.toInt()
         textPaint.textSize = 8.5f * density
         canvas.drawText(
-            "Gather wood, stone and fruit with E, then craft here",
+            "Use INTERACT to gather wood, stone and fruit; craft here",
             panel.left + 18f * density,
             panel.bottom - 10f * density,
             textPaint,

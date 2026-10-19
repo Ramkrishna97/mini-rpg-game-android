@@ -30,6 +30,8 @@ class Campfire(
 ) {
     var flamePhase = 0f
 
+    fun isSafe(px: Float, py: Float): Boolean = kotlin.math.hypot((px - x).toDouble(), (py - y).toDouble()) < 145.0
+
     fun update(dt: Float) {
         flamePhase += dt * 6f
     }

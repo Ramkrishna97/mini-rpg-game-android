@@ -7,7 +7,7 @@ import android.graphics.Typeface
 import com.emberfall.game.core.Game
 import com.emberfall.game.core.Spell
 
-/** Four-card spell picker. Tapping a card casts it and closes the panel. */
+/** Four-card spell picker. Tapping a card selects the magic used by the action button. */
 class SpellPickerRenderer {
 
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -32,7 +32,7 @@ class SpellPickerRenderer {
         textPaint.textAlign = Paint.Align.LEFT
         textPaint.color = 0xFFE8A64C.toInt()
         textPaint.textSize = 14f * density
-        canvas.drawText("SPELLS", panel.left + 18f * density, panel.top + 30f * density, textPaint)
+        canvas.drawText("CHOOSE MAGIC", panel.left + 18f * density, panel.top + 30f * density, textPaint)
 
         textPaint.textAlign = Paint.Align.RIGHT
         textPaint.color = 0xFF90A090.toInt()
@@ -75,7 +75,7 @@ class SpellPickerRenderer {
             textPaint.textSize = 8.5f * density
             val cost = game.magicCost(spell).toInt()
             canvas.drawText(
-                "$cost MP  ·  ${spell.damage.toInt()} dmg",
+                "${if (selected) "SELECTED" else "TAP TO SELECT"}  |  $cost MP",
                 card.left + 44f * density,
                 card.top + 36f * density,
                 textPaint,
@@ -98,7 +98,7 @@ class SpellPickerRenderer {
         textPaint.color = 0xFF90A090.toInt()
         textPaint.textSize = 8f * density
         canvas.drawText(
-            "Kill enemies to refill mana · each boss defeated lowers spell costs by 10%",
+            "Choose a magic, then press CAST to use it",
             width / 2f,
             panel.bottom - 10f * density,
             textPaint,

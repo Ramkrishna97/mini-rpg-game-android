@@ -63,6 +63,8 @@ abstract class Creature(
         return moved
     }
 
+    fun calm() { knockbackX = 0f; knockbackY = 0f; freezeTimer = 0f }
+
     fun applyImpulse(dx: Float, dy: Float, power: Float) {
         val length = kotlin.math.sqrt(dx * dx + dy * dy).coerceAtLeast(0.001f)
         knockbackX = dx / length * power

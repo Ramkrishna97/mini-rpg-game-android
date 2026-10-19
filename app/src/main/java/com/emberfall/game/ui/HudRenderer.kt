@@ -58,6 +58,7 @@ class HudRenderer(context: Context) {
     fun draw(canvas: Canvas, game: Game, input: InputState, width: Float, height: Float) {
         drawHurtFlash(canvas, game, width, height)
 
+        if (input.campMenuOpen) { drawCampMenu(canvas, game, width, height); return }
         if (input.mapOpen) {
             worldMap.draw(canvas, game, width, height, density)
             return
@@ -73,7 +74,7 @@ class HudRenderer(context: Context) {
             return
         }
         if (input.settingsOpen) {
-            settingsPanel.draw(canvas, game, width, height, density)
+            settingsPanel.draw(canvas, game, input.settingsScroll, width, height, density)
             return
         }
 
@@ -89,6 +90,30 @@ class HudRenderer(context: Context) {
         drawHint(canvas, game, width, height)
 
         if (game.deathTimer > 0f) drawDeath(canvas, game, width, height)
+    }
+
+    private fun drawCampMenu(canvas: Canvas, game: Game, width: Float, height: Float) {
+        fillPaint.color = 0xD9000000.toInt(); canvas.drawRect(0f, 0f, width, height, fillPaint)
+        val panel = UiLayout.inventoryPanel(width, height, density)
+        fillPaint.color = 0xF21A231C.toInt(); canvas.drawRoundRect(panel, dp(12f), dp(12f), fillPaint)
+        textPaint.color = 0xFFFFD08A.toInt(); textPaint.textAlign = Paint.Align.CENTER; textPaint.textSize = dp(15f)
+        canvas.drawText("CAMPFIRE WORKBENCH", width/2f, panel.top+dp(27f), textPaint)
+        textPaint.textAlign=Paint.Align.RIGHT; textPaint.textSize=dp(9f); canvas.drawText("CLOSE",panel.right-dp(18f),panel.top+dp(28f),textPaint)
+        textPaint.textAlign=Paint.Align.LEFT; canvas.drawText("MAGIC",panel.left+dp(23f),panel.top+dp(28f),textPaint)
+        smallPaint.color = 0xFFE8E8DE.toInt(); smallPaint.textAlign = Paint.Align.CENTER; smallPaint.textSize=dp(9f)
+        canvas.drawText("Select a weapon  |  use IRON to upgrade / duplicate to combine", width/2f, panel.top+dp(45f), smallPaint)
+        val weapons = com.emberfall.game.item.ItemId.values().filter { it.category == com.emberfall.game.item.ItemCategory.WEAPON }
+        weapons.take(6).forEachIndexed { index, weapon ->
+            val row = RectF(panel.left+dp(18f), panel.top+dp(58f+index*32f), panel.right-dp(18f), panel.top+dp(86f+index*32f))
+            val owned = game.inventory.count(weapon) > 0
+            fillPaint.color = if(game.activeWeapon()==weapon) 0x553F8A56 else 0xFF232D25.toInt(); canvas.drawRoundRect(row, dp(5f), dp(5f), fillPaint)
+            smallPaint.textAlign=Paint.Align.LEFT; smallPaint.color=if(owned) weapon.color else 0xFF718075.toInt(); smallPaint.textSize=dp(9f)
+            val detail = if (owned) "${"*".repeat(game.weaponStars[weapon]?:1)}  Lv.${game.weaponLevels[weapon]?:1}  x${game.inventory.count(weapon)}" else "LOCKED"
+            canvas.drawText("${weapon.displayName}  $detail",row.left+dp(8f),row.centerY()+dp(3f),smallPaint)
+        }
+        textPaint.color=0xFFFFD08A.toInt(); textPaint.textSize=dp(9f)
+        canvas.drawText("UPGRADE: TAP LEFT  |  COMBINE: TAP RIGHT",width/2f,panel.bottom-dp(26f),textPaint)
+        canvas.drawText("TAP ANYWHERE TO CLOSE",width/2f,panel.bottom-dp(10f),textPaint)
     }
 
     private fun drawVitals(canvas: Canvas, game: Game) {
@@ -273,7 +298,7 @@ class HudRenderer(context: Context) {
         textPaint.color = if (hasTarget) 0xFFE8A64C.toInt() else 0x88FFFFFF.toInt()
         textPaint.textAlign = Paint.Align.CENTER
         textPaint.textSize = dp(15f)
-        canvas.drawText("E", interactX, interactY + dp(5.5f), textPaint)
+        canvas.drawText("↗", interactX, interactY + dp(5.5f), textPaint)
 
         // Inventory bag.
         val bagX = UiLayout.bagX(width.toInt(), density)
@@ -295,7 +320,7 @@ class HudRenderer(context: Context) {
         canvas.drawCircle(gearX, gearY, gearRadius, ringPaint)
         paintGear(canvas, gearX, gearY, gearRadius * 0.55f, 0xCCF0F0E6.toInt())
 
-        // Magic button (opens the four-spell picker).
+        // Magic action casts the selected spell; tap its name above to choose another.
         val magicX = UiLayout.magicX(width.toInt(), density)
         val magicY = UiLayout.magicY(height.toInt(), density)
         val magicRadius = UiLayout.magicRadius(density)
@@ -309,6 +334,13 @@ class HudRenderer(context: Context) {
         textPaint.textAlign = Paint.Align.CENTER
         textPaint.textSize = dp(8f)
         canvas.drawText(spell.shortName, magicX, magicY + dp(2.5f), textPaint)
+        textPaint.textSize = dp(6f); textPaint.color = 0xFFE8E8DE.toInt()
+        canvas.drawText("CAST", magicX, magicY + dp(10f), textPaint)
+        val selectX = UiLayout.spellSelectX(width.toInt(), density); val selectY = UiLayout.spellSelectY(height.toInt(), density)
+        fillPaint.color = 0x4D0B120F; canvas.drawCircle(selectX, selectY, UiLayout.spellSelectRadius(density), fillPaint)
+        ringPaint.color = spell.color; canvas.drawCircle(selectX, selectY, UiLayout.spellSelectRadius(density), ringPaint)
+        textPaint.textSize = dp(7f); textPaint.color = spell.color
+        canvas.drawText("SET", selectX, selectY + dp(2.5f), textPaint)
     }
 
     private fun drawPrompt(canvas: Canvas, game: Game, width: Float, height: Float) {
@@ -316,7 +348,7 @@ class HudRenderer(context: Context) {
 
         smallPaint.textAlign = Paint.Align.LEFT
         smallPaint.textSize = dp(9f)
-        val text = "TAP E  —  $prompt"
+        val text = "TAP INTERACT  —  $prompt"
         val textWidth = smallPaint.measureText(text)
         val padding = dp(12f)
         val left = (width - textWidth) / 2f - padding
@@ -359,7 +391,7 @@ class HudRenderer(context: Context) {
         smallPaint.textAlign = Paint.Align.CENTER
         smallPaint.textSize = dp(9f)
         canvas.drawText(
-            "DRAG LEFT TO MOVE  /  SWORD ATTACKS  /  E INTERACTS",
+            "DRAG LEFT TO MOVE  /  ATTACK AND CAST  /  TAP INTERACT TO GATHER",
             width / 2f,
             height * 0.155f,
             smallPaint,

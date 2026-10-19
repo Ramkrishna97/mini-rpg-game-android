@@ -49,7 +49,7 @@ object UiLayout {
 
     fun gearX(width: Int, density: Float): Float = width - 33f * density
 
-    fun gearY(height: Int, density: Float): Float = 158f * density
+    fun gearY(height: Int, density: Float): Float = 36f * density
 
     // ---- Minimap -----------------------------------------------------------
 
@@ -80,7 +80,7 @@ object UiLayout {
     ): RectF {
         val panel = inventoryPanel(width, height, density)
         val padding = 16f * density
-        val gap = 8f * density
+        val gap = 4f * density
         val gridLeft = panel.left + padding
         val gridTop = panel.top + 54f * density
         val gridWidth = panel.width() - padding * 2f
@@ -112,30 +112,37 @@ object UiLayout {
     const val SETTINGS_SMOOTH = 3
     const val SETTINGS_ANTIALIAS = 4
     const val SETTINGS_PARTICLES = 5
-    const val SETTINGS_CLOSE = 6
+    const val SETTINGS_MUSIC = 6
+    const val SETTINGS_SOUND = 7
+    const val SETTINGS_VIBRATION = 8
+    const val SETTINGS_RESOLUTION = 9
+    const val SETTINGS_FPS = 10
+    const val SETTINGS_SAVE = 11
+    const val SETTINGS_LOAD = 12
+    const val SETTINGS_CLOSE = 13
 
     fun settingsPanel(width: Float, height: Float, density: Float): RectF {
-        val panelWidth = min(width * 0.52f, 460f * density)
-        val panelHeight = min(height * 0.90f, 362f * density)
+        val panelWidth = min(width * 0.70f, 520f * density)
+        val panelHeight = min(height * 0.98f, 560f * density)
         val left = (width - panelWidth) / 2f
         val top = (height - panelHeight) / 2f
         return RectF(left, top, left + panelWidth, top + panelHeight)
     }
 
-    fun settingsRow(index: Int, width: Float, height: Float, density: Float): RectF {
+    fun settingsRow(index: Int, scroll: Int, width: Float, height: Float, density: Float): RectF {
         val panel = settingsPanel(width, height, density)
         val padding = 18f * density
-        val rowHeight = 34f * density
-        val gap = 8f * density
-        val top = panel.top + 48f * density + index * (rowHeight + gap)
+        val rowHeight = 22f * density
+        val gap = 2f * density
+        val top = panel.top + 38f * density + (index - scroll) * (rowHeight + gap)
         return RectF(panel.left + padding, top, panel.right - padding, top + rowHeight)
     }
 
-    fun settingsRowAt(x: Float, y: Float, width: Float, height: Float, density: Float): Int {
+    fun settingsRowAt(x: Float, y: Float, scroll: Int, width: Float, height: Float, density: Float): Int {
         val panel = settingsPanel(width, height, density)
         if (!panel.contains(x, y)) return -1
         for (index in 0..SETTINGS_CLOSE) {
-            if (settingsRow(index, width, height, density).contains(x, y)) return index
+            if (settingsRow(index, scroll, width, height, density).contains(x, y)) return index
         }
         return -1
     }
@@ -147,6 +154,10 @@ object UiLayout {
     fun magicX(width: Int, density: Float): Float = width - 170f * density
 
     fun magicY(height: Int, density: Float): Float = height - 198f * density
+
+    fun spellSelectX(width: Int, density: Float): Float = width - 248f * density
+    fun spellSelectY(height: Int, density: Float): Float = height - 198f * density
+    fun spellSelectRadius(density: Float): Float = 24f * density
 
     fun spellPanel(width: Float, height: Float, density: Float): RectF {
         val panelWidth = min(width * 0.56f, 520f * density)
@@ -175,6 +186,18 @@ object UiLayout {
         }
         return -1
     }
+
+    fun campCloseButton(width: Float, height: Float, density: Float): RectF {
+        val panel = inventoryPanel(width, height, density)
+        return RectF(panel.right-dp(78f,density), panel.top+dp(10f,density), panel.right-dp(12f,density), panel.top+dp(40f,density))
+    }
+
+    fun campSpellButton(width: Float, height: Float, density: Float): RectF {
+        val panel = inventoryPanel(width, height, density)
+        return RectF(panel.left+dp(16f,density), panel.top+dp(10f,density), panel.left+dp(100f,density), panel.top+dp(40f,density))
+    }
+
+    private fun dp(value: Float, density: Float) = value * density
 
     // ---- Full map ----------------------------------------------------------
 

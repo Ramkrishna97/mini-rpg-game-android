@@ -71,7 +71,12 @@ class WorldMapRenderer {
         fun mapY(tileY: Int): Float = centerY + (tileY - playerTileY) * scale
 
         for (fire in game.campfires) {
-            mark(canvas, mapX(game.world.tileX(fire.x)), mapY(game.world.tileY(fire.y)), 0xFFFFA64C.toInt(), 3.2f * density)
+            val fx = mapX(game.world.tileX(fire.x)); val fy = mapY(game.world.tileY(fire.y))
+            paint.color = 0x55FFA64C
+            canvas.drawCircle(fx, fy, 7f * density, paint)
+            mark(canvas, fx, fy, 0xFFFFA64C.toInt(), 3.2f * density)
+            textPaint.color = 0xFFFFD08A.toInt(); textPaint.textSize = 6f * density; textPaint.textAlign = Paint.Align.LEFT
+            canvas.drawText("CAMP", fx + 5f * density, fy - 4f * density, textPaint)
         }
         for (chest in game.chests) {
             if (chest.opened) continue

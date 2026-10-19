@@ -12,9 +12,9 @@ enum class AnimalSpecies(
     val speed: Float,
     val radius: Float,
 ) {
-    RABBIT("Rabbit", 14f, 92f, 6f),
-    DEER("Deer", 34f, 68f, 9f),
-    BOAR("Boar", 55f, 58f, 10f),
+    RABBIT("Rabbit", 14f, 58f, 6f),
+    DEER("Deer", 34f, 46f, 9f),
+    BOAR("Boar", 55f, 40f, 10f),
 }
 
 /**
@@ -32,9 +32,12 @@ class Animal(
     private var dirY = 1f
 
     private var fleeTimer = 0f
+    private var animationPhase = 0f
+    val walkCycle: Float get() = animationPhase
 
     override fun update(dt: Float, game: Game) {
         super.update(dt, game)
+        animationPhase += dt * if (fleeTimer > 0f) 9f else 4f
         if (freezeTimer > 0f) { freezeTimer -= dt; applyKnockback(dt, game); return }
         fleeTimer = max(0f, fleeTimer - dt)
         wanderTimer -= dt
@@ -48,7 +51,7 @@ class Animal(
         if (fleeTimer > 0f && playerDistance < 22f * Config.TILE && playerDistance > 0.01f) {
             dirX = toPlayerX / playerDistance
             dirY = toPlayerY / playerDistance
-            speed = species.speed * 1.6f
+            speed = species.speed * 1.05f
         } else {
             if (wanderTimer <= 0f) {
                 val angle = Random.nextFloat() * Math.PI.toFloat() * 2f

@@ -50,7 +50,7 @@ import kotlin.random.Random
  * Owns the simulation. Runs on the game thread; [InputState] is the only
  * channel from the UI thread, and panel commands arrive as an integer queue.
  */
-class Game(context: Context, private val input: InputState) {
+class Game(private val context: Context, private val input: InputState) {
 
     private val saveManager = SaveManager(context)
     private val restored = saveManager.load()
@@ -131,9 +131,15 @@ class Game(context: Context, private val input: InputState) {
     private var spawnTimer = 0f
     private var elapsedSeconds = 0f
     private var deathDuration = 1.8f
+    val weaponLevels = mutableMapOf<ItemId, Int>()
+    val weaponStars = mutableMapOf<ItemId, Int>()
+
     private var spellCooldown = 0f
+    private var powerPotionTimer = 0f
+    private var regenPotionTimer = 0f
 
     init {
+        input.pushAudioState(graphics.music, graphics.sound)
         val spawnX = (world.spawn.x + 0.5f) * Config.TILE
         val spawnY = (world.spawn.y + 0.5f) * Config.TILE
         val startX = restored?.x ?: spawnX
@@ -205,6 +211,8 @@ class Game(context: Context, private val input: InputState) {
             runCatching { ItemId.valueOf(name) }.getOrNull()
         }
 
+        for ((name, level) in state.weaponLevels) runCatching { ItemId.valueOf(name) }.getOrNull()?.let { weaponLevels[it] = level.coerceIn(1, 50) }
+        for ((name, stars) in state.weaponStars) runCatching { ItemId.valueOf(name) }.getOrNull()?.let { weaponStars[it] = stars.coerceIn(1, 5) }
         if (state.campfireX != 0f || state.campfireY != 0f) {
             respawnX = state.campfireX
             respawnY = state.campfireY
@@ -246,10 +254,8 @@ class Game(context: Context, private val input: InputState) {
         processCommands()
 
         if (input.inventoryOpen || input.settingsOpen ||
-            input.spellPickerOpen || input.mapOpen
-        ) {
-            return
-        }
+            input.spellPickerOpen || input.mapOpen || input.campMenuOpen
+        ) return
 
         hud.update(dt, this)
 
@@ -261,8 +267,11 @@ class Game(context: Context, private val input: InputState) {
         }
 
         if (spellCooldown > 0f) spellCooldown = max(0f, spellCooldown - dt)
+        powerPotionTimer = max(0f, powerPotionTimer - dt)
+        if (regenPotionTimer > 0f) { regenPotionTimer = max(0f, regenPotionTimer - dt); player.stats.heal(2f * dt) }
 
         if (input.consumeAttackRequest()) playerAttack()
+        if (input.consumeMagicRequest()) castSelectedSpell()
         val interactRequested = input.consumeInteractRequest()
 
         player.update(dt, input.moveX, input.moveY, input.run, world)
@@ -331,13 +340,28 @@ class Game(context: Context, private val input: InputState) {
                     graphics.antiAliasing = !graphics.antiAliasing
                 }
 
-                command == UiCommand.TOGGLE_PARTICLES -> {
-                    graphics.particles = !graphics.particles
+                command == UiCommand.TOGGLE_PARTICLES -> graphics.particles = !graphics.particles
+                command == UiCommand.TOGGLE_MUSIC -> { graphics.music = !graphics.music; input.pushAudioState(graphics.music, graphics.sound) }
+                command == UiCommand.TOGGLE_SOUND -> { graphics.sound = !graphics.sound; input.pushAudioState(graphics.music, graphics.sound) }
+                command == UiCommand.TOGGLE_VIBRATION -> graphics.vibration = !graphics.vibration
+                command in UiCommand.RESOLUTION_BASE until UiCommand.FPS_BASE -> {
+                    graphics.resolutionScale = listOf(0.5f, 0.75f, 1f, 1.5f, 2f).getOrElse(command - UiCommand.RESOLUTION_BASE) { 1f }
+                }
+                command in UiCommand.FPS_BASE until UiCommand.SAVE_NOW -> {
+                    graphics.targetFps = listOf(30, 60, 90, 120).getOrElse(command - UiCommand.FPS_BASE) { 60 }
+                }
+                command == UiCommand.SAVE_NOW -> { saveNow(); toast("Game saved") }
+                command == UiCommand.LOAD_SAVE -> { loadSavedState(); toast("Saved state loaded") }
+                command == UiCommand.UPGRADE_WEAPON -> upgradeWeapon()
+                command == UiCommand.COMBINE_WEAPON -> combineWeapon()
+                command in UiCommand.EQUIP_WEAPON_BASE until UiCommand.EQUIP_WEAPON_BASE + ItemId.values().size -> {
+                    val id = ItemId.values().getOrNull(command - UiCommand.EQUIP_WEAPON_BASE)
+                    if (id?.category == ItemCategory.WEAPON && inventory.count(id) > 0) { equippedWeapon = id; toast("${id.displayName} equipped") }
                 }
 
                 command in UiCommand.CAST_BASE until UiCommand.CRAFT_BASE -> {
                     val spell = Spell.values().getOrNull(command - UiCommand.CAST_BASE)
-                    if (spell != null) castSpell(spell)
+                    if (spell != null) lastSpell = spell
                 }
 
                 command in UiCommand.CRAFT_BASE until UiCommand.TOGGLE_CRAFT -> {
@@ -363,6 +387,11 @@ class Game(context: Context, private val input: InputState) {
             }
             ItemCategory.MATERIAL -> toast("${id.displayName}: crafting material")
             ItemCategory.CONSUMABLE, ItemCategory.VALUABLE -> {
+                if ((id.heal > 0f || id == ItemId.REGEN_POTION) && player.stats.health >= player.stats.maxHealth) {
+                    toast("Health is already full"); return
+                }
+                if (id == ItemId.POWER_POTION) powerPotionTimer = 30f
+                if (id == ItemId.REGEN_POTION) regenPotionTimer = 15f
                 if (id.heal > 0f) player.stats.heal(id.heal)
                 if (id.mana > 0f) player.stats.restoreMana(id.mana)
                 if (id.food > 0f) player.stats.feed(id.food)
@@ -419,7 +448,8 @@ class Game(context: Context, private val input: InputState) {
             return
         }
 
-        val damage = 10f + (weapon?.damage ?: 0f)
+        val weaponPower = weapon?.let { (10f + it.damage) * 1.5f.pow((weaponStars[it] ?: 1) - 1) * (1f + ((weaponLevels[it] ?: 1) - 1) * 0.025f) } ?: 10f
+        val damage = weaponPower * if (powerPotionTimer > 0f) 1.5f else 1f
         val range = when (style) {
             WeaponStyle.ARC -> 70f
             WeaponStyle.RING -> 64f
@@ -490,7 +520,7 @@ class Game(context: Context, private val input: InputState) {
     }
 
     private fun damageCreature(creature: Creature, damage: Float) {
-        if (!creature.alive) return
+        if (!creature.alive || campfires.any { it.isSafe(creature.x, creature.y) }) return
         creature.hurt(damage, player.x, player.y)
         damageText(creature.x, creature.y - creature.radius, damage)
         val color = when (creature) {
@@ -519,7 +549,8 @@ class Game(context: Context, private val input: InputState) {
 
     private fun fireProjectile(weapon: ItemId?) {
         val speed = 560f
-        val damage = 10f + (weapon?.damage ?: 0f)
+        val weaponPower = weapon?.let { (10f + it.damage) * 1.5f.pow((weaponStars[it] ?: 1) - 1) * (1f + ((weaponLevels[it] ?: 1) - 1) * 0.025f) } ?: 10f
+        val damage = weaponPower * if (powerPotionTimer > 0f) 1.5f else 1f
         val color = if (weapon == ItemId.GUN) 0xFFFFD45A.toInt() else 0xFFD9C08A.toInt()
         projectiles.add(
             Projectile(
@@ -593,8 +624,9 @@ class Game(context: Context, private val input: InputState) {
         applySpellAoE(projectile.x, projectile.y, projectile.aoeRadius, projectile.damage, 0f, 0f)
     }
 
+    private fun castSelectedSpell() { castSpell(lastSpell) }
+
     private fun castSpell(spell: Spell) {
-        lastSpell = spell
         if (!player.isAlive) return
         val cost = magicCost(spell)
         if (spellCooldown > 0f) {
@@ -726,6 +758,9 @@ class Game(context: Context, private val input: InputState) {
         dropLoot(wolf.x, wolf.y, ItemId.HIDE, 2)
         dropLoot(wolf.x, wolf.y, ItemId.RAW_MEAT, 1 + Random.nextInt(2))
         if (Random.nextFloat() < 0.2f) dropLoot(wolf.x, wolf.y, ItemId.MAGIC_STONE, 1)
+        if (Random.nextFloat() < 0.18f) dropLoot(wolf.x, wolf.y, ItemId.MANA_POTION, 1)
+        if (Random.nextFloat() < 0.12f) dropLoot(wolf.x, wolf.y, ItemId.POWER_POTION, 1)
+        if (Random.nextFloat() < 0.08f) dropLoot(wolf.x, wolf.y, ItemId.REGEN_POTION, 1)
         spawnParticles(wolf.x, wolf.y, 0xFF767C86.toInt(), 10)
     }
 
@@ -766,9 +801,19 @@ class Game(context: Context, private val input: InputState) {
         }
     }
 
+    private fun hapticHit() {
+        if (!graphics.vibration) return
+        runCatching {
+            val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as? android.os.Vibrator
+            if (android.os.Build.VERSION.SDK_INT >= 26) vibrator?.vibrate(android.os.VibrationEffect.createOneShot(18, 35))
+            else vibrator?.vibrate(18)
+        }
+    }
+
     fun hurtPlayer(amount: Float, sourceX: Float, sourceY: Float) {
         if (deathTimer > 0f || !player.isAlive) return
         if (player.takeDamage(amount)) {
+            hapticHit()
             spawnParticles(player.x, player.y, 0xFFD9534F.toInt(), 5)
             if (!player.isAlive) startDeath()
         }
@@ -824,7 +869,10 @@ class Game(context: Context, private val input: InputState) {
         }
         val fire = nearestCampfire(56f)
         if (fire != null) {
+            respawnX = fire.x
+            respawnY = fire.y
             restAtCampfire(fire)
+            input.campMenuOpen = true
             return
         }
         val node = harvestTarget()
@@ -974,19 +1022,28 @@ class Game(context: Context, private val input: InputState) {
 
     private fun updateCreatures(dt: Float) {
         for (animal in animals) {
+            if (campfires.any { it.isSafe(animal.x, animal.y) }) { animal.calm(); continue }
             animal.update(dt, this)
         }
         for (wolf in wolves) {
+            val inSafeCamp = campfires.any { it.isSafe(wolf.x, wolf.y) }
+            if (inSafeCamp) { wolf.disengage(); wolf.calm(); continue }
             wolf.update(dt, this)
+        }
+        val playerInCamp = campfires.any { it.isSafe(player.x, player.y) }
+        if (playerInCamp) {
+            for (boss in bosses) if (!boss.defeated && boss.engaged) boss.resetFight()
+            activeBoss = null
         }
 
         for (boss in bosses) {
             if (boss.defeated) continue
+            if (campfires.any { it.isSafe(boss.x, boss.y) } && !boss.engaged) { boss.calm(); continue }
             val distance = hypot(
                 (boss.x - player.x).toDouble(),
                 (boss.y - player.y).toDouble(),
             ).toFloat()
-            if (boss.engaged || distance < 90f * Config.TILE) {
+            if (boss.engaged || (distance < 90f * Config.TILE && campfires.none { it.isSafe(boss.x, boss.y) })) {
                 boss.update(dt, this)
             }
             if (boss.health <= 0f) defeatBoss(boss)
@@ -1252,6 +1309,62 @@ class Game(context: Context, private val input: InputState) {
 
     // ---- Persistence -------------------------------------------------------
 
+    private fun upgradeWeapon() {
+        val weapon = equippedWeapon ?: activeWeapon() ?: run { toast("Equip a weapon first"); return }
+        if (equippedWeapon == null) { toast("Equip a weapon at the campfire first"); return }
+        val level = weaponLevels[weapon] ?: 1
+        if (level >= 50) { toast("Weapon is max level"); return }
+        val cost = level * (if ((weaponStars[weapon] ?: 1) > 1) 3 else 2)
+        if (inventory.count(ItemId.IRON) < cost) { toast("Need $cost Iron Ore"); return }
+        inventory.remove(ItemId.IRON, cost)
+        weaponLevels[weapon] = level + 1
+        toast("${weapon.displayName} upgraded to level ${level + 1}")
+    }
+
+    private fun combineWeapon() {
+        val weapon = equippedWeapon ?: activeWeapon() ?: run { toast("Equip a weapon first"); return }
+        if (equippedWeapon == null) { toast("Equip a weapon at the campfire first"); return }
+        val stars = weaponStars[weapon] ?: 1
+        if (stars >= 5) { toast("Weapon is already 5 stars"); return }
+        val copies = inventory.count(weapon)
+        if (copies < 2) { toast("Need a duplicate ${weapon.displayName}"); return }
+        inventory.remove(weapon, 2)
+        inventory.add(weapon, 1)
+        weaponStars[weapon] = stars + 1
+        equippedWeapon = weapon
+        toast("${weapon.displayName} upgraded to ${stars + 1} stars!")
+    }
+
+    private fun loadSavedState() {
+        val state = saveManager.load() ?: run { toast("No save found"); return }
+        if (state.seed != world.seed) { toast("This save belongs to another world"); return }
+        player.x = state.x; player.y = state.y
+        player.stats.level = state.level; player.stats.xp = state.xp
+        player.stats.maxHealth = state.maxHealth; player.stats.maxMana = state.maxMana
+        player.stats.bonusHealth = state.bonusHealth; player.stats.bonusMana = state.bonusMana
+        defeatedBosses.clear(); defeatedBosses.addAll(state.defeatedBosses)
+        openedChests.clear(); openedChests.addAll(state.openedChests)
+        weaponLevels.clear(); state.weaponLevels.forEach { (name, value) -> runCatching { ItemId.valueOf(name) }.getOrNull()?.let { weaponLevels[it] = value } }
+        weaponStars.clear(); state.weaponStars.forEach { (name, value) -> runCatching { ItemId.valueOf(name) }.getOrNull()?.let { weaponStars[it] = value } }
+        minutes = state.minutes; day = state.day
+        graphics.quality = state.graphics.quality
+        graphics.smoothTextures = state.graphics.smoothTextures
+        graphics.antiAliasing = state.graphics.antiAliasing
+        graphics.particles = state.graphics.particles
+        graphics.music = state.graphics.music
+        graphics.sound = state.graphics.sound
+        graphics.vibration = state.graphics.vibration
+        graphics.resolutionScale = state.graphics.resolutionScale
+        graphics.targetFps = state.graphics.targetFps
+        input.pushAudioState(graphics.music, graphics.sound)
+        player.stats.health = state.health.coerceIn(1f, player.stats.maxHealth)
+        player.stats.mana = state.mana.coerceIn(0f, player.stats.maxMana)
+        player.stats.hunger = state.hunger.coerceIn(0f, 100f)
+        inventory.clear(); state.inventory.forEach { (id, count) -> inventory.add(id, count) }
+        equippedWeapon = state.equippedWeapon?.let { runCatching { ItemId.valueOf(it) }.getOrNull() }
+        camera.snapTo(player.x, player.y)
+    }
+
     fun saveNow() {
         val items = mutableListOf<Pair<ItemId, Int>>()
         for (stack in inventory.allStacks()) {
@@ -1279,6 +1392,8 @@ class Game(context: Context, private val input: InputState) {
                 defeatedBosses = defeatedBosses.toSet(),
                 openedChests = openedChests.toSet(),
                 equippedWeapon = equippedWeapon?.name,
+                weaponLevels = weaponLevels.mapKeys { it.key.name },
+                weaponStars = weaponStars.mapKeys { it.key.name },
                 graphics = graphics,
             ),
         )
