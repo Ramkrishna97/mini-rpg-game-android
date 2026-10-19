@@ -71,7 +71,7 @@ class SpellPickerRenderer(context: Context) {
             textPaint.textSize = 8.5f * density
             val cost = game.magicCost(spell).toInt()
             canvas.drawText(
-                "${if (selected) "SELECTED" else "TAP TO SELECT"}  |  $cost MP",
+                "${if (selected) "SELECTED" else "TAP TO SELECT"}  |  $cost MP  |  DMG ${game.magicDamage(spell).toInt()}  LV ${game.spellLevels[spell] ?: 1}",
                 card.left + 44f * density,
                 card.top + 36f * density,
                 textPaint,
@@ -94,7 +94,7 @@ class SpellPickerRenderer(context: Context) {
         textPaint.color = 0xFF90A090.toInt()
         textPaint.textSize = 8f * density
         canvas.drawText(
-            "Choose a magic, then press CAST to use it",
+            "Tap selected spell again to upgrade (Magic Stone)  ·  CAST to use",
             width / 2f,
             panel.bottom - 10f * density,
             textPaint,

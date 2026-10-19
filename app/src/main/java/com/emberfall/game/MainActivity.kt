@@ -30,7 +30,10 @@ class MainActivity : Activity() {
 
         gameView = GameView(this)
         setContentView(gameView)
-        gameView.setAudioSync { enabled, _ -> runOnUiThread { if (enabled) music.start() else music.pause() } }
+        gameView.setAudioSync { enabled, _ -> runOnUiThread {
+            if (enabled) music.start() else music.pause()
+            music.setFinalBossMode(gameView.game.activeBoss?.def?.id == "hollowking")
+        } }
 
         // Must run after setContentView: the window's insets controller does not
         // exist until the decor view has been created.

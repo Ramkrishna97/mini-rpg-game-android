@@ -51,6 +51,13 @@ class CreatureRenderer(context: Context) {
             AnimalSpecies.RABBIT -> 0xFFCFC7B8.toInt()
             AnimalSpecies.DEER -> 0xFFA97C50.toInt()
             AnimalSpecies.BOAR -> 0xFF6E5A48.toInt()
+            AnimalSpecies.BIRD -> 0xFF8AA7B8.toInt()
+            AnimalSpecies.FOX -> 0xFFC06B3E.toInt()
+            AnimalSpecies.DOG -> 0xFF9C8469.toInt()
+            AnimalSpecies.SHARK -> 0xFF568092.toInt()
+            AnimalSpecies.RAT -> 0xFF77716D.toInt()
+            AnimalSpecies.SHEEP -> 0xFFE8E4D7.toInt()
+            AnimalSpecies.CHICKEN -> 0xFFF2D56B.toInt()
         }
 
         paint.color = bodyColor
@@ -198,7 +205,11 @@ class CreatureRenderer(context: Context) {
             BossPhase.TELEGRAPH, BossPhase.DASH -> AnimationState.ATTACK
             BossPhase.RECOVER -> AnimationState.IDLE
         }
-        bossSprites[boss.def.id]?.draw(canvas, x, y, boss.facingX, boss.facingY, state, elapsed, 52f)
+        if (!boss.isBurrowed) bossSprites[boss.def.id]?.draw(canvas, x, y, boss.facingX, boss.facingY, state, elapsed, 52f)
+        else {
+            paint.color = 0xFF5E8B6A.toInt()
+            canvas.drawCircle(x, y, r * .55f, paint)
+        }
         flash(canvas, x, y - 15f, r, boss.hitFlash)
     }
 
