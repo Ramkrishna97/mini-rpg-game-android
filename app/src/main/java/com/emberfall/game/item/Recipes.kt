@@ -40,8 +40,8 @@ object Recipes {
         Recipe(ItemId.POWER_POTION, listOf(ItemId.MAGIC_STONE to 1, ItemId.RAW_MEAT to 1)),
         Recipe(ItemId.REGEN_POTION, listOf(ItemId.FRUIT to 2, ItemId.FIBER to 2)),
         Recipe(ItemId.WOOD, listOf(ItemId.FIBER to 4)),
-        Recipe(ItemId.STONE, listOf(ItemId.WOOD to 5)),
-        Recipe(ItemId.IRON, listOf(ItemId.STONE to 6, ItemId.WOOD to 3)),
-        Recipe(ItemId.MAGIC_STONE, listOf(ItemId.IRON to 8, ItemId.STONE to 12, ItemId.WOOD to 10)),
+        Recipe(ItemId.STONE, listOf(ItemId.WOOD to 2)),
+        Recipe(ItemId.IRON, listOf(ItemId.WOOD to 4)),
+        Recipe(ItemId.MAGIC_STONE, listOf(ItemId.WOOD to 10)),
     )
 }

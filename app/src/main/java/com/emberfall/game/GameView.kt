@@ -137,6 +137,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
                         stepNanos = (1_000_000_000f / targetFps).toLong()
                         stepSeconds = stepNanos / 1_000_000_000f
                     }
+                    view.audioSync?.invoke(view.input.musicEnabled, view.input.soundEnabled)
                 }
                 val now = System.nanoTime()
                 var delta = now - last

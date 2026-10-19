@@ -24,6 +24,7 @@ class InputState {
     @Volatile var inventoryOpen = false
     @Volatile var craftingOpen = false
     @Volatile var craftScroll = 0
+    @Volatile var inventoryScroll = 0
     @Volatile var settingsOpen = false
     @Volatile var settingsScroll = 0
     @Volatile var spellPickerOpen = false
@@ -67,6 +68,7 @@ class InputState {
         inventoryOpen = false
         craftingOpen = false
         craftScroll = 0
+        inventoryScroll = 0
         settingsOpen = false
         settingsScroll = 0
         spellPickerOpen = false

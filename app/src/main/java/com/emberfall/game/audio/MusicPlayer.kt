@@ -11,6 +11,14 @@ import com.emberfall.game.R
 class MusicPlayer(private val context: Context) {
 
     private var player: MediaPlayer? = null
+    private var finalBossMode = false
+
+    fun setFinalBossMode(enabled: Boolean) {
+        finalBossMode = enabled
+        runCatching {
+            if (android.os.Build.VERSION.SDK_INT >= 23) player?.let { it.playbackParams = it.playbackParams.setSpeed(if (enabled) 1.32f else 1f) }
+        }
+    }
 
     @Synchronized
     fun start() {

@@ -55,6 +55,7 @@ class Boss(val def: BossDef) : Creature(
     val chargeDirY: Float get() = chargeY
 
     val displayName: String get() = def.name
+    val isBurrowed: Boolean get() = def.id == "mirewitch" && phase == BossPhase.RECOVER && phaseTimer > .2f
 
     var level = 1
         private set
@@ -137,6 +138,9 @@ class Boss(val def: BossDef) : Creature(
                 if (phaseTimer <= 0f) {
                     phase = BossPhase.DASH
                     phaseTimer = when (attackType) { 2 -> .9f; 3 -> 2f; else -> .38f }
+                    // Each animal keeps the shared attacks but moves with its own trait.
+                    if (def.id == "stonewarden") phaseTimer = .28f // Vulchar swoops from above.
+                    if (def.id == "ashtitan") phaseTimer = .52f // Tiger makes a longer running pounce.
                     shotTimer = 0f
                     if (attackType == 1) shoot(game, chargeX, chargeY)
                     if (attackType == 4) {
@@ -148,8 +152,16 @@ class Boss(val def: BossDef) : Creature(
             BossPhase.DASH -> {
                 if (attackType == 0) moveWithCollision(
                     game,
-                    chargeX * def.speed * (1f + .04f * (level - 1)) * 3.4f * dt,
-                    chargeY * def.speed * (1f + .04f * (level - 1)) * 3.4f * dt,
+                    chargeX * def.speed * (1f + .04f * (level - 1)) * when (def.id) {
+                        "gloomfang" -> 4.8f // Armadillo roll
+                        "stonewarden" -> 5.2f // Vulchar dive
+                        "ashtitan" -> 4.3f // Tiger run
+                        "hollowking" -> 5.0f // Wolf ambush
+                        else -> 3.4f
+                    } * dt,
+                    chargeY * def.speed * (1f + .04f * (level - 1)) * when (def.id) {
+                        "gloomfang" -> 4.8f; "stonewarden" -> 5.2f; "ashtitan" -> 4.3f; "hollowking" -> 5.0f; else -> 3.4f
+                    } * dt,
                 )
                 shotTimer -= dt
                 if ((attackType == 2 || attackType == 3) && shotTimer <= 0f && phaseTimer > 0f) {
@@ -162,7 +174,7 @@ class Boss(val def: BossDef) : Creature(
                 }
                 if (phaseTimer <= 0f) {
                     phase = BossPhase.RECOVER
-                    phaseTimer = 0.8f
+                    phaseTimer = if (def.id == "mirewitch") 2f else .8f
                 }
             }
 

@@ -24,6 +24,7 @@ class TouchController(
     private var lastSettingsY = Float.NaN
     private var resolutionTap = 0
     private var fpsTap = 0
+    private var lastInventoryY = Float.NaN
 
     fun handle(event: MotionEvent, width: Int, height: Int): Boolean {
         if (width == 0 || height == 0) return false
@@ -53,6 +54,7 @@ class TouchController(
                             x, y, width.toFloat(), height.toFloat(), density,
                         )
                         if (card >= 0) input.pushCommand(UiCommand.CAST_BASE + card)
+                        else if (UiLayout.inventoryPanel(width.toFloat(), height.toFloat(), density).contains(x, y)) input.pushCommand(UiCommand.UPGRADE_MAGIC)
                         input.spellPickerOpen = false
                         return true
                     }
@@ -66,6 +68,7 @@ class TouchController(
                     }
 
                     input.inventoryOpen -> {
+                        lastInventoryY = y
                         handleInventoryTap(x, y, width, height)
                         return true
                     }
@@ -90,8 +93,10 @@ class TouchController(
                         val row = UiLayout.weaponRowAt(x, y, width.toFloat(), height.toFloat(), density)
                         if (row >= 0) {
                             val weapon = owned.getOrNull(row)
-                            if (weapon != null && weapon.category == com.emberfall.game.item.ItemCategory.WEAPON) input.pushCommand(UiCommand.EQUIP_WEAPON_BASE + weapon.ordinal)
-                        } else if (y >= panel.bottom-40f*density) {
+                            if (weapon != null && weapon.category == com.emberfall.game.item.ItemCategory.WEAPON) {
+                                input.pushCommand(if (x > width * .5f) UiCommand.SELL_WEAPON else UiCommand.EQUIP_WEAPON_BASE + weapon.ordinal)
+                            }
+                        } else if (y >= panel.bottom-52f*density) {
                             input.pushCommand(if (x < width/2f) UiCommand.UPGRADE_WEAPON else UiCommand.COMBINE_WEAPON)
                         }
                         return true
@@ -163,7 +168,15 @@ class TouchController(
                     }
                     return true
                 }
-                if (input.inventoryOpen || input.spellPickerOpen || input.weaponPickerOpen || input.mapOpen || input.campMenuOpen) return true
+                if (input.inventoryOpen) {
+                    val y = event.getY(event.actionIndex)
+                    if (!input.craftingOpen && !lastInventoryY.isNaN() && kotlin.math.abs(y - lastInventoryY) > 18f * density) {
+                        input.inventoryScroll = if (input.inventoryScroll == 0) 18 else 0
+                        lastInventoryY = y
+                    }
+                    return true
+                }
+                if (input.spellPickerOpen || input.weaponPickerOpen || input.mapOpen || input.campMenuOpen) return true
                 val joystickIndex = event.findPointerIndex(joystickPointerId)
                 if (joystickIndex >= 0) {
                     moveJoystick(
@@ -221,7 +234,7 @@ class TouchController(
 
         val slot = UiLayout.inventorySlotAt(x, y, width.toFloat(), height.toFloat(), density)
         when {
-            slot >= 0 -> input.pushCommand(UiCommand.USE_SLOT_BASE + slot)
+            slot >= 0 -> input.pushCommand(UiCommand.USE_SLOT_BASE + slot + input.inventoryScroll)
             slot == -2 -> {
                 input.inventoryOpen = false
                 input.craftingOpen = false

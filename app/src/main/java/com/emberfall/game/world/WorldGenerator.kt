@@ -118,4 +118,5 @@ class WorldGenerator(val seed: Int) {
         if (elevation < 0.40f || elevation > 0.72f) return false
         return ruinNoise.fbm(tx * 0.035f, ty * 0.035f, 2) > 0.740f
     }
+
 }

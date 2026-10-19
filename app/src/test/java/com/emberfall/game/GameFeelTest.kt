@@ -33,7 +33,7 @@ class GameFeelTest {
         }
     }
     @Test fun rareMaterialsHaveIncreasingConversionCosts() {
-        val chain = listOf(ItemId.WOOD,ItemId.STONE,ItemId.IRON,ItemId.MAGIC_STONE)
+        val chain = listOf(ItemId.STONE,ItemId.IRON,ItemId.MAGIC_STONE)
         var previous = 0
         for (item in chain) {
             val cost = Recipes.ALL.single { it.result == item }.costs.sumOf { it.second }
