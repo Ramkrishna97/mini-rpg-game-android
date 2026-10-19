@@ -25,10 +25,12 @@ data class BossDef(
 
 object Bosses {
 
+    val DRAGON = BossDef("dragon", "The Reincarnation Dragon", 0, 0, 14f, 620f * 2f / 3f, 42f, 82f, 0xFFE05A35.toInt(), 1000, 50f, 30f, listOf(ItemId.MAGIC_STONE to 10))
+
     val ALL: List<BossDef> = listOf(
         BossDef(
             id = "gloomfang",
-            name = "Gloomfang, the Alpha",
+            name = "Armadillo, the Alpha",
             tileX = 0,
             tileY = -40,
             arenaRadiusTiles = 10f,
@@ -43,7 +45,7 @@ object Bosses {
         ),
         BossDef(
             id = "stonewarden",
-            name = "Stonewarden",
+            name = "Vulchar, Sky Hunter",
             tileX = 68,
             tileY = 30,
             arenaRadiusTiles = 11f,
@@ -58,7 +60,7 @@ object Bosses {
         ),
         BossDef(
             id = "mirewitch",
-            name = "Mirewitch of the Fen",
+            name = "Giant Mole of the Fen",
             tileX = -82,
             tileY = 52,
             arenaRadiusTiles = 10f,
@@ -73,7 +75,7 @@ object Bosses {
         ),
         BossDef(
             id = "ashtitan",
-            name = "Ash Titan",
+            name = "Ember Tiger",
             tileX = 40,
             tileY = 108,
             arenaRadiusTiles = 12f,
@@ -88,7 +90,7 @@ object Bosses {
         ),
         BossDef(
             id = "hollowking",
-            name = "The Hollow King",
+            name = "The Final Wolf King",
             tileX = -122,
             tileY = -94,
             arenaRadiusTiles = 12f,
