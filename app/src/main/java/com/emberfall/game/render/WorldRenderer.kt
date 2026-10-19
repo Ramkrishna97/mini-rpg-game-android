@@ -87,7 +87,7 @@ class WorldRenderer(context: Context) {
                 tileDst.set(center.x - IsoMath.TILE_WIDTH / 2f, center.y - IsoMath.TILE_HEIGHT / 2f,
                     center.x + IsoMath.TILE_WIDTH / 2f, center.y + IsoMath.TILE_HEIGHT / 2f)
                 canvas.drawBitmap(atlas.isoBitmap(type, variant), null, tileDst, tilePaint)
-                IsoAutotile.transition(world, tx, ty, type)?.let { (target, mask) ->
+                for ((target, mask) in IsoAutotile.transitions(world, tx, ty, type)) {
                     canvas.drawBitmap(atlas.transitionBitmap(target, mask), null, tileDst, tilePaint)
                 }
             }

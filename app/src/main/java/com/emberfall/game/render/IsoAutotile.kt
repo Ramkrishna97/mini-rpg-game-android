@@ -21,33 +21,36 @@ object IsoAutotile {
 
     fun canonical(mask: Int): Int {
         var result = mask and (N or E or S or W)
-        if (result and (N or E) == (N or E)) result = result or (mask and NE)
-        if (result and (S or E) == (S or E)) result = result or (mask and SE)
-        if (result and (S or W) == (S or W)) result = result or (mask and SW)
-        if (result and (N or W) == (N or W)) result = result or (mask and NW)
+        if ((result and (N or E)) == (N or E)) result = result or (mask and NE)
+        if ((result and (S or E)) == (S or E)) result = result or (mask and SE)
+        if ((result and (S or W)) == (S or W)) result = result or (mask and SW)
+        if ((result and (N or W)) == (N or W)) result = result or (mask and NW)
         return result
     }
 
     fun variant(mask: Int): Int = indexes[canonical(mask)]
 
-    fun transition(world: World, x: Int, y: Int, base: TileType): Pair<TileType, Int>? {
+    fun transitions(world: World, x: Int, y: Int, base: TileType): List<Pair<TileType, Int>> {
         val neighbors = arrayOf(
             world.tileAt(x, y - 1), world.tileAt(x + 1, y),
             world.tileAt(x, y + 1), world.tileAt(x - 1, y),
         ).map(::surface)
-        val target = neighbors.filter { it != base }.groupingBy { it }.eachCount()
-            .maxByOrNull { it.value }?.key ?: return null
-        var mask = 0
-        if (neighbors[0] == target) mask = mask or N
-        if (neighbors[1] == target) mask = mask or E
-        if (neighbors[2] == target) mask = mask or S
-        if (neighbors[3] == target) mask = mask or W
-        if (surface(world.tileAt(x + 1, y - 1)) == target) mask = mask or NE
-        if (surface(world.tileAt(x + 1, y + 1)) == target) mask = mask or SE
-        if (surface(world.tileAt(x - 1, y + 1)) == target) mask = mask or SW
-        if (surface(world.tileAt(x - 1, y - 1)) == target) mask = mask or NW
-        val valid = canonical(mask)
-        return if (valid == 0) null else target to valid
+        val result = ArrayList<Pair<TileType, Int>>(2)
+        for (target in neighbors.distinct()) {
+            if (target == base) continue
+            var mask = 0
+            if (neighbors[0] == target) mask = mask or N
+            if (neighbors[1] == target) mask = mask or E
+            if (neighbors[2] == target) mask = mask or S
+            if (neighbors[3] == target) mask = mask or W
+            if (surface(world.tileAt(x + 1, y - 1)) == target) mask = mask or NE
+            if (surface(world.tileAt(x + 1, y + 1)) == target) mask = mask or SE
+            if (surface(world.tileAt(x - 1, y + 1)) == target) mask = mask or SW
+            if (surface(world.tileAt(x - 1, y - 1)) == target) mask = mask or NW
+            val valid = canonical(mask)
+            if (valid != 0) result.add(target to valid)
+        }
+        return result
     }
 
     fun overlay(source: Bitmap, mask: Int): Bitmap {

@@ -26,6 +26,7 @@ class InventoryPanelRenderer(context: Context) {
         height: Float,
         density: Float,
         crafting: Boolean,
+        craftScroll: Int,
     ) {
         paint.color = 0xB3000000.toInt()
         canvas.drawRect(0f, 0f, width, height, paint)
@@ -72,7 +73,7 @@ class InventoryPanelRenderer(context: Context) {
         )
 
         if (crafting) {
-            drawRecipes(canvas, game, width, height, density, panel)
+            drawRecipes(canvas, game, width, height, density, panel, craftScroll)
         } else {
             drawGrid(canvas, game, width, height, density, panel)
         }
@@ -151,9 +152,12 @@ class InventoryPanelRenderer(context: Context) {
         height: Float,
         density: Float,
         panel: RectF,
+        scroll: Int,
     ) {
-        for ((index, recipe) in Recipes.ALL.withIndex()) {
-            val row = UiLayout.craftRow(index, width, height, density)
+        val end = minOf(Recipes.ALL.size, scroll + UiLayout.craftRowsPerPage(width, height, density))
+        for (index in scroll until end) {
+            val recipe = Recipes.ALL[index]
+            val row = UiLayout.craftRow(index, width, height, density, scroll)
             if (row.bottom > panel.bottom - 28f * density) break
 
             val affordable = recipe.costs.all { (id, count) -> game.inventory.count(id) >= count }
@@ -195,6 +199,10 @@ class InventoryPanelRenderer(context: Context) {
             panel.bottom - 10f * density,
             textPaint,
         )
+        textPaint.textAlign = Paint.Align.RIGHT
+        textPaint.color = 0xFFFFD08A.toInt()
+        canvas.drawText("${if (end < Recipes.ALL.size) "NEXT" else "FIRST"}  ${scroll+1}-$end/${Recipes.ALL.size}",
+            panel.right-17f*density, panel.bottom-10f*density, textPaint)
     }
 
     private fun shorten(text: String, max: Int): String =

@@ -84,13 +84,14 @@ class Particle(
     var life: Float,
     val color: Int,
     val size: Float,
+    val gravity: Float = 180f,
 ) {
     fun update(dt: Float): Boolean {
         life -= dt
         x += vx * dt
         y += vy * dt
         vx *= 0.94f
-        vy = vy * 0.94f + 180f * dt
+        vy = vy * 0.94f + gravity * dt
         return life > 0f
     }
 }

@@ -138,6 +138,7 @@ class Game(private val context: Context, private val input: InputState) {
     private var saveTimer = 0f
     private var spawnTimer = 0f
     private var elapsedSeconds = 0f
+    private var fireParticleTimer = 0f
     private var deathDuration = 1.8f
     val weaponLevels = mutableMapOf<ItemId, Int>()
     val weaponStars = mutableMapOf<ItemId, Int>()
@@ -164,6 +165,10 @@ class Game(private val context: Context, private val input: InputState) {
 
         if (restored != null) {
             applySavedProgress(restored)
+        }
+        if (defeatedBosses.size == Bosses.ALL.size) {
+            stage += 1
+            defeatedBosses.clear()
         }
 
         val fireSpot = openSpotNear(world.spawn.x + 1, world.spawn.y)
@@ -448,7 +453,7 @@ class Game(private val context: Context, private val input: InputState) {
         return inventory.bestWeapon()
     }
 
-    fun magicCost(spell: Spell): Float = spell.manaCost * 0.9f.pow(defeatedBosses.size)
+    fun magicCost(spell: Spell): Float = spell.manaCost * 0.9f.pow((stage - 1) * Bosses.ALL.size + defeatedBosses.size)
 
     fun defeatedBossIds(): Set<String> = defeatedBosses
 
@@ -463,6 +468,17 @@ class Game(private val context: Context, private val input: InputState) {
 
         player.swing()
         juice.triggerShake(1.3f, 90)
+        if (graphics.particles) {
+            val centerX = player.x + player.facingX * 23f
+            val centerY = player.y + player.facingY * 23f
+            for (i in -2..2) {
+                val angle = i * .35f
+                val px = centerX + (-player.facingY * cos(angle) + player.facingX * sin(angle)) * 15f
+                val py = centerY + (player.facingX * cos(angle) + player.facingY * sin(angle)) * 15f
+                particles.add(Particle(px, py, player.facingX * 24f, player.facingY * 24f - 14f,
+                    .22f, 0xFFFFDEA0.toInt(), 2.5f, 0f))
+            }
+        }
 
         if (style == WeaponStyle.PROJECTILE) {
             fireProjectile(weapon)
@@ -799,7 +815,7 @@ class Game(private val context: Context, private val input: InputState) {
         stats.addXp(boss.def.xpReward)
         stats.grantBossReward(boss.def.healthReward, boss.def.manaReward)
         stats.restoreMana(60f)
-        for ((id, count) in boss.def.loot) giveItem(id, count)
+        for ((id, count) in boss.def.loot) giveItem(id, scaledLootCount(count))
         for (material in ItemId.values().filter { it.category == ItemCategory.MATERIAL || it == ItemId.MAGIC_STONE }) {
             giveItem(material, 1)
             dropLoot(boss.x, boss.y, material, 1)
@@ -1083,6 +1099,7 @@ class Game(private val context: Context, private val input: InputState) {
             if (inSafeCamp) { wolf.disengage(); wolf.calm(); continue }
             wolf.update(dt, this)
         }
+        wolves.removeAll { wolf -> campfires.any { it.isSafe(wolf.x, wolf.y) } }
         val playerInCamp = campfires.any { it.isSafe(player.x, player.y) }
         if (playerInCamp) {
             for (boss in bosses) if (!boss.defeated && boss.engaged) boss.resetFight()
@@ -1091,6 +1108,7 @@ class Game(private val context: Context, private val input: InputState) {
 
         for (boss in bosses) {
             if (boss.defeated) continue
+            if (playerInCamp) continue
             if (campfires.any { it.isSafe(boss.x, boss.y) } && !boss.engaged) { boss.calm(); continue }
             val distance = hypot(
                 (boss.x - player.x).toDouble(),
@@ -1120,6 +1138,20 @@ class Game(private val context: Context, private val input: InputState) {
     }
 
     private fun updateEffects(dt: Float) {
+        fireParticleTimer -= dt
+        if (graphics.particles && fireParticleTimer <= 0f) {
+            fireParticleTimer = .12f
+            for (fire in campfires) {
+                if (!onScreen(fire.x, fire.y)) continue
+                val smoke = Random.nextFloat() < .45f
+                particles.add(Particle(fire.x + (Random.nextFloat()-.5f)*12f, fire.y - 16f,
+                    (Random.nextFloat()-.5f)*12f, -42f-Random.nextFloat()*25f,
+                    if (smoke) .75f else .4f,
+                    if (smoke) 0xFF9A9B91.toInt() else 0xFFFFB34F.toInt(),
+                    if (smoke) 3f else 2f, -20f))
+            }
+            particles.cap(200)
+        }
         val textIterator = texts.iterator()
         while (textIterator.hasNext()) {
             if (!textIterator.next().update(dt)) textIterator.remove()
@@ -1227,8 +1259,7 @@ class Game(private val context: Context, private val input: InputState) {
     }
 
     private fun dropLoot(x: Float, y: Float, id: ItemId, count: Int) {
-        val bonus = if (stage >= 2) (1.2f + Random.nextFloat() * .8f).pow(stage - 1) else 1f
-        val adjustedCount = max(1, kotlin.math.ceil(count * bonus).toInt())
+        val adjustedCount = scaledLootCount(count)
         pickups.add(
             Pickup(
                 id,
@@ -1331,6 +1362,11 @@ class Game(private val context: Context, private val input: InputState) {
 
         worldRenderer.drawNight(canvas, camera, player, campfires, minutes, width, height)
         hud.draw(canvas, this, input, width, height)
+    }
+
+    private fun scaledLootCount(count: Int): Int {
+        val bonus = if (stage >= 2) 1.2f + Random.nextFloat() * .8f else 1f
+        return max(1, kotlin.math.ceil(count * bonus).toInt())
     }
 
     private inline fun drawAtIso(canvas: Canvas, worldX: Float, worldY: Float, draw: () -> Unit) {

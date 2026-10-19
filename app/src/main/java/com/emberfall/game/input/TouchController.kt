@@ -85,8 +85,10 @@ class TouchController(
                         if (close.contains(x, y) || !panel.contains(x, y)) { input.campMenuOpen = false; return true }
                         val spellButton = UiLayout.campSpellButton(width.toFloat(), height.toFloat(), density)
                         if (spellButton.contains(x, y)) { input.campMenuOpen = false; input.spellPickerOpen = true; return true }
-                        if (y >= panel.top + 58f*density && y < panel.top + 58f*density + 6*32f*density) {
-                            val row = ((y - panel.top - 58f*density)/(32f*density)).toInt()
+                        val craftButton = UiLayout.campCraftButton(width.toFloat(), height.toFloat(), density)
+                        if (craftButton.contains(x, y)) { input.campMenuOpen = false; input.inventoryOpen = true; input.craftingOpen = true; input.craftScroll = 0; return true }
+                        val row = UiLayout.weaponRowAt(x, y, width.toFloat(), height.toFloat(), density)
+                        if (row >= 0) {
                             val weapon = owned.getOrNull(row)
                             if (weapon != null && weapon.category == com.emberfall.game.item.ItemCategory.WEAPON) input.pushCommand(UiCommand.EQUIP_WEAPON_BASE + weapon.ordinal)
                         } else if (y >= panel.bottom-40f*density) {
@@ -189,8 +191,13 @@ class TouchController(
 
     private fun handleInventoryTap(x: Float, y: Float, width: Int, height: Int) {
         if (input.craftingOpen) {
+            if (UiLayout.craftPageButton(width.toFloat(), height.toFloat(), density).contains(x, y)) {
+                val pageSize = UiLayout.craftRowsPerPage(width.toFloat(), height.toFloat(), density)
+                input.craftScroll = if (input.craftScroll + pageSize >= Recipes.ALL.size) 0 else input.craftScroll + pageSize
+                return
+            }
             val row = UiLayout.craftRowAt(
-                x, y, width.toFloat(), height.toFloat(), density, Recipes.ALL.size,
+                x, y, width.toFloat(), height.toFloat(), density, Recipes.ALL.size, input.craftScroll,
             )
             if (row >= 0) {
                 input.pushCommand(UiCommand.CRAFT_BASE + row)
@@ -208,6 +215,7 @@ class TouchController(
 
         if (UiLayout.craftButton(width.toFloat(), height.toFloat(), density).contains(x, y)) {
             input.craftingOpen = true
+            input.craftScroll = 0
             return
         }
 

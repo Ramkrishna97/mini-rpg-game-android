@@ -159,13 +159,13 @@ object UiLayout {
     fun spellSelectY(height: Int, density: Float): Float = height - 198f * density
     fun spellSelectRadius(density: Float): Float = 24f * density
 
-    fun weaponSelectX(width: Int, density: Float): Float = width - 35f * density
-    fun weaponSelectY(height: Int, density: Float): Float = height - 175f * density
-    fun weaponSelectRadius(density: Float): Float = 22f * density
+    fun weaponSelectX(width: Int, density: Float): Float = attackX(width, density)
+    fun weaponSelectY(height: Int, density: Float): Float = attackY(height, density) - 34f * density
+    fun weaponSelectRadius(density: Float): Float = 16f * density
 
     fun weaponRow(index: Int, width: Float, height: Float, density: Float): RectF {
         val panel = inventoryPanel(width, height, density)
-        val rowHeight = (panel.height() - 75f * density) / 6f
+        val rowHeight = (panel.height() - 105f * density) / 6f
         val top = panel.top + 48f * density + index * rowHeight
         return RectF(panel.left + 20f * density, top, panel.right - 20f * density, top + rowHeight - 3f * density)
     }
@@ -211,6 +211,12 @@ object UiLayout {
         return RectF(panel.left+dp(16f,density), panel.top+dp(10f,density), panel.left+dp(100f,density), panel.top+dp(40f,density))
     }
 
+    fun campCraftButton(width: Float, height: Float, density: Float): RectF {
+        val panel = inventoryPanel(width, height, density)
+        return RectF(panel.centerX()-42f*density, panel.top+10f*density,
+            panel.centerX()+42f*density, panel.top+40f*density)
+    }
+
     private fun dp(value: Float, density: Float) = value * density
 
     // ---- Full map ----------------------------------------------------------
@@ -234,18 +240,29 @@ object UiLayout {
         )
     }
 
-    fun craftRow(index: Int, width: Float, height: Float, density: Float): RectF {
+    fun craftRow(index: Int, width: Float, height: Float, density: Float, scroll: Int = 0): RectF {
         val panel = inventoryPanel(width, height, density)
         val padding = 18f * density
         val rowHeight = 30f * density
         val gap = 4f * density
-        val top = panel.top + 58f * density + index * (rowHeight + gap)
+        val top = panel.top + 58f * density + (index-scroll) * (rowHeight + gap)
         return RectF(panel.left + padding, top, panel.right - padding, top + rowHeight)
     }
 
-    fun craftRowAt(x: Float, y: Float, width: Float, height: Float, density: Float, count: Int): Int {
-        for (index in 0 until count) {
-            if (craftRow(index, width, height, density).contains(x, y)) return index
+    fun craftRowsPerPage(width: Float, height: Float, density: Float): Int =
+        ((inventoryPanel(width, height, density).height() / density - 86f) / 34f).toInt().coerceAtLeast(1)
+
+    fun craftPageButton(width: Float, height: Float, density: Float): RectF {
+        val panel = inventoryPanel(width, height, density)
+        return RectF(panel.right-95f*density,panel.bottom-27f*density,
+            panel.right-14f*density,panel.bottom-3f*density)
+    }
+
+    fun craftRowAt(x: Float, y: Float, width: Float, height: Float, density: Float, count: Int, scroll: Int = 0): Int {
+        val panel = inventoryPanel(width, height, density)
+        for (index in scroll until min(count,scroll+craftRowsPerPage(width,height,density))) {
+            val row = craftRow(index, width, height, density, scroll)
+            if (row.bottom <= panel.bottom-28f*density && row.contains(x, y)) return index
         }
         return -1
     }

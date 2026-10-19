@@ -66,7 +66,7 @@ class HudRenderer(context: Context) {
         }
 
         if (input.inventoryOpen) {
-            inventoryPanel.draw(canvas, game, width, height, density, input.craftingOpen)
+            inventoryPanel.draw(canvas, game, width, height, density, input.craftingOpen, input.craftScroll)
             return
         }
 
@@ -103,11 +103,12 @@ class HudRenderer(context: Context) {
         canvas.drawText("CAMPFIRE WORKBENCH", width/2f, panel.top+dp(27f), textPaint)
         textPaint.textAlign=Paint.Align.RIGHT; textPaint.textSize=dp(9f); canvas.drawText("CLOSE",panel.right-dp(18f),panel.top+dp(28f),textPaint)
         textPaint.textAlign=Paint.Align.LEFT; canvas.drawText("MAGIC",panel.left+dp(23f),panel.top+dp(28f),textPaint)
+        textPaint.textAlign=Paint.Align.CENTER; canvas.drawText("CRAFT",panel.centerX(),panel.top+dp(28f),textPaint)
         smallPaint.color = 0xFFE8E8DE.toInt(); smallPaint.textAlign = Paint.Align.CENTER; smallPaint.textSize=dp(9f)
         canvas.drawText("Select a weapon  |  use IRON to upgrade / duplicate to combine", width/2f, panel.top+dp(45f), smallPaint)
         val weapons = com.emberfall.game.item.ItemId.values().filter { it.category == com.emberfall.game.item.ItemCategory.WEAPON }
         weapons.take(6).forEachIndexed { index, weapon ->
-            val row = RectF(panel.left+dp(18f), panel.top+dp(58f+index*32f), panel.right-dp(18f), panel.top+dp(86f+index*32f))
+            val row = UiLayout.weaponRow(index, width, height, density)
             val owned = game.inventory.count(weapon) > 0
             fillPaint.color = if(game.activeWeapon()==weapon) 0x553F8A56 else 0xFF232D25.toInt(); canvas.drawRoundRect(row, dp(5f), dp(5f), fillPaint)
             smallPaint.textAlign=Paint.Align.LEFT; smallPaint.color=if(owned) weapon.color else 0xFF718075.toInt(); smallPaint.textSize=dp(9f)
@@ -162,7 +163,7 @@ class HudRenderer(context: Context) {
         smallPaint.color = 0xFFF0F0E6.toInt()
         smallPaint.textAlign = Paint.Align.RIGHT
         canvas.drawText(
-            "DAY ${game.day}  ${timeLabel(game.minutes)}",
+            "WORLD ${game.stage}  DAY ${game.day}  ${timeLabel(game.minutes)}",
             left + width - dp(12f),
             top + dp(20f),
             smallPaint,
@@ -239,7 +240,7 @@ class HudRenderer(context: Context) {
         textPaint.color = 0xFFFFD08A.toInt()
         textPaint.textAlign = Paint.Align.CENTER
         textPaint.textSize = dp(11f)
-        canvas.drawText(boss.displayName.uppercase(Locale.US), width / 2f, top + dp(11f), textPaint)
+        canvas.drawText("${boss.displayName.uppercase(Locale.US)}  LV ${boss.level}", width / 2f, top + dp(11f), textPaint)
 
         fillPaint.color = 0x99000000.toInt()
         rect.set(left, top + dp(17f), left + barWidth, top + dp(29f))

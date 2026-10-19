@@ -23,6 +23,7 @@ class InputState {
 
     @Volatile var inventoryOpen = false
     @Volatile var craftingOpen = false
+    @Volatile var craftScroll = 0
     @Volatile var settingsOpen = false
     @Volatile var settingsScroll = 0
     @Volatile var spellPickerOpen = false
@@ -63,6 +64,7 @@ class InputState {
     fun closePanels() {
         inventoryOpen = false
         craftingOpen = false
+        craftScroll = 0
         settingsOpen = false
         settingsScroll = 0
         spellPickerOpen = false
