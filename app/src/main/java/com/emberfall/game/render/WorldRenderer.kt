@@ -14,6 +14,10 @@ import com.emberfall.game.core.Camera
 import com.emberfall.game.core.Config
 import com.emberfall.game.entity.Campfire
 import com.emberfall.game.entity.Player
+import com.emberfall.game.core.GraphicsSettings
+import com.emberfall.game.world.AmbientParticle
+import com.emberfall.game.world.AtmosphereProfile
+import com.emberfall.game.world.BiomeAtmosphere
 import com.emberfall.game.world.World
 import kotlin.math.abs
 import kotlin.math.floor
@@ -230,6 +234,119 @@ class WorldRenderer(context: Context) {
         ambient[1] = a[2] + (b[2] - a[2]) * t
         ambient[2] = a[3] + (b[3] - a[3]) * t
         ambient[3] = a[4] + (b[4] - a[4]) * t
+    }
+
+    // ---- Ambient life: biome motes and fog ----------------------------------
+
+    private class Spec(val vx: Float, val vy: Float, val size: Float, val color: Int)
+
+    private class Mote(
+        var x: Float,
+        var y: Float,
+        val vx: Float,
+        val vy: Float,
+        var life: Float,
+        val maxLife: Float,
+        val size: Float,
+        val color: Int,
+    )
+
+    private val motes = ArrayList<Mote>()
+    private val motePaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val fogPaint = Paint()
+    private val maxMotes = 60
+    private var spawnCarry = 0f
+    private var lastAmbientTime = -1f
+    private var currentProfile: AtmosphereProfile? = null
+
+    /**
+     * Drifting biome particles, drawn in isometric space inside the terrain
+     * transform. Call after drawTiles().
+     */
+    fun drawAmbient(
+        canvas: Canvas, world: World, camera: Camera, playerX: Float, playerY: Float,
+        screenW: Float, screenH: Float, elapsed: Float, graphics: GraphicsSettings,
+    ) {
+        val dt = if (lastAmbientTime < 0f) 0f else (elapsed - lastAmbientTime).coerceIn(0f, 0.1f)
+        lastAmbientTime = elapsed
+
+        val profile = BiomeAtmosphere.of(
+            world.biomeAt(floor(playerX / Config.TILE).toInt(), floor(playerY / Config.TILE).toInt()),
+        )
+        currentProfile = profile
+
+        if (!graphics.particles || profile.particle == AmbientParticle.NONE) {
+            motes.clear()
+            spawnCarry = 0f
+            return
+        }
+
+        val center = IsoMath.worldToIso(camera.x, camera.y)
+        val halfW = screenW / (2f * camera.zoom) + 48f
+        val halfH = screenH / (2f * camera.zoom) + 48f
+        val cap = (maxMotes * graphics.particleScale()).toInt().coerceAtLeast(6)
+
+        // Profile rates are tuned for a steady trickle; the multiplier makes
+        // them visible on screen. Quality scales the count.
+        spawnCarry += profile.particleRatePerSecond * 6f * graphics.particleScale() * dt
+        while (spawnCarry >= 1f) {
+            spawnCarry -= 1f
+            if (motes.size < cap) motes.add(spawnMote(profile, center.x, center.y, halfW, halfH))
+        }
+
+        val wind = profile.windStrength * 14f
+        val iterator = motes.iterator()
+        while (iterator.hasNext()) {
+            val m = iterator.next()
+            m.life -= dt
+            val wobble = kotlin.math.sin(m.life * 3.1f + m.x * 0.05f) * 6f
+            m.x += (m.vx + wind + wobble) * dt
+            m.y += (m.vy + wobble * 0.3f) * dt
+            if (m.life <= 0f ||
+                abs(m.x - center.x) > halfW + 60f ||
+                abs(m.y - center.y) > halfH + 60f
+            ) {
+                iterator.remove()
+                continue
+            }
+            val fraction = m.life / m.maxLife
+            val alpha = (minOf(1f, (1f - fraction) * 4f) * minOf(1f, fraction * 2f) * 190f).toInt()
+            motePaint.color = Color.argb(alpha, Color.red(m.color), Color.green(m.color), Color.blue(m.color))
+            canvas.drawCircle(m.x, m.y, m.size, motePaint)
+        }
+    }
+
+    /** Screen-space tint for the current biome. Call after drawNight(). */
+    fun drawFog(canvas: Canvas, screenW: Float, screenH: Float) {
+        val profile = currentProfile ?: return
+        if (profile.fogStrength <= 0f) return
+        val alpha = (profile.fogStrength * 0.5f * 255f).toInt().coerceIn(0, 255)
+        fogPaint.color = Color.argb(
+            alpha, Color.red(profile.fogColor), Color.green(profile.fogColor), Color.blue(profile.fogColor),
+        )
+        canvas.drawRect(0f, 0f, screenW, screenH, fogPaint)
+    }
+
+    private fun spawnMote(profile: AtmosphereProfile, cx: Float, cy: Float, halfW: Float, halfH: Float): Mote {
+        val spec = when (profile.particle) {
+            AmbientParticle.EMBERS -> Spec(-8f, -26f, 1.7f, 0xFFFFA040.toInt())
+            AmbientParticle.POLLEN -> Spec(3f, 4f, 1.4f, 0xFFEBE28C.toInt())
+            AmbientParticle.SEA_SPRAY -> Spec(16f, -3f, 1.3f, 0xFFE4F2F6.toInt())
+            AmbientParticle.LEAVES -> Spec(18f, 8f, 2.1f, 0xFF9A7A4A.toInt())
+            AmbientParticle.DUST -> Spec(5f, -2f, 1.2f, 0xFFD8C08A.toInt())
+            AmbientParticle.NONE -> Spec(0f, 0f, 0f, 0)
+        }
+        val life = 3f + kotlin.random.Random.nextFloat() * 3f
+        return Mote(
+            x = cx + (kotlin.random.Random.nextFloat() * 2f - 1f) * halfW,
+            y = cy + (kotlin.random.Random.nextFloat() * 2f - 1f) * halfH,
+            vx = spec.vx * (0.7f + kotlin.random.Random.nextFloat() * 0.6f),
+            vy = spec.vy * (0.7f + kotlin.random.Random.nextFloat() * 0.6f),
+            life = life,
+            maxLife = life,
+            size = spec.size,
+            color = spec.color,
+        )
     }
 
     private companion object {

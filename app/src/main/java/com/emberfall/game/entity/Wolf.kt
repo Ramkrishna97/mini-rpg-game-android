@@ -2,6 +2,7 @@ package com.emberfall.game.entity
 
 import com.emberfall.game.core.Config
 import com.emberfall.game.core.Game
+import com.emberfall.game.util.hypot
 import kotlin.math.*
 import kotlin.random.Random
 

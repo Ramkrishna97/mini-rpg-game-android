@@ -22,3 +22,8 @@ fun damp(current: Float, target: Float, lambda: Float, dt: Float): Float =
     lerp(current, target, 1f - exp(-lambda * dt))
 
 fun length(x: Float, y: Float): Float = sqrt(x * x + y * y)
+
+/** Float overload so call sites don't need .toDouble() conversions. */
+fun hypot(x: Float, y: Float): Float = kotlin.math.hypot(x.toDouble(), y.toDouble()).toFloat()
+
+fun hypot(x: Double, y: Double): Double = kotlin.math.hypot(x, y)

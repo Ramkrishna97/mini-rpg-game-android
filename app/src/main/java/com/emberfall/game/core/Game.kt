@@ -14,6 +14,7 @@ import com.emberfall.game.entity.Particle
 import com.emberfall.game.entity.Pickup
 import com.emberfall.game.entity.Projectile
 import com.emberfall.game.entity.Player
+import com.emberfall.game.entity.BossSignatures
 import com.emberfall.game.entity.Wolf
 import com.emberfall.game.entity.cap
 import com.emberfall.game.input.InputState
@@ -42,7 +43,7 @@ import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.floor
-import kotlin.math.hypot
+import com.emberfall.game.util.hypot
 import kotlin.math.max
 import kotlin.math.pow
 import kotlin.math.sin
@@ -915,6 +916,9 @@ class Game(private val context: Context, private val input: InputState) {
         banner("${boss.def.name.uppercase()} DEFEATED")
         toast("+${boss.def.xpReward} XP   MAX HP +${boss.def.healthReward.toInt()}   MAX MANA +${boss.def.manaReward.toInt()}")
         spawnParticles(boss.x, boss.y, boss.def.color, 28)
+        BossSignatures.byId(boss.def.id)?.let {
+            texts.add(FloatingText(boss.x, boss.y - 36f, it.defeatLine, boss.def.color, 3.6f, 12f))
+        }
         val tier = defeatedBosses.size
         val unique = ItemId.values().firstOrNull { it.category == ItemCategory.WEAPON && inventory.count(it) == 0 }
         if (unique != null) giveItem(unique, 1)
@@ -922,7 +926,7 @@ class Game(private val context: Context, private val input: InputState) {
         if (boss.def.id == Bosses.DRAGON.id) {
             stageAdvancePending = true
         } else if (defeatedBosses.size == Bosses.ALL.size) {
-            val dragon = Boss(Bosses.DRAGON)
+            val dragon = Boss(Bosses.DRAGON).also { it.setLevel(stage + 1) }
             bosses.add(dragon)
             banner("THE REINCARNATION DRAGON AWAKENS")
             toast("Defeat the dragon to reincarnate")
@@ -953,7 +957,7 @@ class Game(private val context: Context, private val input: InputState) {
         activeBoss = boss
         input.bossSoundRequested.set(true)
         banner("${boss.def.name.uppercase()} AWAKENS")
-        toast("The arena is sealed — defeat the boss to escape")
+        toast(BossSignatures.byId(boss.def.id)?.introLine ?: "The arena is sealed — defeat the boss to escape")
     }
 
     private fun clampToArena() {
@@ -1439,6 +1443,7 @@ class Game(private val context: Context, private val input: InputState) {
         canvas.translate(-cameraIso.x, -cameraIso.y)
 
         worldRenderer.drawTiles(canvas, world, camera, width, height, elapsedSeconds)
+        worldRenderer.drawAmbient(canvas, world, camera, player.x, player.y, width, height, elapsedSeconds, graphics)
 
         drawArenaSeal(canvas)
 
@@ -1481,6 +1486,7 @@ class Game(private val context: Context, private val input: InputState) {
         for (wolf in wolves) if (onScreen(wolf.x,wolf.y)) lights.add(WorldRenderer.Light(wolf.x,wolf.y,22f))
         for (boss in bosses) if (!boss.defeated && onScreen(boss.x,boss.y)) lights.add(WorldRenderer.Light(boss.x,boss.y,38f))
         worldRenderer.drawNight(canvas, camera, player, campfires, minutes, width, height, lights)
+        worldRenderer.drawFog(canvas, width, height)
         hud.draw(canvas, this, input, width, height)
     }
 
