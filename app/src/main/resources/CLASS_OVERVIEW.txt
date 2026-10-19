@@ -1,0 +1,47 @@
+EMBERFALL CLASS OVERVIEW
+
+MainActivity
+  Starts the game activity, manages fullscreen mode, and controls background music.
+
+GameView
+  Owns the SurfaceView, touch input bridge, and fixed game/render loop.
+
+Game
+  Main game controller. Updates player, enemies, bosses, combat, crafting,
+  inventory, loot, saves, progression, and rendering order.
+
+Player / PlayerStats
+  Player movement, swimming, health, mana, hunger, experience, and level stats.
+
+Creature / Animal / Wolf / Boss
+  Shared living-entity behavior, wildlife, normal hostile enemies, and boss AI.
+
+Projectile
+  Moves player and boss projectiles and stores their combat properties.
+
+World / WorldGenerator / Collision
+  Infinite world tiles, procedural terrain generation, and movement collision.
+
+Bosses / WorldPoints
+  Boss definitions, boss arena positions, campfires, and chest locations.
+
+ItemId / Inventory / Recipes
+  Item definitions, inventory stacks, material exchanges, and crafting recipes.
+
+Spell
+  Magic attack definitions: mana costs, base damage, colors, and descriptions.
+
+SaveManager
+  Reads and writes player progress, inventory, weapon levels, stars, and settings.
+
+PlayerRenderer / CreatureRenderer / WorldRenderer / ObjectRenderer
+  Draw player, enemies, bosses, terrain, objects, particles, lighting, and effects.
+
+HudRenderer / InventoryPanelRenderer / SettingsPanelRenderer
+  Draw the HUD, workbench/inventory/crafting panels, and settings menu.
+
+TouchController / InputState / UiCommand / UiLayout
+  Convert screen touches into commands and define shared UI positions.
+
+MusicPlayer
+  Plays ambient music and changes playback speed during the final boss fight.
