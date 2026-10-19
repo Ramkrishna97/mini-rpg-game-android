@@ -205,12 +205,78 @@ class CreatureRenderer(context: Context) {
             BossPhase.TELEGRAPH, BossPhase.DASH -> AnimationState.ATTACK
             BossPhase.RECOVER -> AnimationState.IDLE
         }
-        if (!boss.isBurrowed) bossSprites[boss.def.id]?.draw(canvas, x, y, boss.facingX, boss.facingY, state, elapsed, 52f)
-        else {
-            paint.color = 0xFF5E8B6A.toInt()
-            canvas.drawCircle(x, y, r * .55f, paint)
+        val lift = boss.airborne
+        val sprite = bossSprites[boss.def.id]
+        when {
+            boss.isBurrowed -> drawMoleMound(canvas, x, y, r, elapsed)
+            sprite != null -> sprite.draw(canvas, x, y - lift, boss.facingX, boss.facingY, state, elapsed, 52f)
+            else -> drawDragon(canvas, x, y - lift, boss.facingX, boss.facingY, r * 1.6f, boss.def.color, elapsed)
         }
         flash(canvas, x, y - 15f, r, boss.hitFlash)
+    }
+
+    /** Dirt mound with puffs while the mole is underground. */
+    private fun drawMoleMound(canvas: Canvas, x: Float, y: Float, r: Float, elapsed: Float) {
+        paint.color = 0xFF6B5030.toInt()
+        rect.set(x - r * 1.1f, y - r * .35f, x + r * 1.1f, y + r * .3f)
+        canvas.drawOval(rect, paint)
+        paint.color = 0xFF8A6A44.toInt()
+        for (i in 0 until 4) {
+            val puff = (elapsed * 3f + i * .25f) % 1f
+            canvas.drawCircle(x + (i - 1.5f) * 6f, y - r * .4f - puff * 10f, 2.2f * (1f - puff), paint)
+        }
+    }
+
+    /** Vector dragon, flapping wings. Used because no dragon sprite is bundled. */
+    private fun drawDragon(
+        canvas: Canvas, x: Float, y: Float, fx: Float, fy: Float,
+        size: Float, color: Int, elapsed: Float,
+    ) {
+        val flap = sin(elapsed * 5f) * size * .35f
+        val wing = Color.rgb(
+            (Color.red(color) * .7f).toInt(), (Color.green(color) * .7f).toInt(), (Color.blue(color) * .7f).toInt(),
+        )
+
+        // Tail
+        paint.color = color
+        paint.style = Paint.Style.STROKE
+        paint.strokeWidth = size * .18f
+        paint.strokeCap = Paint.Cap.ROUND
+        canvas.drawLine(x - fx * size * .5f, y, x - fx * size * 1.05f, y + size * .2f, paint)
+        paint.style = Paint.Style.FILL
+
+        // Wings, behind the body
+        paint.color = wing
+        path.reset()
+        path.moveTo(x - size * .1f, y - size * .15f)
+        path.lineTo(x - size * .85f, y - size * .75f - flap)
+        path.lineTo(x - size * .45f, y + size * .05f)
+        path.close()
+        canvas.drawPath(path, paint)
+        path.reset()
+        path.moveTo(x + size * .1f, y - size * .15f)
+        path.lineTo(x + size * .85f, y - size * .75f - flap)
+        path.lineTo(x + size * .45f, y + size * .05f)
+        path.close()
+        canvas.drawPath(path, paint)
+
+        // Body
+        paint.color = color
+        rect.set(x - size * .42f, y - size * .3f, x + size * .42f, y + size * .3f)
+        canvas.drawOval(rect, paint)
+
+        // Head, horns and glowing eye
+        val hx = x + fx * size * .45f
+        val hy = y - size * .32f + fy * size * .15f
+        canvas.drawCircle(hx, hy, size * .22f, paint)
+        paint.color = 0xFF3A2A22.toInt()
+        paint.style = Paint.Style.STROKE
+        paint.strokeWidth = size * .06f
+        canvas.drawLine(hx - size * .08f, hy - size * .16f, hx - size * .18f, hy - size * .36f, paint)
+        canvas.drawLine(hx + size * .08f, hy - size * .16f, hx + size * .18f, hy - size * .36f, paint)
+        paint.style = Paint.Style.FILL
+        paint.color = 0xFFFFE066.toInt()
+        canvas.drawCircle(hx + fx * size * .08f, hy - size * .04f, size * .05f, paint)
     }
 
     private fun shadow(canvas: Canvas, x: Float, y: Float, r: Float) {
