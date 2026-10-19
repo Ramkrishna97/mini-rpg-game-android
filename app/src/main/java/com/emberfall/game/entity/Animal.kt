@@ -15,6 +15,13 @@ enum class AnimalSpecies(
     RABBIT("Rabbit", 14f, 58f, 6f),
     DEER("Deer", 34f, 46f, 9f),
     BOAR("Boar", 55f, 40f, 10f),
+    BIRD("Bird", 18f, 78f, 6f),
+    FOX("Fox", 28f, 68f, 8f),
+    DOG("Dog", 42f, 58f, 9f),
+    SHARK("Shark", 50f, 52f, 10f),
+    RAT("Rat", 12f, 84f, 5f),
+    SHEEP("Sheep", 32f, 40f, 9f),
+    CHICKEN("Chicken", 14f, 62f, 5f),
 }
 
 /**

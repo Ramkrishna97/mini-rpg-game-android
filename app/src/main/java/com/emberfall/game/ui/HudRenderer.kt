@@ -66,7 +66,7 @@ class HudRenderer(context: Context) {
         }
 
         if (input.inventoryOpen) {
-            inventoryPanel.draw(canvas, game, width, height, density, input.craftingOpen, input.craftScroll)
+            inventoryPanel.draw(canvas, game, width, height, density, input.craftingOpen, input.craftScroll, input.inventoryScroll)
             return
         }
 
@@ -112,11 +112,19 @@ class HudRenderer(context: Context) {
             val owned = game.inventory.count(weapon) > 0
             fillPaint.color = if(game.activeWeapon()==weapon) 0x553F8A56 else 0xFF232D25.toInt(); canvas.drawRoundRect(row, dp(5f), dp(5f), fillPaint)
             smallPaint.textAlign=Paint.Align.LEFT; smallPaint.color=if(owned) weapon.color else 0xFF718075.toInt(); smallPaint.textSize=dp(9f)
-            val detail = if (owned) "${"*".repeat(game.weaponStars[weapon]?:1)}  Lv.${game.weaponLevels[weapon]?:1}  x${game.inventory.count(weapon)}" else "LOCKED"
-            canvas.drawText("${weapon.displayName}  $detail",row.left+dp(8f),row.centerY()+dp(3f),smallPaint)
+            val detail = if (owned) "${"*".repeat(game.weaponStars[weapon]?:1)}  Lv.${game.weaponLevels[weapon]?:1}  DMG ${game.weaponDamage(weapon).toInt()}" else "LOCKED"
+            val slot = if (weapon.style == com.emberfall.game.item.WeaponStyle.PROJECTILE) "RANGED" else "MELEE"
+            canvas.drawText("${weapon.displayName} [$slot]  $detail",row.left+dp(8f),row.centerY()+dp(3f),smallPaint)
         }
         textPaint.color=0xFFFFD08A.toInt(); textPaint.textSize=dp(9f)
-        canvas.drawText("UPGRADE: TAP LEFT  |  COMBINE: TAP RIGHT",width/2f,panel.bottom-dp(26f),textPaint)
+        canvas.drawText("TAP LEFT: UPGRADE  ·  TAP RIGHT: COMBINE DUPLICATE",width/2f,panel.bottom-dp(26f),textPaint)
+        val upgrade = RectF(panel.left + dp(18f), panel.bottom - dp(48f), panel.centerX() - dp(5f), panel.bottom - dp(20f))
+        val combine = RectF(panel.centerX() + dp(5f), panel.bottom - dp(48f), panel.right - dp(18f), panel.bottom - dp(20f))
+        fillPaint.color = 0xFF386A48.toInt(); canvas.drawRoundRect(upgrade, dp(5f), dp(5f), fillPaint)
+        fillPaint.color = 0xFF80513A.toInt(); canvas.drawRoundRect(combine, dp(5f), dp(5f), fillPaint)
+        textPaint.color=0xFFFFFFFF.toInt(); textPaint.textSize=dp(9f); textPaint.textAlign=Paint.Align.CENTER
+        canvas.drawText("UPGRADE SELECTED",upgrade.centerX(),upgrade.centerY()+dp(3f),textPaint)
+        canvas.drawText("COMBINE / SELL",combine.centerX(),combine.centerY()+dp(3f),textPaint)
         canvas.drawText("TAP ANYWHERE TO CLOSE",width/2f,panel.bottom-dp(10f),textPaint)
     }
 
