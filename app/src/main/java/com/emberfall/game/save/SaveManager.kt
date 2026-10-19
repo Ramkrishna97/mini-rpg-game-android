@@ -189,7 +189,7 @@ class SaveManager(context: Context) {
         if (this == null) return settings
         settings.quality = runCatching {
             GraphicsQuality.valueOf(optString("quality", GraphicsQuality.HIGH.name))
-        }.getOrDefault(GraphicsQuality.MEDIUM)
+        }.getOrDefault(GraphicsQuality.HIGH)
         settings.smoothTextures = optBoolean("smoothTextures", true)
         settings.antiAliasing = optBoolean("antiAliasing", true)
         settings.particles = optBoolean("particles", true)
