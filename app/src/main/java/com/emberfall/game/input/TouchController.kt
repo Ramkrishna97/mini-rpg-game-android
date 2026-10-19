@@ -157,7 +157,7 @@ class TouchController(
                     if (!lastSettingsY.isNaN()) {
                         val delta = lastSettingsY - y
                         if (kotlin.math.abs(delta) > 3f*density) {
-                            input.settingsScroll = (input.settingsScroll + if (delta > 0f) 1 else -1).coerceIn(0, 7)
+                            // Settings uses tabs; swipes must not change hidden options.
                             lastSettingsY = y
                         }
                     }
@@ -231,6 +231,9 @@ class TouchController(
 
     private fun handleSettingsTap(x: Float, y: Float, width: Int, height: Int) {
         val panel = UiLayout.settingsPanel(width.toFloat(), height.toFloat(), density)
+        for (tab in 0..2) if (UiLayout.settingsTab(tab,width.toFloat(),height.toFloat(),density).contains(x,y)) {
+            input.settingsScroll = tab; return
+        }
         val row = UiLayout.settingsRowAt(x, y, input.settingsScroll, width.toFloat(), height.toFloat(), density)
         when (row) {
             UiLayout.SETTINGS_LOW,

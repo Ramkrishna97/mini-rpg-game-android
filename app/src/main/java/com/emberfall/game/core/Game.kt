@@ -79,6 +79,12 @@ class Game(private val context: Context, private val input: InputState) {
         private set
 
     private val defeatedBosses = mutableSetOf<String>()
+    val bossAttackCount: Int get() = (defeatedBosses.size + 1).coerceIn(1, 5)
+    private var footstepTimer = 0f
+    fun bossMagic(x: Float, y: Float, damage: Float) {
+        spawnParticles(x, y, 0xFFCE8AFF.toInt(), 24)
+        if (hypot(player.x - x, player.y - y) < 65f) hurtPlayer(damage, x, y)
+    }
     private val openedChests = mutableSetOf<Int>()
 
     var respawnX = 0f
@@ -181,6 +187,11 @@ class Game(private val context: Context, private val input: InputState) {
             val point = WorldPoints.campfires[index]
             val spot = openSpotNear(point.tileX, point.tileY)
             campfires.add(Campfire(index, spot.first, spot.second))
+        }
+
+        if (Bosses.ALL.any { hypot(respawnX-it.tileX*Config.TILE, respawnY-it.tileY*Config.TILE) < (it.arenaRadiusTiles+5f)*Config.TILE }) {
+            val checkpoint = campfires.minByOrNull { hypot(it.x-respawnX,it.y-respawnY) }!!
+            respawnX = checkpoint.x; respawnY = checkpoint.y
         }
 
         for ((index, point) in WorldPoints.chests.withIndex()) {
@@ -297,7 +308,18 @@ class Game(private val context: Context, private val input: InputState) {
         val gridMoveLength = hypot(gridMoveX.toDouble(), gridMoveY.toDouble()).toFloat()
         val screenMoveLength = hypot(screenMoveX.toDouble(), screenMoveY.toDouble()).toFloat()
         val moveScale = if (gridMoveLength > .001f) screenMoveLength / gridMoveLength else 0f
+        val oldX = player.x; val oldY = player.y
         player.update(dt, gridMoveX * moveScale, gridMoveY * moveScale, input.run, world)
+        footstepTimer -= dt
+        if (hypot(player.x-oldX, player.y-oldY) > .05f) {
+            worldRenderer.bendGrass(world.tileX(player.x), world.tileY(player.y), elapsedSeconds)
+            if (graphics.particles && footstepTimer <= 0f) {
+                footstepTimer = .075f
+                repeat(2) { particles.add(Particle(oldX, oldY, (Random.nextFloat()-.5f)*20f,
+                    (Random.nextFloat()-.5f)*20f, .3f, 0xFFB3BD80.toInt(), 3f, 0f, shrink = true)) }
+                particles.cap(200)
+            }
+        }
         player.stats.update(dt)
         clampToArena()
 
@@ -622,7 +644,13 @@ class Game(private val context: Context, private val input: InputState) {
                 finished = true
             }
 
-            if (!finished) {
+            if (projectile.hostile) {
+                if (activeBoss == null || activeBoss?.engaged != true) finished = true
+                if (!finished && hypot(player.x-projectile.x, player.y-projectile.y) < Config.PLAYER_RADIUS + projectile.radius) {
+                    hurtPlayer(projectile.damage, projectile.x, projectile.y); finished = true
+                }
+            }
+            if (!finished && !projectile.hostile) {
                 for (creature in allCreatures()) {
                     if (!creature.alive || projectile.hitCreatures.contains(creature)) continue
                     val distance = hypot(
@@ -850,6 +878,7 @@ class Game(private val context: Context, private val input: InputState) {
 
     fun onBossEngaged(boss: Boss) {
         activeBoss = boss
+        input.bossSoundRequested.set(true)
         banner("${boss.def.name.uppercase()} AWAKENS")
         toast("The arena is sealed — defeat the boss to escape")
     }
@@ -1097,7 +1126,9 @@ class Game(private val context: Context, private val input: InputState) {
         for (wolf in wolves) {
             val inSafeCamp = campfires.any { it.isSafe(wolf.x, wolf.y) }
             if (inSafeCamp) { wolf.disengage(); wolf.calm(); continue }
+            val oldX = wolf.x; val oldY = wolf.y
             wolf.update(dt, this)
+            if (hypot(wolf.x-oldX, wolf.y-oldY) > .05f) worldRenderer.bendGrass(world.tileX(wolf.x),world.tileY(wolf.y),elapsedSeconds)
         }
         wolves.removeAll { wolf -> campfires.any { it.isSafe(wolf.x, wolf.y) } }
         val playerInCamp = campfires.any { it.isSafe(player.x, player.y) }
@@ -1342,7 +1373,7 @@ class Game(private val context: Context, private val input: InputState) {
         for (chest in chests) add(chest.x, chest.y) { drawAtIso(canvas, chest.x, chest.y) { objectRenderer.drawChest(canvas, chest) } }
         for (pickup in pickups) add(pickup.x, pickup.y) { drawAtIso(canvas, pickup.x, pickup.y) { objectRenderer.drawPickup(canvas, pickup) } }
         for (animal in animals) add(animal.x, animal.y) { drawAtIso(canvas, animal.x, animal.y) { creatureRenderer.drawAnimal(canvas, animal, graphics) } }
-        for (wolf in wolves) add(wolf.x, wolf.y) { drawAtIso(canvas, wolf.x, wolf.y) { creatureRenderer.drawWolf(canvas, wolf) } }
+        for (wolf in wolves) add(wolf.x, wolf.y) { drawAtIso(canvas, wolf.x, wolf.y) { creatureRenderer.drawWolf(canvas, wolf, elapsedSeconds) } }
         for (boss in bosses) if (!boss.defeated) add(boss.x, boss.y) { drawAtIso(canvas, boss.x, boss.y) { creatureRenderer.drawBoss(canvas, boss, graphics, elapsedSeconds) } }
         add(player.x, player.y) { drawAtIso(canvas, player.x, player.y) { playerRenderer.draw(canvas, player, elapsedSeconds) } }
         for (projectile in projectiles) add(projectile.x, projectile.y) {
@@ -1360,7 +1391,13 @@ class Game(private val context: Context, private val input: InputState) {
 
         canvas.restore()
 
-        worldRenderer.drawNight(canvas, camera, player, campfires, minutes, width, height)
+        val lights = ArrayList<WorldRenderer.Light>()
+        for (pickup in pickups) if (pickup.item == ItemId.MAGIC_STONE && onScreen(pickup.x,pickup.y))
+            lights.add(WorldRenderer.Light(pickup.x,pickup.y,55f + 4f*sin(elapsedSeconds*7f)))
+        for (projectile in projectiles) if (onScreen(projectile.x,projectile.y)) lights.add(WorldRenderer.Light(projectile.x,projectile.y,40f))
+        for (wolf in wolves) if (onScreen(wolf.x,wolf.y)) lights.add(WorldRenderer.Light(wolf.x,wolf.y,22f))
+        for (boss in bosses) if (!boss.defeated && onScreen(boss.x,boss.y)) lights.add(WorldRenderer.Light(boss.x,boss.y,38f))
+        worldRenderer.drawNight(canvas, camera, player, campfires, minutes, width, height, lights)
         hud.draw(canvas, this, input, width, height)
     }
 
@@ -1433,6 +1470,7 @@ class Game(private val context: Context, private val input: InputState) {
     private fun loadSavedState() {
         val state = saveManager.load() ?: run { toast("No save found"); return }
         if (state.seed != world.seed) { toast("This save belongs to another world"); return }
+        activeBoss = null; projectiles.clear()
         player.x = state.x; player.y = state.y
         player.stats.level = state.level; player.stats.xp = state.xp
         player.stats.maxHealth = state.maxHealth; player.stats.maxMana = state.maxMana

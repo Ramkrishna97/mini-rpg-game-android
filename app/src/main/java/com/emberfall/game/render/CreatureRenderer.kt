@@ -29,6 +29,8 @@ class CreatureRenderer(context: Context) {
         "hollowking" to IsoAnimation(context, "hollowking"),
     )
 
+    private val rim = android.graphics.PorterDuffColorFilter(0xFFFFE6A0.toInt(), android.graphics.PorterDuff.Mode.SRC_IN)
+    private val offsets = arrayOf(-1f to 0f, 1f to 0f, 0f to -1f, 0f to 1f)
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val rect = RectF()
     private val path = Path()
@@ -91,12 +93,27 @@ class CreatureRenderer(context: Context) {
         flash(canvas, animal.x, animal.y, r, animal.hitFlash)
     }
 
-    fun drawWolf(canvas: Canvas, wolf: Wolf) {
+    fun drawWolf(canvas: Canvas, wolf: Wolf, elapsed: Float) {
+        for ((dx,dy) in offsets) {
+            canvas.save(); canvas.translate(dx,dy); paint.colorFilter = rim
+            drawWolfBody(canvas,wolf,elapsed,outline = true)
+            canvas.restore()
+        }
+        paint.colorFilter = null
+        drawWolfBody(canvas,wolf,elapsed,outline = false)
+    }
+
+    private fun drawWolfBody(canvas: Canvas, wolf: Wolf, elapsed: Float, outline: Boolean) {
         val x = wolf.x
         val y = wolf.y
         val r = wolf.radius
-        shadow(canvas, x, y + r * 0.7f, r)
+        if (!outline) shadow(canvas, x, y + r * 0.7f, r)
 
+        canvas.save()
+        val breath = if (!wolf.moving) .05f * sin(elapsed * 4f + x) else 0f
+        canvas.scale(1f - breath, 1f + breath, x, y)
+        paint.color = 0xFFFFE6A0.toInt()
+        canvas.drawOval(x-r-1f, y-r*.55f-1f, x+r+1f, y+r*.5f+1f, paint)
         paint.color = 0xFF767C86.toInt()
         rect.set(x - r, y - r * 0.55f, x + r, y + r * 0.5f)
         canvas.drawOval(rect, paint)
@@ -134,7 +151,7 @@ class CreatureRenderer(context: Context) {
         canvas.drawCircle(headX - 2.4f, headY, 1.1f, paint)
         canvas.drawCircle(headX + 2.4f, headY, 1.1f, paint)
 
-        if (wolf.aggro) {
+        if (wolf.aggro && !outline) {
             paint.style = Paint.Style.STROKE
             paint.color = 0x66FF5A4A
             paint.strokeWidth = 1.5f
@@ -143,6 +160,11 @@ class CreatureRenderer(context: Context) {
         }
 
         flash(canvas, x, y, r, wolf.hitFlash)
+        canvas.restore()
+        if (!outline && (wolf.state == com.emberfall.game.entity.EnemyState.ALERT || wolf.state == com.emberfall.game.entity.EnemyState.ATTACK_WINDUP)) {
+            paint.color = 0xFFFFDA70.toInt(); paint.textSize = 20f
+            canvas.drawText("!", x - 3f, y - 23f, paint)
+        }
     }
 
     fun drawBoss(canvas: Canvas, boss: Boss, graphics: GraphicsSettings, elapsed: Float) {
@@ -151,7 +173,13 @@ class CreatureRenderer(context: Context) {
         val r = boss.radius
 
         // Telegraph: a red corridor in the locked lunge direction.
-        if (boss.engaged && boss.phase == BossPhase.TELEGRAPH) {
+        if (boss.engaged && boss.phase == BossPhase.TELEGRAPH && boss.attackType == 4) {
+            val offset = IsoMath.worldToIso(boss.magicTargetX - x, boss.magicTargetY - y)
+            paint.style = Paint.Style.STROKE; paint.strokeWidth = 3f; paint.color = 0xFFDA86FF.toInt()
+            canvas.drawOval(x+offset.x-65f, y+offset.y-32f, x+offset.x+65f, y+offset.y+32f, paint)
+            paint.style = Paint.Style.FILL
+        }
+        if (boss.engaged && boss.phase == BossPhase.TELEGRAPH && boss.attackType != 4) {
             paint.color = 0x55FF3B30
             paint.strokeWidth = r * 1.4f
             paint.strokeCap = Paint.Cap.ROUND

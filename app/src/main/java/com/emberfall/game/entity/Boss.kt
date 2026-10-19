@@ -16,7 +16,7 @@ class Boss(val def: BossDef) : Creature(
     def.tileX * Config.TILE,
     def.tileY * Config.TILE,
     20f,
-    def.maxHealth,
+    def.maxHealth * 3f,
 ) {
 
     val arenaX: Float = def.tileX * Config.TILE
@@ -32,6 +32,22 @@ class Boss(val def: BossDef) : Creature(
         private set
     private var phaseTimer = 2.4f
     private var contactCooldown = 0f
+    var attackType = 0
+        private set
+    private var attackCycle = 0
+    private var shotTimer = 0f
+    private var magicX = 0f
+    private var magicY = 0f
+    private var velocityX = 0f
+    private var velocityY = 0f
+    val magicTargetX get() = magicX
+    val magicTargetY get() = magicY
+
+    private fun shoot(game: Game, dx: Float, dy: Float) {
+        game.projectiles.add(Projectile(x, y, dx * 125f, dy * 125f,
+            def.damage * 3f * (1f + .15f * (level - 1)), 0xFFFF9860.toInt(),
+            radius = 6f, life = 4f, hostile = true))
+    }
     private var chargeX = 0f
     private var chargeY = 1f
 
@@ -46,7 +62,7 @@ class Boss(val def: BossDef) : Creature(
     fun setLevel(newLevel: Int) {
         val healthRatio = if (maxHp > 0f) health / maxHp else 1f
         level = newLevel.coerceAtLeast(1)
-        maxHp = def.maxHealth * (1f + .22f * (level - 1))
+        maxHp = def.maxHealth * 3f * (1f + .22f * (level - 1))
         if (!defeated) health = maxHp * healthRatio
     }
 
@@ -55,6 +71,7 @@ class Boss(val def: BossDef) : Creature(
         engaged = true
         phase = BossPhase.CHASE
         phaseTimer = 2.0f
+        attackCycle = 0; shotTimer = 0f; velocityX = 0f; velocityY = 0f
     }
 
     fun markDefeated() {
@@ -69,6 +86,7 @@ class Boss(val def: BossDef) : Creature(
         engaged = false
         phase = BossPhase.CHASE
         phaseTimer = 2.4f
+        velocityX = 0f; velocityY = 0f
         x = arenaX
         y = arenaY
         knockbackX = 0f
@@ -99,34 +117,49 @@ class Boss(val def: BossDef) : Creature(
         when (phase) {
             BossPhase.CHASE -> {
                 if (distance > 1f) {
-                    moveWithCollision(
-                        game,
-                        dx / distance * def.speed * (1f + .04f * (level - 1)) * dt,
-                        dy / distance * def.speed * (1f + .04f * (level - 1)) * dt,
-                    )
+                    val blend = 1f - kotlin.math.exp(-6f * dt)
+                    velocityX += (dx / distance * def.speed - velocityX) * blend
+                    velocityY += (dy / distance * def.speed - velocityY) * blend
+                    moveWithCollision(game, velocityX * dt, velocityY * dt)
                 }
                 if (phaseTimer <= 0f) {
                     chargeX = if (distance > 0.01f) dx / distance else 0f
                     chargeY = if (distance > 0.01f) dy / distance else 1f
+                    attackType = attackCycle++ % game.bossAttackCount
+                    magicX = player.x; magicY = player.y
                     phase = BossPhase.TELEGRAPH
                     phaseTimer = 0.75f
                 }
             }
 
             BossPhase.TELEGRAPH -> {
-                // Hold still, wind up, then lunge along the locked direction.
+                if (attackType == 0) moveWithCollision(game, -chargeX * 20f * dt, -chargeY * 20f * dt)
                 if (phaseTimer <= 0f) {
                     phase = BossPhase.DASH
-                    phaseTimer = 0.38f
+                    phaseTimer = when (attackType) { 2 -> .9f; 3 -> 2f; else -> .38f }
+                    shotTimer = 0f
+                    if (attackType == 1) shoot(game, chargeX, chargeY)
+                    if (attackType == 4) {
+                        game.bossMagic(magicX, magicY, def.damage * 3f * (1f + .15f * (level - 1)))
+                    }
                 }
             }
 
             BossPhase.DASH -> {
-                moveWithCollision(
+                if (attackType == 0) moveWithCollision(
                     game,
                     chargeX * def.speed * (1f + .04f * (level - 1)) * 3.4f * dt,
                     chargeY * def.speed * (1f + .04f * (level - 1)) * 3.4f * dt,
                 )
+                shotTimer -= dt
+                if ((attackType == 2 || attackType == 3) && shotTimer <= 0f && phaseTimer > 0f) {
+                    shotTimer += if (attackType == 2) .18f else .4f
+                    if (attackType == 2) shoot(game, chargeX, chargeY)
+                    else repeat(12) { index ->
+                        val angle = index * kotlin.math.PI.toFloat() / 6f
+                        shoot(game, kotlin.math.cos(angle), kotlin.math.sin(angle))
+                    }
+                }
                 if (phaseTimer <= 0f) {
                     phase = BossPhase.RECOVER
                     phaseTimer = 0.8f
@@ -141,8 +174,11 @@ class Boss(val def: BossDef) : Creature(
             }
         }
 
-        if (distance < radius + Config.PLAYER_RADIUS + 6f && contactCooldown <= 0f) {
-            game.hurtPlayer(def.damage * (1f + .15f * (level - 1)), x, y)
+        val arenaDistance = hypot(x - arenaX, y - arenaY)
+        val limit = arenaRadius - radius
+        if (arenaDistance > limit) { x = arenaX + (x-arenaX)/arenaDistance*limit; y = arenaY + (y-arenaY)/arenaDistance*limit }
+        if (phase == BossPhase.DASH && attackType == 0 && hypot(player.x-x, player.y-y) < radius + Config.PLAYER_RADIUS + 6f && contactCooldown <= 0f) {
+            game.hurtPlayer(def.damage * 3f * (1f + .15f * (level - 1)), x, y)
             contactCooldown = 1.35f
         }
     }

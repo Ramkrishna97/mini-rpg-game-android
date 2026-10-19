@@ -17,6 +17,7 @@ class Projectile(
     val explosive: Boolean = false,
     val aoeRadius: Float = 0f,
     var life: Float = 1.4f,
+    val hostile: Boolean = false,
 ) {
     val hitCreatures = mutableSetOf<Creature>()
     var dead = false

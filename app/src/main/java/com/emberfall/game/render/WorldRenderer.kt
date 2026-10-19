@@ -25,6 +25,8 @@ class WorldRenderer(context: Context) {
 
     data class Prop(val x: Float, val y: Float, val type: com.emberfall.game.world.TileType)
 
+    private val bentGrass = mutableMapOf<Pair<Int, Int>, Float>()
+    fun bendGrass(tx: Int, ty: Int, time: Float) { bentGrass[tx to ty] = time }
     private val atlas = TileAtlas(context)
 
     private var gpuLighting: Any? = null
@@ -48,9 +50,6 @@ class WorldRenderer(context: Context) {
         tilePaint.isFilterBitmap = graphics.smoothTextures
     }
 
-    private val glowPaint = Paint(Paint.FILTER_BITMAP_FLAG)
-    private val glowBitmap = createGlowBitmap()
-    private val glowRect = RectF()
     private val vignetteMatrix = android.graphics.Matrix()
     private val vignetteShader = RadialGradient(
         0.5f,
@@ -68,6 +67,7 @@ class WorldRenderer(context: Context) {
     private val ambient = FloatArray(4)
 
     fun drawTiles(canvas: Canvas, world: World, camera: Camera, screenW: Float, screenH: Float, timeSeconds: Float) {
+        bentGrass.entries.removeAll { timeSeconds - it.value > .1f }
         val bounds = IsoMath.visibleGridBounds(camera.x, camera.y, screenW, screenH, camera.zoom)
         val minTx = bounds[0]; val maxTx = bounds[1]
         val minTy = bounds[2]; val maxTy = bounds[3]
@@ -89,6 +89,15 @@ class WorldRenderer(context: Context) {
                 canvas.drawBitmap(atlas.isoBitmap(type, variant), null, tileDst, tilePaint)
                 for ((target, mask) in IsoAutotile.transitions(world, tx, ty, type)) {
                     canvas.drawBitmap(atlas.transitionBitmap(target, mask), null, tileDst, tilePaint)
+                }
+                val touched = bentGrass[tx to ty]
+                if (touched != null && (type == com.emberfall.game.world.TileType.GRASS || type == com.emberfall.game.world.TileType.FLOWERS || type == com.emberfall.game.world.TileType.FOREST_FLOOR)) {
+                    val bend = (1f - (timeSeconds-touched)/.1f).coerceIn(0f,1f)
+                    propPaint.color = 0xFF93B35A.toInt(); propPaint.strokeWidth = 1f
+                    repeat(5) { i ->
+                        val gx = center.x + (i-2)*4f
+                        canvas.drawLine(gx, center.y+2f, gx+(if(i<2) -5f else 5f)*bend, center.y-4f, propPaint)
+                    }
                 }
             }
         }
@@ -146,105 +155,64 @@ class WorldRenderer(context: Context) {
         }
     }
 
-    /**
-     * Night colour grade with dynamic lights. On API 33+ a single AGSL
-     * fragment pass handles ambient darkness and up to three light pools
-     * (player + nearby campfires). Older devices use the original overlay.
-     */
-    fun drawNight(
-        canvas: Canvas,
-        camera: Camera,
-        player: Player,
-        campfires: List<Campfire>,
-        minutes: Float,
-        screenW: Float,
-        screenH: Float,
-    ) {
+    data class Light(val x: Float, val y: Float, val radius: Float)
+    private val packedLights = FloatArray(96)
+    private val darknessPaint = Paint()
+    private val lightPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val lightMatrix = android.graphics.Matrix()
+    private val lightShader = RadialGradient(0f, 0f, 1f,
+        intArrayOf(0xFFFFFFFF.toInt(), 0x88FFFFFF.toInt(), 0x00FFFFFF),
+        floatArrayOf(0f, .4f, 1f), Shader.TileMode.CLAMP)
+
+    fun drawNight(canvas: Canvas, camera: Camera, player: Player, campfires: List<Campfire>,
+                  minutes: Float, screenW: Float, screenH: Float, extraLights: List<Light>) {
         ambientAt(minutes)
         val alpha = ambient[3]
-        if (alpha <= 0.01f) return
-
-        val zoom = camera.zoom
-        val lights = FloatArray(9)
-        val cameraIso = IsoMath.worldToIso(camera.x, camera.y)
-        val playerIso = IsoMath.worldToIso(player.x, player.y)
-        val playerScreenX = screenW * 0.5f + (playerIso.x - cameraIso.x) * zoom
-        val playerScreenY = screenH * 0.5f + (playerIso.y - cameraIso.y) * zoom
-        lights[0] = playerScreenX
-        lights[1] = playerScreenY
-        lights[2] = 175f * zoom
-        var lightCount = 1
-
-        for (fire in campfires) {
-            if (lightCount >= 3) break
-            if (abs(fire.x - player.x) > 16f * Config.TILE) continue
-            if (abs(fire.y - player.y) > 16f * Config.TILE) continue
-            val fireIso = IsoMath.worldToIso(fire.x, fire.y)
-            val sx = screenW * 0.5f + (fireIso.x - cameraIso.x) * zoom
-            val sy = screenH * 0.5f + (fireIso.y - cameraIso.y) * zoom
-            lights[lightCount * 3] = sx
-            lights[lightCount * 3 + 1] = sy
-            lights[lightCount * 3 + 2] = 105f * zoom
-            lightCount++
-        }
-        for (i in lightCount until 3) {
-            lights[i * 3] = -10000f
-            lights[i * 3 + 1] = -10000f
-            lights[i * 3 + 2] = 1f
-        }
-
-        val gpu = gpuLighting()
-        if (gpu != null) {
-            gpu.draw(canvas, screenW, screenH, alpha, lights)
-        } else {
-            canvas.drawColor(
-                Color.argb(
-                    (alpha * 255f).toInt().coerceIn(0, 255),
-                    ambient[0].toInt().coerceIn(0, 255),
-                    ambient[1].toInt().coerceIn(0, 255),
-                    ambient[2].toInt().coerceIn(0, 255),
-                ),
-            )
-        }
-
-        if (alpha < 0.22f) return
-
-        drawGlow(canvas, playerScreenX, playerScreenY, 165f * zoom, alpha, player = true)
-        for (fire in campfires) {
-            if (abs(fire.x - player.x) > 16f * Config.TILE) continue
-            if (abs(fire.y - player.y) > 16f * Config.TILE) continue
-            val fireIso = IsoMath.worldToIso(fire.x, fire.y)
-            val sx = screenW * 0.5f + (fireIso.x - cameraIso.x) * zoom
-            val sy = screenH * 0.5f + (fireIso.y - cameraIso.y) * zoom
-            drawGlow(canvas, sx, sy, 95f * zoom, alpha, player = false)
-        }
-    }
-
-    private fun drawGlow(
-        canvas: Canvas,
-        screenX: Float,
-        screenY: Float,
-        radius: Float,
-        alpha: Float,
-        player: Boolean,
-    ) {
-        glowRect.set(screenX - radius, screenY - radius, screenX + radius, screenY + radius)
-        val base = if (player) 245f else 150f
-        glowPaint.alpha = (((alpha - 0.2f) / 0.8f) * base).toInt().coerceIn(0, 255)
-        canvas.drawBitmap(glowBitmap, null, glowRect, glowPaint)
-    }
-
-    private fun gpuLighting(): GpuLighting? {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return null
-        if (!gpuLightingTried) {
+        if (alpha <= .01f) return
+        val sources = ArrayList<Light>()
+        sources.add(Light(player.x, player.y, 175f))
+        for (fire in campfires) sources.add(Light(fire.x, fire.y,
+            115f * (1f + .07f * kotlin.math.sin(fire.flamePhase*2.3f))))
+        sources.addAll(extraLights)
+        val center = IsoMath.worldToIso(camera.x, camera.y)
+        if (Build.VERSION.SDK_INT >= 33 && canvas.isHardwareAccelerated && !gpuLightingTried) {
             gpuLightingTried = true
-            gpuLighting = try {
-                GpuLighting()
-            } catch (t: Throwable) {
-                null
-            }
+            gpuLighting = runCatching { GpuLighting() }.getOrNull()
         }
-        return gpuLighting as? GpuLighting
+        val gpu = if (Build.VERSION.SDK_INT >= 33 && canvas.isHardwareAccelerated) gpuLighting as? GpuLighting else null
+        if (gpu != null) {
+            for (i in 0 until 32) { packedLights[i*3] = -10000f; packedLights[i*3+1] = -10000f; packedLights[i*3+2] = 1f }
+            var count = 0
+            for (light in sources) {
+                val iso = IsoMath.worldToIso(light.x,light.y)
+                val sx = screenW*.5f+(iso.x-center.x)*camera.zoom
+                val sy = screenH*.5f+(iso.y-center.y)*camera.zoom
+                val r = light.radius*camera.zoom
+                if(sx+r<0 || sy+r<0 || sx-r>screenW || sy-r>screenH) continue
+                packedLights[count*3] = sx; packedLights[count*3+1] = sy; packedLights[count*3+2] = r
+                if (++count == 32) break
+            }
+            try { gpu.draw(canvas,screenW,screenH,alpha,packedLights); return }
+            catch (_: Exception) { gpuLighting = null }
+        }
+        val layer = canvas.saveLayer(0f, 0f, screenW, screenH, null)
+        darknessPaint.color = Color.argb((alpha*255f).toInt(), ambient[0].toInt(), ambient[1].toInt(), ambient[2].toInt())
+        canvas.drawRect(0f, 0f, screenW, screenH, darknessPaint)
+        // Compatible fallback: overlapping radial masks progressively remove darkness.
+        lightPaint.xfermode = android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.DST_OUT)
+        lightPaint.shader = lightShader
+        for (light in sources) {
+            val iso = IsoMath.worldToIso(light.x, light.y)
+            val sx = screenW*.5f + (iso.x-center.x)*camera.zoom
+            val sy = screenH*.5f + (iso.y-center.y)*camera.zoom
+            val r = light.radius*camera.zoom
+            if (sx+r<0f || sy+r<0f || sx-r>screenW || sy-r>screenH) continue
+            lightMatrix.setScale(r,r); lightMatrix.postTranslate(sx,sy); lightShader.setLocalMatrix(lightMatrix)
+            canvas.drawCircle(sx,sy,r,lightPaint)
+        }
+        canvas.restoreToCount(layer)
+        lightPaint.xfermode = null
+        lightPaint.shader = null
     }
 
     /** Interpolates the ambient tint into [ambient] (r, g, b, alpha). */
@@ -262,27 +230,6 @@ class WorldRenderer(context: Context) {
         ambient[1] = a[2] + (b[2] - a[2]) * t
         ambient[2] = a[3] + (b[3] - a[3]) * t
         ambient[3] = a[4] + (b[4] - a[4]) * t
-    }
-
-    private fun createGlowBitmap(): Bitmap {
-        val size = 256
-        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bitmap)
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-        paint.shader = RadialGradient(
-            size / 2f,
-            size / 2f,
-            size / 2f - 2f,
-            intArrayOf(
-                Color.argb(190, 255, 218, 165),
-                Color.argb(95, 255, 196, 128),
-                Color.argb(0, 255, 170, 90),
-            ),
-            floatArrayOf(0f, 0.55f, 1f),
-            Shader.TileMode.CLAMP,
-        )
-        canvas.drawCircle(size / 2f, size / 2f, size / 2f - 2f, paint)
-        return bitmap
     }
 
     private companion object {

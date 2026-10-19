@@ -129,22 +129,31 @@ object UiLayout {
         return RectF(left, top, left + panelWidth, top + panelHeight)
     }
 
-    fun settingsRow(index: Int, scroll: Int, width: Float, height: Float, density: Float): RectF {
-        val panel = settingsPanel(width, height, density)
-        val padding = 18f * density
-        val rowHeight = 22f * density
-        val gap = 2f * density
-        val top = panel.top + 38f * density + (index - scroll) * (rowHeight + gap)
-        return RectF(panel.left + padding, top, panel.right - padding, top + rowHeight)
+    fun settingsIndices(tab: Int): List<Int> = when(tab) {
+        1 -> listOf(6, 7, 8, 13)
+        2 -> listOf(11, 12, 13)
+        else -> listOf(0, 1, 2, 3, 4, 5, 9, 10, 13)
     }
-
+    fun settingsTab(index: Int, width: Float, height: Float, density: Float): RectF {
+        val p = settingsPanel(width,height,density)
+        val w = (p.width()-36f*density)/3f
+        return RectF(p.left+18f*density+index*w,p.top+38f*density,p.left+18f*density+(index+1)*w,p.top+70f*density)
+    }
+    fun settingsRow(index: Int, scroll: Int, width: Float, height: Float, density: Float): RectF {
+        val p = settingsPanel(width,height,density)
+        val indices = settingsIndices(scroll)
+        val slot = indices.indexOf(index)
+        if (slot < 0) return RectF()
+        val columns = if (scroll == 0) 2 else 1
+        val rows = (indices.size + columns - 1) / columns
+        val h = ((p.height()-84f*density)/rows).coerceAtMost(44f*density)
+        val top = p.top+76f*density+(slot/columns)*h
+        val cellWidth = (p.width()-36f*density)/columns
+        val left = p.left+18f*density+(slot%columns)*cellWidth
+        return RectF(left,top,left+cellWidth-4f*density,top+h-3f*density)
+    }
     fun settingsRowAt(x: Float, y: Float, scroll: Int, width: Float, height: Float, density: Float): Int {
-        val panel = settingsPanel(width, height, density)
-        if (!panel.contains(x, y)) return -1
-        for (index in 0..SETTINGS_CLOSE) {
-            if (settingsRow(index, scroll, width, height, density).contains(x, y)) return index
-        }
-        return -1
+        return settingsIndices(scroll).firstOrNull { settingsRow(it,scroll,width,height,density).contains(x,y) } ?: -1
     }
 
     // ---- Magic button + spell picker --------------------------------------

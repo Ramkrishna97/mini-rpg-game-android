@@ -68,7 +68,8 @@ class ObjectRenderer {
         canvas.drawLine(x - 9f, y + 2f, x + 9f, y + 8f, paint)
 
         // Sprite-sheet flame: smoother and cheaper than re-drawing paths.
-        flame.draw(canvas, x, y - 11f, 30f, 38f, flamePaint)
+        val flicker = sin(fire.flamePhase * 2.3f) * .06f
+        flame.draw(canvas, x, y - 11f, 30f * (1f-flicker), 38f * (1f+flicker), flamePaint)
 
         if (graphics.quality == com.emberfall.game.core.GraphicsQuality.HIGH) {
             paint.color = 0x33FFB347
@@ -177,13 +178,14 @@ class ObjectRenderer {
     }
 
     fun drawParticle(canvas: Canvas, particle: Particle) {
-        val alpha = (particle.life.coerceIn(0f, 1f) * 255).toInt().coerceIn(0, 255)
+        val alpha = ((particle.life / particle.maxLife).coerceIn(0f, 1f) * 255).toInt().coerceIn(0, 255)
         paint.color = Color.argb(alpha, Color.red(particle.color), Color.green(particle.color), Color.blue(particle.color))
+        val size = particle.size * if (particle.shrink) (particle.life / particle.maxLife).coerceIn(0f, 1f) else 1f
         canvas.drawRect(
-            particle.x - particle.size / 2f,
-            particle.y - particle.size / 2f,
-            particle.x + particle.size / 2f,
-            particle.y + particle.size / 2f,
+            particle.x - size / 2f,
+            particle.y - size / 2f,
+            particle.x + size / 2f,
+            particle.y + size / 2f,
             paint,
         )
     }

@@ -118,7 +118,11 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
             var last = System.nanoTime()
             var accumulator = 0L
 
+            val bossTone = runCatching { android.media.ToneGenerator(android.media.AudioManager.STREAM_MUSIC, 75) }.getOrNull()
             while (running) {
+                if (view.input.bossSoundRequested.getAndSet(false) && view.input.soundEnabled) {
+                    bossTone?.startTone(android.media.ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD, 800)
+                }
                 if (view.input.musicEnabled != syncedMusic || view.input.soundEnabled != syncedSound) {
                     syncedMusic = view.input.musicEnabled
                     syncedSound = view.input.soundEnabled
@@ -176,10 +180,11 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
                     }
                 }
             }
+            bossTone?.release()
         }
 
         private fun lockCanvas(): Canvas? {
-            if (useHardwareCanvas) {
+            if (useHardwareCanvas && android.os.Build.VERSION.SDK_INT >= 26) {
                 try {
                     return holder.lockHardwareCanvas()
                 } catch (t: Throwable) {

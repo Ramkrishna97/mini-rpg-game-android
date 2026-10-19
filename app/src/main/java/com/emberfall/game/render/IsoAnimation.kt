@@ -14,6 +14,7 @@ import kotlin.math.roundToInt
 /** 32x32 PNG sheets: eight direction rows and idle/walk/attack, four frames each. */
 class IsoAnimation(context: Context, assetName: String) {
     private val sheet: Bitmap = context.assets.open("sprites/$assetName.png").use { BitmapFactory.decodeStream(it) }
+    private val outlineOffsets = arrayOf(-1f to 0f, 1f to 0f, 0f to -1f, 0f to 1f)
     private val source = Rect()
     private val destination = RectF()
     private val paint = Paint().apply { isFilterBitmap = false; isAntiAlias = false }
@@ -33,6 +34,18 @@ class IsoAnimation(context: Context, assetName: String) {
         val column = state.ordinal * 4 + frame
         source.set(column * 32, direction * 32, column * 32 + 32, direction * 32 + 32)
         destination.set(x - size * .5f, y - size * .9f, x + size * .5f, y + size * .1f)
+        canvas.save()
+        val breath = if (state == AnimationState.IDLE) .05f * kotlin.math.sin(elapsed * 4f + x * .01f) else 0f
+        canvas.scale(1f - breath, 1f + breath, x, y)
+        // Tint the alpha silhouette at four neighboring pixels, then cover its interior.
+        paint.colorFilter = android.graphics.PorterDuffColorFilter(0xFFFFE6A0.toInt(), android.graphics.PorterDuff.Mode.SRC_IN)
+        for ((ox, oy) in outlineOffsets) {
+            destination.offset(ox, oy)
+            canvas.drawBitmap(sheet, source, destination, paint)
+            destination.offset(-ox, -oy)
+        }
+        paint.colorFilter = null
         canvas.drawBitmap(sheet, source, destination, paint)
+        canvas.restore()
     }
 }

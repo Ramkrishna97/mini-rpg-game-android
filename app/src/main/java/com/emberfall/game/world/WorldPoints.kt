@@ -11,10 +11,10 @@ object WorldPoints {
     /** Campfires double as checkpoints and save points. */
     val campfires: List<Camp> = listOf(
         Camp(0, 0),
-        Camp(0, -42),
-        Camp(80, 20),
-        Camp(-102, 55),
-        Camp(25, 145),
+        Camp(0, -16),
+        Camp(49, 12),
+        Camp(-61, 36),
+        Camp(25, 82),
     )
 
     /** Lootable chests sprinkled around the starting region. */

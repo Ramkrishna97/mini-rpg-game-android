@@ -33,6 +33,8 @@ class InputState {
     @Volatile var musicEnabled = true
     @Volatile var soundEnabled = false
 
+    val bossSoundRequested = AtomicBoolean(false)
+
     private val attackRequested = AtomicBoolean(false)
     private val interactRequested = AtomicBoolean(false)
     private val magicRequested = AtomicBoolean(false)

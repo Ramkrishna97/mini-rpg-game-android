@@ -85,7 +85,9 @@ class Particle(
     val color: Int,
     val size: Float,
     val gravity: Float = 180f,
+    val shrink: Boolean = false,
 ) {
+    val maxLife = life
     fun update(dt: Float): Boolean {
         life -= dt
         x += vx * dt
