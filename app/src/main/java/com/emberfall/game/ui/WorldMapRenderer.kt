@@ -90,10 +90,17 @@ class WorldMapRenderer {
             val pad = 10f * density
             x = x.coerceIn(rect.left + pad, rect.right - pad)
             y = y.coerceIn(rect.top + pad, rect.bottom - pad)
-            mark(canvas, x, y, 0xFFFF3B30.toInt(), 5f * density)
+            val iconColor = when (boss.id) {
+                "gloomfang" -> 0xFFB57C45.toInt()
+                "stonewarden" -> 0xFF7E9AA8.toInt()
+                "mirewitch" -> 0xFF9E6AD1.toInt()
+                "ashtitan" -> 0xFFE09A42.toInt()
+                else -> 0xFFE35B52.toInt()
+            }
+            mark(canvas, x, y, iconColor, 5f * density)
             paint.style = Paint.Style.STROKE
             paint.strokeWidth = 1.2f * density
-            paint.color = 0xAAFFB4A8.toInt()
+            paint.color = iconColor
             canvas.drawCircle(x, y, 8f * density, paint)
             paint.style = Paint.Style.FILL
             textPaint.color = 0xCCFFD0C8.toInt()
