@@ -143,12 +143,12 @@ class Game(private val context: Context, private val input: InputState) {
     private val objectRenderer = ObjectRenderer()
     private val hud = HudRenderer(context)
     private val arenaPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val juice = JuiceManager()
+    val juice = JuiceManager()
 
     private var biomeTimer = 0f
     private var saveTimer = 0f
     private var spawnTimer = 0f
-    private var elapsedSeconds = 0f
+    var elapsedSeconds = 0f
     private var fireParticleTimer = 0f
     private var resourceTimer = 240f
     private var deathDuration = 1.8f

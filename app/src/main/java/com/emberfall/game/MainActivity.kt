@@ -4,10 +4,13 @@ import android.app.Activity
 import android.os.Build
 import android.os.Bundle
 import android.view.View
+import android.view.ViewGroup
 import android.view.WindowInsets
 import android.view.WindowInsetsController
 import android.view.WindowManager
+import android.widget.FrameLayout
 import com.emberfall.game.audio.MusicPlayer
+import com.emberfall.game.core.RendererConfig
 
 /**
  * Single-activity host. Locks into landscape and hides every system bar so the
@@ -21,6 +24,9 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Force landscape BEFORE creating views / setContentView
+        requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             window.attributes = window.attributes.apply {
                 layoutInDisplayCutoutMode =
@@ -29,7 +35,23 @@ class MainActivity : Activity() {
         }
 
         gameView = GameView(this)
-        setContentView(gameView)
+        if (RendererConfig.useVulkanRenderer) {
+            val layout = FrameLayout(this)
+            val hudOverlay = HudOverlayView(this)
+            gameView.hudOverlay = hudOverlay
+            hudOverlay.setOnTouchListener { view, event ->
+                val handled = gameView.onTouchEvent(event)
+                if (event.action == android.view.MotionEvent.ACTION_UP) {
+                    view.performClick()
+                }
+                handled
+            }
+            layout.addView(gameView, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+            layout.addView(hudOverlay, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+            setContentView(layout)
+        } else {
+            setContentView(gameView)
+        }
         gameView.setAudioSync { enabled, _ -> runOnUiThread {
             if (enabled) music.start() else music.pause()
             music.setFinalBossMode(gameView.game.activeBoss?.def?.id == "hollowking")
@@ -42,6 +64,8 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        // Re-enforce landscape on resume
+        requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
         hideSystemUi()
         gameView.onResumeGame()
         if (gameView.game.graphics.music) music.start() else music.pause()
@@ -56,6 +80,8 @@ class MainActivity : Activity() {
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
         if (hasFocus) {
+            // Re-enforce landscape when window regains focus
+            requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
             hideSystemUi()
             if (::gameView.isInitialized) {
                 if (gameView.game.graphics.music) music.start() else music.pause()
@@ -74,13 +100,13 @@ class MainActivity : Activity() {
             }
         } else {
             window.decorView.systemUiVisibility = (
-                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                    or View.SYSTEM_UI_FLAG_FULLSCREEN
-                    or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                    or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                    or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                    or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                )
+                    View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                            or View.SYSTEM_UI_FLAG_FULLSCREEN
+                            or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                            or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                            or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                            or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                    )
         }
     }
 }
