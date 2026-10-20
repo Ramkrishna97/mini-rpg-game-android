@@ -22,13 +22,10 @@ object ShopCatalog {
         ShopOffer(ItemId.CROSS_SWORD, goldPrice = 360),
         ShopOffer(ItemId.RING_BLADE, goldPrice = 340),
         ShopOffer(ItemId.BOW, goldPrice = 260),
-        ShopOffer(ItemId.MAGIC_STONE, diamondPrice = 1),
-        ShopOffer(ItemId.GUN, diamondPrice = 4),
+        ShopOffer(ItemId.MAGIC_STONE, goldPrice = 90, diamondPrice = 1),
+        ShopOffer(ItemId.GUN, goldPrice = 560, diamondPrice = 4),
     )
 
-    fun sellGold(item: ItemId): Int = when (item) {
-        ItemId.MAGIC_STONE -> 45
-        ItemId.GUN -> 280
-        else -> (offers.firstOrNull { it.item == item }?.goldPrice ?: 12).coerceAtLeast(2) / 2
-    }
+    fun sellGold(item: ItemId): Int =
+        (offers.firstOrNull { it.item == item }?.goldPrice ?: 12).coerceAtLeast(2) / 2
 }

@@ -602,15 +602,7 @@ class Game(private val context: Context, private val input: InputState) {
     }
 
     fun exchangeResources(result: ItemId) {
-        val (input, amount) = when (result) {
-            ItemId.STONE -> ItemId.WOOD to 2
-            ItemId.IRON -> ItemId.WOOD to 4
-            ItemId.MAGIC_STONE -> ItemId.WOOD to 10
-            else -> return
-        }
-        if (inventory.count(input) < amount) { toast("Need $amount ${input.displayName}"); return }
-        inventory.remove(input, amount); inventory.add(result, 1)
-        toast("Exchanged $amount ${input.displayName} for 1 ${result.displayName}")
+        toast("Use the Market to buy ${result.displayName} with gold")
     }
 
     private fun addGold(amount: Int) {
@@ -623,16 +615,23 @@ class Game(private val context: Context, private val input: InputState) {
 
     private fun buyItem(index: Int) {
         val offer = ShopCatalog.offers.getOrNull(index) ?: return
-        if (gold < offer.goldPrice || diamonds < offer.diamondPrice) {
-            toast("Need ${if (offer.diamondPrice > 0) "${offer.diamondPrice} diamonds" else "${offer.goldPrice} gold"}")
+        val canPayGold = offer.goldPrice > 0 && gold >= offer.goldPrice
+        val canPayDiamonds = offer.diamondPrice > 0 && diamonds >= offer.diamondPrice
+
+        if (!canPayGold && !canPayDiamonds) {
+            val needed = if (offer.goldPrice > 0) "${offer.goldPrice} gold" else "${offer.diamondPrice} diamonds"
+            toast("Need $needed")
             return
         }
         if (!inventory.canFit(listOf(offer.item to 1))) {
             toast("Inventory full")
             return
         }
-        gold -= offer.goldPrice
-        diamonds -= offer.diamondPrice
+        if (canPayGold) {
+            gold -= offer.goldPrice
+        } else {
+            diamonds -= offer.diamondPrice
+        }
         inventory.add(offer.item, 1)
         toast("Bought ${offer.item.displayName}")
         saveNow()

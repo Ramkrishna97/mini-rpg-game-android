@@ -5,7 +5,6 @@ import com.emberfall.game.entity.Boss
 import com.emberfall.game.entity.Particle
 import com.emberfall.game.entity.Projectile
 import com.emberfall.game.item.ItemId
-import com.emberfall.game.item.Recipes
 import com.emberfall.game.world.Bosses
 import com.emberfall.game.world.WorldPoints
 import org.junit.Assert.*
@@ -32,11 +31,11 @@ class GameFeelTest {
             assertEquals(boss.maxHp,boss.health,0f)
         }
     }
-    @Test fun rareMaterialsHaveIncreasingConversionCosts() {
-        val chain = listOf(ItemId.STONE,ItemId.IRON,ItemId.MAGIC_STONE)
+    @Test fun rareMaterialsHaveIncreasingGoldCosts() {
+        val chain = listOf(ItemId.WOOD, ItemId.STONE, ItemId.IRON, ItemId.MAGIC_STONE)
         var previous = 0
         for (item in chain) {
-            val cost = Recipes.ALL.single { it.result == item }.costs.sumOf { it.second }
+            val cost = com.emberfall.game.item.ShopCatalog.offers.single { it.item == item }.goldPrice
             assertTrue(cost > previous); previous = cost
         }
     }

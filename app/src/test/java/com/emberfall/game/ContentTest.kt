@@ -60,4 +60,17 @@ class ContentTest {
         assertTrue(ItemId.GUN.pierces)
         assertTrue(!ItemId.BOW.pierces)
     }
+
+    @Test
+    fun everyItemCanBeBoughtAndSoldWithGoldDefault() {
+        val shopItems = com.emberfall.game.item.ShopCatalog.offers.map { it.item }.toSet()
+        for (item in ItemId.values()) {
+            assertTrue("Item $item should be in shop catalog", shopItems.contains(item))
+        }
+        for (offer in com.emberfall.game.item.ShopCatalog.offers) {
+            assertTrue("Offer ${offer.item} must have a gold default price", offer.goldPrice > 0)
+            assertTrue("Sell price for ${offer.item} must be positive", com.emberfall.game.item.ShopCatalog.sellGold(offer.item) > 0)
+            assertEquals(offer.goldPrice / 2, com.emberfall.game.item.ShopCatalog.sellGold(offer.item))
+        }
+    }
 }

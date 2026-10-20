@@ -140,7 +140,7 @@ class HudRenderer(context: Context) {
             smallPaint.textAlign = Paint.Align.LEFT; smallPaint.color = 0xFFF0E5D0.toInt(); smallPaint.textSize = dp(8.5f)
             canvas.drawText("${offer.item.displayName}  x${game.inventory.count(offer.item)}", row.left + dp(31f), row.centerY() - dp(2f), smallPaint)
             smallPaint.color = 0xFFFFD08A.toInt(); smallPaint.textSize = dp(7f)
-            val price = if (offer.diamondPrice > 0) "${offer.diamondPrice} diamonds" else "${offer.goldPrice} gold"
+            val price = if (offer.diamondPrice > 0) "${offer.goldPrice} gold / ${offer.diamondPrice} dia" else "${offer.goldPrice} gold"
             canvas.drawText("$price  |  SELL ${ShopCatalog.sellGold(offer.item)} gold",
                 row.left + dp(31f), row.centerY() + dp(9f), smallPaint)
             for (buy in listOf(true, false)) {
