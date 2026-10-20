@@ -17,6 +17,11 @@ object Config {
     /** Player collision radius in world pixels. */
     const val PLAYER_RADIUS = 10f
 
+    const val PICKUP_REACH = 34f
+    const val CHEST_REACH = 38f
+    const val CAMP_REACH = 40f
+    const val HARVEST_REACH = 38f
+
     const val WALK_SPEED = 112f
     const val RUN_SPEED = 170f
 

@@ -17,23 +17,55 @@ public static class EmberfallResourceBuilder
     private const int SpriteColumns = 12;
     private const int SpriteRows = 8;
 
-    private static readonly string[] SpriteNames =
-    {
-        "player", "gloomfang", "stonewarden", "mirewitch", "ashtitan", "hollowking"
-    };
-
     [MenuItem("Emberfall/Build Runtime Art Pack")]
     public static void BuildAll()
     {
-        var output = Path.GetFullPath(Path.Combine(Application.dataPath, "../../../content-pack/generated/art"));
+        var output = Path.Combine(EmberfallOutputRoot(), "art");
         Directory.CreateDirectory(output);
 
         BuildTileset(Path.Combine(output, "tileset.png"));
-        for (var i = 0; i < SpriteNames.Length; i++)
-            BuildSpriteSheet(Path.Combine(output, SpriteNames[i] + ".png"), i);
+        BuildSpriteSheet(Path.Combine(output, "player.png"), 0);
+        EmberfallBossArtBuilder.BuildAll(output);
+        ApplyOverrides(output);
 
         AssetDatabase.Refresh();
         Debug.Log("Emberfall art exported to " + output);
+    }
+
+    // PNGs in the Unity project's Assets/EmberfallArtOverrides folder take
+    // precedence. Artists can replace art without changing Android code or AI.
+    private static void ApplyOverrides(string output)
+    {
+        var source = Path.Combine(Application.dataPath, "EmberfallArtOverrides");
+        if (!Directory.Exists(source)) return;
+        foreach (var name in new[] { "tileset", "player", "gloomfang", "stonewarden", "mirewitch", "ashtitan", "hollowking", "dragon" })
+        {
+            var path = Path.Combine(source, name + ".png");
+            if (!File.Exists(path)) continue;
+            var bytes = File.ReadAllBytes(path);
+            var image = new Texture2D(2, 2);
+            try
+            {
+                if (!image.LoadImage(bytes, true)) throw new InvalidDataException("Invalid PNG: " + path);
+                var width = name == "tileset" ? 1024 : name == "player" ? 384 : 512;
+                var height = name == "tileset" ? 1024 : 256;
+                if (image.width != width || image.height != height)
+                    throw new InvalidDataException(name + " must be " + width + "x" + height);
+                File.WriteAllBytes(Path.Combine(output, name + ".png"), bytes);
+            }
+            finally { UnityEngine.Object.DestroyImmediate(image); }
+        }
+    }
+
+    private static string EmberfallOutputRoot()
+    {
+        var args = Environment.GetCommandLineArgs();
+        for (var i = 0; i < args.Length - 1; i++)
+            if (args[i] == "-emberfallOutput") return Path.GetFullPath(args[i + 1]);
+
+        // Allows the self-contained sample project in this repository to work
+        // without arguments, while real Unity projects use -emberfallOutput.
+        return Path.GetFullPath(Path.Combine(Application.dataPath, "../../../content-pack/generated"));
     }
 
     private static void BuildTileset(string path)
@@ -47,7 +79,10 @@ public static class EmberfallResourceBuilder
         for (var variant = 0; variant < 4; variant++)
         {
             var index = type * 4 + variant;
-            PaintTile(texture, (index % TileColumns) * TileSize, (index / TileColumns) * TileSize, type, variant);
+            // Texture2D coordinates start at the bottom; Android decodes PNGs
+            // from the top, so invert rows to preserve the runtime atlas order.
+            PaintTile(texture, (index % TileColumns) * TileSize,
+                AtlasSize - ((index / TileColumns) + 1) * TileSize, type, variant);
         }
         WritePng(texture, path);
     }
@@ -197,7 +232,7 @@ public static class EmberfallResourceBuilder
         Clear(texture, new Color(0f, 0f, 0f, 0f));
         for (var direction = 0; direction < SpriteRows; direction++)
         for (var frame = 0; frame < SpriteColumns; frame++)
-            DrawCharacter(texture, frame * SpriteCell, direction * SpriteCell, character, direction, frame);
+            DrawCharacter(texture, frame * SpriteCell, (SpriteRows - direction - 1) * SpriteCell, character, direction, frame);
         WritePng(texture, path);
     }
 

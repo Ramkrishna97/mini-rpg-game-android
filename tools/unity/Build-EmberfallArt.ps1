@@ -1,16 +1,20 @@
 [CmdletBinding()]
 param(
     [string]$UnityPath,
+    [string]$ProjectPath = (Join-Path $PSScriptRoot 'EmberfallArtProject'),
     [string]$ContentVersion = ("art-" + (Get-Date -Format 'yyyyMMdd-HHmmss'))
 )
 
 $ErrorActionPreference = 'Stop'
 $toolRoot = $PSScriptRoot
-$projectPath = Join-Path $toolRoot 'EmberfallArtProject'
+$repoRoot = (Resolve-Path (Join-Path $toolRoot '../..')).Path
+$projectPath = (Resolve-Path $ProjectPath).Path
+$outputRoot = Join-Path $repoRoot 'content-pack/generated'
 $logPath = Join-Path $toolRoot 'emberfall-art-build.log'
 
 function Find-UnityEditor {
-    $roots = @('C:\Program Files\Unity\Hub\Editor', 'C:\Program Files\Unity Hub\Editor')
+    $roots = @('C:\Program Files\Unity\Hub\Editor', 'C:\Program Files\Unity Hub\Editor',
+               'F:\Apps\Unity engine\Unity Hub\Installs')
     $candidates = foreach ($root in $roots) {
         if (Test-Path -LiteralPath $root) {
             Get-ChildItem -LiteralPath $root -Directory | ForEach-Object {
@@ -33,12 +37,14 @@ $arguments = @(
     '-batchmode', '-accept-apiupdate', '-quit',
     '-projectPath', $projectPath,
     '-executeMethod', 'EmberfallResourceBuilder.BuildAll',
+    '-emberfallOutput', $outputRoot,
     '-logFile', $logPath
 )
-& $UnityPath @arguments
-if ($LASTEXITCODE -ne 0) {
-    throw "Unity art generation failed (exit $LASTEXITCODE). See $logPath"
+$argumentLine = ($arguments | ForEach-Object { '"' + ($_ -replace '"', '\"') + '"' }) -join ' '
+$unityProcess = Start-Process -FilePath $UnityPath -ArgumentList $argumentLine -Wait -PassThru -WindowStyle Hidden
+if ($unityProcess.ExitCode -ne 0) {
+    throw "Unity art generation failed (exit $($unityProcess.ExitCode)). See $logPath"
 }
 
-& (Join-Path $toolRoot 'New-EmberfallContentManifest.ps1') -ContentVersion $ContentVersion
+& (Join-Path $toolRoot 'New-EmberfallContentManifest.ps1') -ContentVersion $ContentVersion -BossesOnly
 Write-Host "Ready to upload: $(Join-Path $toolRoot '../../content-pack/generated')"

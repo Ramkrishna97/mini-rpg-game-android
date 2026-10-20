@@ -78,6 +78,8 @@ class InventoryPanelRenderer(context: Context) {
         } else {
             drawGrid(canvas, game, width, height, density, panel, inventoryScroll)
         }
+        drawPager(canvas, game, width, height, density, panel, crafting,
+            if (crafting) craftScroll else inventoryScroll)
     }
 
     private fun drawGrid(
@@ -143,8 +145,8 @@ class InventoryPanelRenderer(context: Context) {
         textPaint.textAlign = Paint.Align.LEFT
         textPaint.color = 0xFF90A090.toInt()
         textPaint.textSize = 8.5f * density
-        val hint = "Tap a consumable to use it  /  tap a weapon to equip  /  tap outside to close"
-        canvas.drawText(hint, panel.left + 18f * density, panel.bottom - 10f * density, textPaint)
+        canvas.drawText(if (game.toastTimer > 0f) game.toastText else "Tap food or potion to use  /  weapon to equip", panel.left + 18f * density,
+            panel.top + 47f * density, textPaint)
     }
 
     private fun drawRecipes(
@@ -195,16 +197,31 @@ class InventoryPanelRenderer(context: Context) {
         textPaint.textAlign = Paint.Align.LEFT
         textPaint.color = 0xFF90A090.toInt()
         textPaint.textSize = 8.5f * density
-        canvas.drawText(
-            "Use INTERACT to gather wood, stone and fruit; craft here",
-            panel.left + 18f * density,
-            panel.bottom - 10f * density,
-            textPaint,
-        )
-        textPaint.textAlign = Paint.Align.RIGHT
-        textPaint.color = 0xFFFFD08A.toInt()
-        canvas.drawText("${if (end < Recipes.ALL.size) "NEXT" else "FIRST"}  ${scroll+1}-$end/${Recipes.ALL.size}",
-            panel.right-17f*density, panel.bottom-10f*density, textPaint)
+        canvas.drawText(if (game.toastTimer > 0f) game.toastText else "Tap a recipe to craft", panel.left + 18f * density,
+            panel.top + 47f * density, textPaint)
+    }
+
+    private fun drawPager(canvas: Canvas, game: Game, width: Float, height: Float,
+                          density: Float, panel: RectF, crafting: Boolean, scroll: Int) {
+        val pageSize = if (crafting) UiLayout.craftRowsPerPage(width, height, density)
+            else UiLayout.INVENTORY_COLUMNS * UiLayout.INVENTORY_ROWS
+        val itemCount = if (crafting) Recipes.ALL.size else game.inventory.capacity
+        val pages = (itemCount + pageSize - 1) / pageSize
+        val page = scroll / pageSize + 1
+        for (next in listOf(false, true)) {
+            val button = UiLayout.panelPageButton(next, width, height, density)
+            val enabled = if (next) page < pages else page > 1
+            paint.color = if (enabled) 0xFF4A654E.toInt() else 0xFF303831.toInt()
+            canvas.drawRoundRect(button, 5f * density, 5f * density, paint)
+            textPaint.textAlign = Paint.Align.CENTER
+            textPaint.color = if (enabled) 0xFFFFE0A0.toInt() else 0xFF68746C.toInt()
+            textPaint.textSize = 18f * density
+            canvas.drawText(if (next) ">" else "<", button.centerX(), button.centerY() + 6f * density, textPaint)
+        }
+        textPaint.textAlign = Paint.Align.CENTER
+        textPaint.color = 0xFFC1CDBD.toInt()
+        textPaint.textSize = 9f * density
+        canvas.drawText("PAGE $page / $pages", panel.centerX(), panel.bottom - 12f * density, textPaint)
     }
 
     private fun shorten(text: String, max: Int): String =

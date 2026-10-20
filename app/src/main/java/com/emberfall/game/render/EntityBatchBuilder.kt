@@ -5,6 +5,9 @@ import com.emberfall.game.core.Config
 import com.emberfall.game.core.Game
 import com.emberfall.game.entity.Boss
 import com.emberfall.game.entity.BossPhase
+import com.emberfall.game.entity.BossSignatures
+import com.emberfall.game.entity.Projectile
+import com.emberfall.game.entity.ProjectileKind
 import com.emberfall.game.world.TileType
 import kotlin.math.PI
 import kotlin.math.atan2
@@ -85,13 +88,13 @@ class EntityBatchBuilder(private val layout: AtlasLayout) {
         }
         for (boss in game.bosses) {
             // A burrowed mole is out of sight, as it is in the Canvas path's underground state.
-            if (boss.defeated || boss.isBurrowed) continue
+            if ((boss.defeated && elapsed - boss.defeatedAtSeconds >= 1f) || (boss.isBurrowed && !boss.defeated)) continue
             addItem(boss.x, boss.y) { iso -> drawBoss(boss, iso) }
         }
         addItem(game.player.x, game.player.y) { iso -> drawPlayer(game, iso) }
         for (projectile in game.projectiles) {
             addItem(projectile.x, projectile.y) { iso ->
-                solid(iso, projectile.radius * .55f, projectile.color, 1f)
+                drawProjectile(projectile, iso)
             }
         }
 
@@ -112,6 +115,28 @@ class EntityBatchBuilder(private val layout: AtlasLayout) {
         items.add(Item((x + y) / Config.TILE, iso.x) { draw(iso) })
     }
 
+    /** Visible physical shaft/tracer rather than the previous nearly invisible square. */
+    private fun drawProjectile(projectile: Projectile, head: PointF) {
+        val tail = IsoMath.worldToIso(
+            projectile.x - projectile.vx * projectile.trailSeconds,
+            projectile.y - projectile.vy * projectile.trailSeconds,
+        )
+        val vectorX = head.x - tail.x
+        val vectorY = head.y - tail.y
+        when (projectile.kind) {
+            ProjectileKind.ARROW -> {
+                bar(tail.x, tail.y, vectorX, vectorY, 2.5f, 0xFF5A351F.toInt(), 1f)
+                bar(tail.x + vectorX * .72f, tail.y + vectorY * .72f, vectorX * .28f, vectorY * .28f, 1.2f, projectile.color, 1f)
+                solid(head, 3.4f, 0xFFECE6D4.toInt(), 1f)
+            }
+            ProjectileKind.BULLET -> {
+                bar(tail.x, tail.y, vectorX, vectorY, 3.2f, projectile.color, .9f)
+                solid(head, 3.6f, 0xFFFFFFFF.toInt(), 1f)
+            }
+            ProjectileKind.MAGIC -> solid(head, projectile.radius * .55f, projectile.color, 1f)
+        }
+    }
+
     // ---- Characters -------------------------------------------------------
 
     private fun drawPlayer(game: Game, iso: PointF) {
@@ -127,29 +152,28 @@ class EntityBatchBuilder(private val layout: AtlasLayout) {
 
     private fun drawBoss(boss: Boss, iso: PointF) {
         drawTelegraph(boss, iso)
-        if (boss.isDragon) {
-            // The dragon has no sprite sheet; its vector art is baked into a cell with its shadow.
-            cell("dragon", iso, 1f)
-            return
-        }
         cell("shadow", iso, boss.radius * 1.15f / SHADOW_RADIUS)
-        val state = when (boss.phase) {
+        val state = if (boss.defeated) AnimationState.DEATH else if (boss.dragonFlying) AnimationState.WALK else when (boss.phase) {
             BossPhase.CHASE -> if (boss.engaged) AnimationState.WALK else AnimationState.IDLE
             BossPhase.TELEGRAPH, BossPhase.DASH -> AnimationState.ATTACK
             BossPhase.RECOVER -> AnimationState.IDLE
         }
-        sheet(boss.def.id, iso, boss.facingX, boss.facingY, state, 52f)
+        sheet(boss.def.id, PointF(iso.x, iso.y - boss.airborne), boss.facingX, boss.facingY, state,
+            if (boss.isDragon) 76f else 52f,
+            if (boss.defeated) elapsed - boss.defeatedAtSeconds else elapsed)
     }
 
     /** Sprite sheet frame, with the same direction and frame rules as IsoAnimation. */
     private fun sheet(name: String, iso: PointF, facingX: Float, facingY: Float,
-                      state: AnimationState, size: Float) {
+                      state: AnimationState, size: Float, animationTime: Float = elapsed) {
         val speed = when (state) {
             AnimationState.IDLE -> 2f
             AnimationState.WALK -> 8f
             AnimationState.ATTACK -> 12f
+            AnimationState.DEATH -> 4f
         }
-        val column = state.ordinal * 4 + (elapsed * speed).toInt().mod(4)
+        val frame = (animationTime * speed).toInt().coerceAtLeast(0)
+        val column = state.ordinal * 4 + (if (state == AnimationState.DEATH) frame.coerceAtMost(3) else frame.mod(4))
         val row = direction(facingX, facingY)
         val left = iso.x - size * .5f
         val top = iso.y - size * .9f
@@ -204,14 +228,16 @@ class EntityBatchBuilder(private val layout: AtlasLayout) {
     /** Matches CreatureRenderer.drawBoss: a magic ring or a charge corridor while telegraphing. */
     private fun drawTelegraph(boss: Boss, iso: PointF) {
         if (!boss.engaged || boss.phase != BossPhase.TELEGRAPH) return
+        val tellColor = BossSignatures.byId(boss.def.id)?.telegraphColor
+            ?: ((boss.def.color and 0x00FFFFFF) or 0x66000000)
         if (boss.attackType == MAGIC_ATTACK_SLOT) {
             val target = IsoMath.worldToIso(boss.magicTargetX, boss.magicTargetY)
-            cellSized("magic_ring", target, 130f, 64f, 0xFFDA86FF.toInt(), 1f)
+            cellSized("magic_ring", target, 130f, 64f, tellColor, 0.6f)
         } else {
             // Canvas draws the corridor from the boss centre, 150 units along and 75 down-right.
             val vx = (boss.chargeDirX - boss.chargeDirY) * 150f
             val vy = (boss.chargeDirX + boss.chargeDirY) * 75f
-            bar(iso.x, iso.y, vx, vy, boss.radius * 1.4f, 0xFFFF3B30.toInt(), 0.333f)
+            bar(iso.x, iso.y, vx, vy, boss.radius * 1.4f, tellColor, 0.4f)
         }
     }
 

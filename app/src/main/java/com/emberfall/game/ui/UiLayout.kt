@@ -104,6 +104,12 @@ object UiLayout {
         return -1
     }
 
+    fun panelPageButton(next: Boolean, width: Float, height: Float, density: Float): RectF {
+        val panel = inventoryPanel(width, height, density)
+        val left = if (next) panel.right - 64f * density else panel.left + 16f * density
+        return RectF(left, panel.bottom - 31f * density, left + 48f * density, panel.bottom - 4f * density)
+    }
+
     // ---- Settings panel ----------------------------------------------------
 
     const val SETTINGS_LOW = 0
@@ -211,22 +217,49 @@ object UiLayout {
     }
 
     fun campCloseButton(width: Float, height: Float, density: Float): RectF {
-        val panel = inventoryPanel(width, height, density)
+        val panel = workbenchPanel(width, height, density)
         return RectF(panel.right-dp(78f,density), panel.top+dp(10f,density), panel.right-dp(12f,density), panel.top+dp(40f,density))
     }
 
     fun campSpellButton(width: Float, height: Float, density: Float): RectF {
-        val panel = inventoryPanel(width, height, density)
+        val panel = workbenchPanel(width, height, density)
         return RectF(panel.left+dp(16f,density), panel.top+dp(10f,density), panel.left+dp(100f,density), panel.top+dp(40f,density))
     }
 
     fun campCraftButton(width: Float, height: Float, density: Float): RectF {
-        val panel = inventoryPanel(width, height, density)
+        val panel = workbenchPanel(width, height, density)
         return RectF(panel.centerX()-42f*density, panel.top+10f*density,
             panel.centerX()+42f*density, panel.top+40f*density)
     }
 
     private fun dp(value: Float, density: Float) = value * density
+
+    fun workbenchPanel(width: Float, height: Float, density: Float): RectF {
+        val panelWidth = min(width * .72f, 700f * density)
+        val panelHeight = min(height * .9f, 470f * density)
+        val left = (width - panelWidth) / 2f
+        val top = (height - panelHeight) / 2f
+        return RectF(left, top, left + panelWidth, top + panelHeight)
+    }
+
+    fun workbenchRow(index: Int, width: Float, height: Float, density: Float): RectF {
+        val panel = workbenchPanel(width, height, density)
+        val rowHeight = (panel.height() - 146f * density) / 6f
+        val top = panel.top + 56f * density + index * rowHeight
+        return RectF(panel.left + 18f * density, top, panel.right - 18f * density, top + rowHeight - 3f * density)
+    }
+
+    fun workbenchRowAt(x: Float, y: Float, width: Float, height: Float, density: Float): Int =
+        (0 until 6).firstOrNull { workbenchRow(it, width, height, density).contains(x, y) } ?: -1
+
+    fun workbenchActionButton(index: Int, width: Float, height: Float, density: Float): RectF {
+        val panel = workbenchPanel(width, height, density)
+        val gap = 8f * density
+        val left = panel.left + 18f * density
+        val buttonWidth = (panel.width() - 36f * density - gap * 2f) / 3f
+        val x = left + index * (buttonWidth + gap)
+        return RectF(x, panel.bottom - 46f * density, x + buttonWidth, panel.bottom - 15f * density)
+    }
 
     // ---- Full map ----------------------------------------------------------
 

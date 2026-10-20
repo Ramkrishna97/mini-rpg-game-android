@@ -32,7 +32,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
     val input = InputState()
     val game = Game(context, input)
 
-    private val touch = TouchController(input, resources.displayMetrics.density)
+    private val touch = TouchController(input, resources.displayMetrics.density, game.inventory.capacity)
     private var loop: GameThread? = null
     private var audioSync: ((Boolean, Boolean) -> Unit)? = null
     private val contentReloadRequested = AtomicBoolean(false)
