@@ -244,7 +244,7 @@ class EntityBatchBuilder(private val layout: AtlasLayout) {
     /** Matches Game.drawArenaSeal: a 48-segment ring 8 units inside the arena edge, 5-unit stroke. */
     private fun drawArenaSeal(game: Game) {
         val boss = game.activeBoss ?: return
-        if (!boss.engaged || boss.defeated) return
+        if (!boss.engaged || boss.defeated || boss.isDragon) return
         val segments = 48
         val radius = boss.arenaRadius - 8f
         var previous: PointF? = null

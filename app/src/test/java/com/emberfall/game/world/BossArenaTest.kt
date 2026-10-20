@@ -1,5 +1,6 @@
 package com.emberfall.game.world
 
+import com.emberfall.game.entity.Boss
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -59,5 +60,11 @@ class BossArenaTest {
             assertTrue(ordered[i].healthReward >= ordered[i - 1].healthReward)
             assertTrue(ordered[i].loot.isNotEmpty())
         }
+    }
+
+    @Test
+    fun dragonIsMarkedAsDragon() {
+        val dragon = Boss(Bosses.DRAGON)
+        assertTrue(dragon.isDragon)
     }
 }

@@ -2,6 +2,8 @@ package com.emberfall.game.entity
 
 import com.emberfall.game.core.Config
 import com.emberfall.game.core.Game
+import com.emberfall.game.item.ItemId
+import com.emberfall.game.item.LootRoll
 import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.random.Random
@@ -11,28 +13,64 @@ enum class AnimalSpecies(
     val maxHp: Float,
     val speed: Float,
     val radius: Float,
+    val xpYield: Int,
+    val drops: List<LootRoll>,
 ) {
-    RABBIT("Rabbit", 14f, 58f, 6f),
-    DEER("Deer", 34f, 46f, 9f),
-    BOAR("Boar", 55f, 40f, 10f),
-    BIRD("Bird", 18f, 78f, 6f),
-    FOX("Fox", 28f, 68f, 8f),
-    DOG("Dog", 42f, 58f, 9f),
-    SHARK("Shark", 50f, 52f, 10f),
-    RAT("Rat", 12f, 84f, 5f),
-    SHEEP("Sheep", 32f, 40f, 9f),
-    CHICKEN("Chicken", 14f, 62f, 5f),
+    RABBIT("Rabbit", 14f, 58f, 6f, 8, listOf(
+        LootRoll(ItemId.RAW_MEAT, 1),
+        LootRoll(ItemId.HIDE, 1, 0.30f),
+    )),
+    DEER("Deer", 34f, 46f, 9f, 20, listOf(
+        LootRoll(ItemId.RAW_MEAT, 1),
+        LootRoll(ItemId.HIDE, 1, 0.60f),
+    )),
+    BOAR("Boar", 55f, 40f, 10f, 30, listOf(
+        LootRoll(ItemId.RAW_MEAT, 2),
+        LootRoll(ItemId.HIDE, 1, 1.00f),
+    )),
+    BIRD("Bird", 18f, 78f, 6f, 8, listOf(
+        LootRoll(ItemId.RAW_MEAT, 1),
+        LootRoll(ItemId.FIBER, 1, 0.40f),
+    )),
+    FOX("Fox", 28f, 68f, 8f, 15, listOf(
+        LootRoll(ItemId.HIDE, 1),
+        LootRoll(ItemId.RAW_MEAT, 1, 0.50f),
+    )),
+    DOG("Dog", 42f, 58f, 9f, 22, listOf(
+        LootRoll(ItemId.RAW_MEAT, 1),
+        LootRoll(ItemId.HIDE, 1, 0.75f),
+    )),
+    SHARK("Shark", 50f, 52f, 10f, 35, listOf(
+        LootRoll(ItemId.RAW_MEAT, 2),
+        LootRoll(ItemId.HIDE, 1, 0.80f),
+    )),
+    RAT("Rat", 12f, 84f, 5f, 5, listOf(
+        LootRoll(ItemId.RAW_MEAT, 1),
+    )),
+    SHEEP("Sheep", 32f, 40f, 9f, 18, listOf(
+        LootRoll(ItemId.RAW_MEAT, 1),
+        LootRoll(ItemId.FIBER, 1, 0.60f),
+    )),
+    CHICKEN("Chicken", 14f, 62f, 5f, 6, listOf(
+        LootRoll(ItemId.RAW_MEAT, 1),
+        LootRoll(ItemId.FIBER, 1, 0.20f),
+    )),
 }
 
 /**
  * Passive wildlife. Wanders until hit, then runs away for a few seconds.
- * Killing one drops meat/hide (handled by the game).
+ * Call [rollDrops] once when it dies and grant [xpReward] to the player.
  */
 class Animal(
     val species: AnimalSpecies,
     x: Float,
     y: Float,
 ) : Creature(x, y, species.radius, species.maxHp) {
+
+    val xpReward: Int get() = species.xpYield
+
+    /** Rolls this animal's drops. Call once, at the moment it dies. */
+    fun rollDrops(): List<Pair<ItemId, Int>> = LootRoll.resolve(species.drops)
 
     private var wanderTimer = 0f
     private var dirX = 0f

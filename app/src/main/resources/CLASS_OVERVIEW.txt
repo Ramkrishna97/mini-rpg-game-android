@@ -45,3 +45,8 @@ TouchController / InputState / UiCommand / UiLayout
 
 MusicPlayer
   Plays ambient music and changes playback speed during the final boss fight.
+
+GAME_DATA_CHART.txt
+  Complete game balance chart containing stats for player, weapons, upgrade scaling,
+  bestiary, world bosses, drops, crafting recipes, and item valuations.
+
