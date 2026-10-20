@@ -33,6 +33,28 @@ class InputState {
     @Volatile var optionsOpen = false
     @Volatile var shopOpen = false
     @Volatile var shopScroll = 0
+    @Volatile var shopHoldActive = false
+    @Volatile var shopHoldPointerId = -1
+    @Volatile var shopHoldIndex = -1
+    @Volatile var shopHoldIsBuy = false
+    @Volatile var shopHoldTime = 0f
+    @Volatile var shopHoldRepeatTimer = 0f
+
+    fun startShopHold(pointerId: Int, index: Int, isBuy: Boolean) {
+        shopHoldPointerId = pointerId
+        shopHoldIndex = index
+        shopHoldIsBuy = isBuy
+        shopHoldTime = 0f
+        shopHoldRepeatTimer = 0f
+        shopHoldActive = true
+    }
+
+    fun stopShopHold() {
+        shopHoldActive = false
+        shopHoldPointerId = -1
+        shopHoldIndex = -1
+    }
+
     @Volatile var selectedCampfireId = -1
     @Volatile var campMenuOpen = false
     @Volatile var weaponPickerOpen = false
@@ -74,6 +96,7 @@ class InputState {
     fun pollCommand(): Int? = commands.poll()
 
     fun closePanels() {
+        stopShopHold()
         attackDown = false
         rangedDown = false
         inventoryOpen = false

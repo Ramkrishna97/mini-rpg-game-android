@@ -73,4 +73,18 @@ class ContentTest {
             assertEquals(offer.goldPrice / 2, com.emberfall.game.item.ShopCatalog.sellGold(offer.item))
         }
     }
+
+    @Test
+    fun shopHoldStateTracksAndRepeats() {
+        val input = com.emberfall.game.input.InputState()
+        input.shopOpen = true
+        input.startShopHold(pointerId = 1, index = 0, isBuy = true)
+        assertTrue(input.shopHoldActive)
+        assertEquals(1, input.shopHoldPointerId)
+        assertEquals(0, input.shopHoldIndex)
+        assertTrue(input.shopHoldIsBuy)
+
+        input.stopShopHold()
+        assertTrue(!input.shopHoldActive)
+    }
 }

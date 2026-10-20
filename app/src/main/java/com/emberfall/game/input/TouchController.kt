@@ -62,7 +62,7 @@ class TouchController(
                     }
 
                     input.shopOpen -> {
-                        handleShopTap(x, y, width, height)
+                        handleShopTap(x, y, width, height, pointerId)
                         return true
                     }
 
@@ -199,8 +199,26 @@ class TouchController(
                 if (input.inventoryOpen) {
                     return true
                 }
+                if (input.shopOpen) {
+                    if (input.shopHoldActive) {
+                        val pointerIndex = event.findPointerIndex(input.shopHoldPointerId)
+                        if (pointerIndex >= 0) {
+                            val px = event.getX(pointerIndex)
+                            val py = event.getY(pointerIndex)
+                            val row = UiLayout.marketRow(input.shopHoldIndex, input.shopScroll, width.toFloat(), height.toFloat(), density)
+                            val button = UiLayout.marketActionButton(row, input.shopHoldIsBuy, density)
+                            val pad = 14f * density
+                            if (px < button.left - pad || px > button.right + pad || py < button.top - pad || py > button.bottom + pad) {
+                                input.stopShopHold()
+                            }
+                        } else {
+                            input.stopShopHold()
+                        }
+                    }
+                    return true
+                }
                 if (input.spellPickerOpen || input.weaponPickerOpen || input.mapOpen ||
-                    input.optionsOpen || input.shopOpen || input.campMenuOpen) return true
+                    input.optionsOpen || input.campMenuOpen) return true
                 val joystickIndex = event.findPointerIndex(joystickPointerId)
                 if (joystickIndex >= 0) {
                     moveJoystick(
@@ -231,6 +249,7 @@ class TouchController(
                 input.rangedDown = false
                 inventoryPointerId = -1
                 inventoryStartY = Float.NaN
+                input.stopShopHold()
             }
         }
         return true
@@ -353,31 +372,40 @@ class TouchController(
         }
     }
 
-    private fun handleShopTap(x: Float, y: Float, width: Int, height: Int) {
+    private fun handleShopTap(x: Float, y: Float, width: Int, height: Int, pointerId: Int) {
         val w = width.toFloat(); val h = height.toFloat()
         val panel = UiLayout.inventoryPanel(w, h, density)
-        if (!panel.contains(x, y)) { input.shopOpen = false; return }
+        if (!panel.contains(x, y)) {
+            input.shopOpen = false
+            input.stopShopHold()
+            return
+        }
         val pageSize = UiLayout.marketRowsPerPage(w, h, density)
         val lastPage = ((ShopCatalog.offers.size - 1) / pageSize) * pageSize
         if (UiLayout.panelPageButton(false, w, h, density).contains(x, y)) {
             input.shopScroll = (input.shopScroll - pageSize).coerceAtLeast(0)
+            input.stopShopHold()
             return
         }
         if (UiLayout.panelPageButton(true, w, h, density).contains(x, y)) {
             input.shopScroll = (input.shopScroll + pageSize).coerceAtMost(lastPage)
+            input.stopShopHold()
             return
         }
         for (index in input.shopScroll until minOf(ShopCatalog.offers.size, input.shopScroll + pageSize)) {
             val row = UiLayout.marketRow(index, input.shopScroll, w, h, density)
             if (UiLayout.marketActionButton(row, true, density).contains(x, y)) {
                 input.pushCommand(UiCommand.BUY_ITEM_BASE + index)
+                input.startShopHold(pointerId, index, isBuy = true)
                 return
             }
             if (UiLayout.marketActionButton(row, false, density).contains(x, y)) {
                 input.pushCommand(UiCommand.SELL_ITEM_BASE + index)
+                input.startShopHold(pointerId, index, isBuy = false)
                 return
             }
         }
+        input.stopShopHold()
     }
 
     private fun handleSettingsTap(x: Float, y: Float, width: Int, height: Int) {
@@ -407,6 +435,9 @@ class TouchController(
     }
 
     private fun releasePointer(pointerId: Int) {
+        if (pointerId == input.shopHoldPointerId) {
+            input.stopShopHold()
+        }
         if (pointerId == joystickPointerId) {
             joystickPointerId = -1
             resetJoystick()

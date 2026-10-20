@@ -329,6 +329,7 @@ class Game(private val context: Context, private val input: InputState) {
 
     fun update(dt: Float) {
         processCommands()
+        updateShopHold(dt)
         juice.update(dt)
 
         if (input.inventoryOpen || input.settingsOpen || input.optionsOpen || input.shopOpen ||
@@ -613,19 +614,54 @@ class Game(private val context: Context, private val input: InputState) {
         diamonds = (diamonds.toLong() + amount).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
     }
 
-    private fun buyItem(index: Int) {
-        val offer = ShopCatalog.offers.getOrNull(index) ?: return
+    var pendingShopSave = false
+
+    private fun updateShopHold(dt: Float) {
+        if (!input.shopOpen || !input.shopHoldActive) {
+            if (pendingShopSave) {
+                pendingShopSave = false
+                saveNow()
+            }
+            return
+        }
+
+        input.shopHoldTime += dt
+        val initialDelay = 0.30f
+        if (input.shopHoldTime < initialDelay) return
+
+        input.shopHoldRepeatTimer += dt
+        val interval = if (input.shopHoldTime > 1.2f) 0.04f else 0.08f
+        while (input.shopHoldRepeatTimer >= interval) {
+            input.shopHoldRepeatTimer -= interval
+            val success = if (input.shopHoldIsBuy) {
+                buyItem(input.shopHoldIndex, isHold = true)
+            } else {
+                sellItem(input.shopHoldIndex, isHold = true)
+            }
+            if (!success) {
+                input.stopShopHold()
+                if (pendingShopSave) {
+                    pendingShopSave = false
+                    saveNow()
+                }
+                break
+            }
+        }
+    }
+
+    fun buyItem(index: Int, isHold: Boolean = false): Boolean {
+        val offer = ShopCatalog.offers.getOrNull(index) ?: return false
         val canPayGold = offer.goldPrice > 0 && gold >= offer.goldPrice
         val canPayDiamonds = offer.diamondPrice > 0 && diamonds >= offer.diamondPrice
 
         if (!canPayGold && !canPayDiamonds) {
             val needed = if (offer.goldPrice > 0) "${offer.goldPrice} gold" else "${offer.diamondPrice} diamonds"
             toast("Need $needed")
-            return
+            return false
         }
         if (!inventory.canFit(listOf(offer.item to 1))) {
             toast("Inventory full")
-            return
+            return false
         }
         if (canPayGold) {
             gold -= offer.goldPrice
@@ -634,20 +670,23 @@ class Game(private val context: Context, private val input: InputState) {
         }
         inventory.add(offer.item, 1)
         toast("Bought ${offer.item.displayName}")
-        saveNow()
+        if (!isHold) saveNow() else pendingShopSave = true
+        return true
     }
 
-    private fun sellItem(index: Int) {
-        val item = ShopCatalog.offers.getOrNull(index)?.item ?: return
-        if (inventory.remove(item, 1) == 0) { toast("You do not have ${item.displayName}"); return }
-        addGold(ShopCatalog.sellGold(item))
+    fun sellItem(index: Int, isHold: Boolean = false): Boolean {
+        val item = ShopCatalog.offers.getOrNull(index)?.item ?: return false
+        if (inventory.remove(item, 1) == 0) { toast("You do not have ${item.displayName}"); return false }
+        val payout = ShopCatalog.sellGold(item)
+        addGold(payout)
         if (inventory.count(item) == 0) {
             if (equippedWeapon == item) equippedWeapon = null
             if (meleeWeapon == item) meleeWeapon = null
             if (rangedWeapon == item) rangedWeapon = null
         }
-        toast("Sold ${item.displayName} for ${ShopCatalog.sellGold(item)} gold")
-        saveNow()
+        toast("Sold ${item.displayName} for $payout gold")
+        if (!isHold) saveNow() else pendingShopSave = true
+        return true
     }
 
     private fun teleportToCampfire(id: Int) {
