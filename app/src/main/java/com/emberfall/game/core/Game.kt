@@ -25,7 +25,9 @@ import com.emberfall.game.item.ItemCategory
 import com.emberfall.game.item.ItemId
 import com.emberfall.game.item.Recipes
 import com.emberfall.game.item.ShopCatalog
+import com.emberfall.game.item.PackTier
 import com.emberfall.game.item.WeaponStyle
+import com.emberfall.game.item.WeaponUpgrades
 import com.emberfall.game.render.CreatureRenderer
 import com.emberfall.game.render.ObjectRenderer
 import com.emberfall.game.render.PlayerRenderer
@@ -63,7 +65,7 @@ class Game(private val context: Context, private val input: InputState) {
     val world = World(restored?.seed ?: Random.nextInt())
     val player: Player
     val camera = Camera()
-    val inventory = Inventory(36)
+    val inventory = Inventory(PackTier.LEATHER_POUCH.capacity)
     var gold = restored?.gold ?: 25
         private set
     var diamonds = restored?.diamonds ?: 0
@@ -164,8 +166,6 @@ class Game(private val context: Context, private val input: InputState) {
     val spellLevels = mutableMapOf<Spell, Int>()
 
     private var spellCooldown = 0f
-    private var powerPotionTimer = 0f
-    private var regenPotionTimer = 0f
     private var rapidFireTimer = 0f
 
     /** Recreates render-only objects after an atomically activated art pack. */
@@ -271,7 +271,7 @@ class Game(private val context: Context, private val input: InputState) {
             else if (it.style != WeaponStyle.PROJECTILE && meleeWeapon == null) meleeWeapon = it
         }
 
-        for ((name, level) in state.weaponLevels) runCatching { ItemId.valueOf(name) }.getOrNull()?.let { weaponLevels[it] = level.coerceIn(1, 50) }
+        for ((name, level) in state.weaponLevels) runCatching { ItemId.valueOf(name) }.getOrNull()?.let { weaponLevels[it] = level.coerceIn(1, WeaponUpgrades.MAX_RANK + 1) }
         for ((name, stars) in state.weaponStars) runCatching { ItemId.valueOf(name) }.getOrNull()?.let { weaponStars[it] = stars.coerceIn(1, 5) }
         if (state.campfireX != 0f || state.campfireY != 0f) {
             respawnX = state.campfireX
@@ -347,8 +347,6 @@ class Game(private val context: Context, private val input: InputState) {
         }
 
         if (spellCooldown > 0f) spellCooldown = max(0f, spellCooldown - dt)
-        powerPotionTimer = max(0f, powerPotionTimer - dt)
-        if (regenPotionTimer > 0f) { regenPotionTimer = max(0f, regenPotionTimer - dt); player.stats.heal(2f * dt) }
 
         if (input.consumeAttackRequest()) playerAttack()
         rapidFireTimer = max(0f, rapidFireTimer - dt)
@@ -520,14 +518,12 @@ class Game(private val context: Context, private val input: InputState) {
                 val helpsHunger = id.food > 0f && stats.hunger < 100f
                 when (id) {
                     ItemId.POWER_POTION -> {
-                        if (powerPotionTimer > 0f) { toast("Power is already active"); return }
-                        powerPotionTimer = 30f
+                        if (player.stats.powerBoostTimer > 0f) { toast("Power is already active"); return }
                     }
                     ItemId.REGEN_POTION -> {
-                        if (stats.health >= stats.maxHealth || regenPotionTimer > 0f) {
+                        if (stats.health >= stats.maxHealth || player.stats.regenTimer > 0f) {
                             toast("Health is full or regeneration is active"); return
                         }
-                        regenPotionTimer = 15f
                     }
                     else -> if (!helpsHealth && !helpsMana && !helpsHunger) {
                         toast("Health, mana and hunger are already full"); return
@@ -536,6 +532,9 @@ class Game(private val context: Context, private val input: InputState) {
                 if (id.heal > 0f) player.stats.heal(id.heal)
                 if (id.mana > 0f) player.stats.restoreMana(id.mana)
                 if (id.food > 0f) player.stats.feed(id.food)
+                if (id.attackBoostSeconds > 0f || id.regenSeconds > 0f) {
+                    player.stats.applyPotionEffect(id.attackBoostSeconds, id.regenPerSecond, id.regenSeconds)
+                }
                 inventory.removeAt(index)
                 spawnParticles(player.x, player.y, id.color, 8)
                 toast("Used ${id.displayName}")
@@ -583,18 +582,12 @@ class Game(private val context: Context, private val input: InputState) {
         toast("${spell.displayName} upgraded to level ${level + 1}")
     }
 
-    fun weaponDamage(weapon: ItemId): Float = (10f + weapon.damage) * 1.5f.pow((weaponStars[weapon] ?: 1) - 1) * (1f + ((weaponLevels[weapon] ?: 1) - 1) * .025f)
+    fun weaponRank(weapon: ItemId): Int = ((weaponLevels[weapon] ?: 1) - 1).coerceIn(0, WeaponUpgrades.MAX_RANK)
 
-    fun weaponUpgradeCosts(weapon: ItemId): List<Pair<ItemId, Int>> {
-        val level = weaponLevels[weapon] ?: 1
-        val target = level + 1
-        val base = kotlin.math.ceil(4f * 1.5f.pow(level - 1)).toInt().coerceAtLeast(4)
-        val costs = mutableListOf(ItemId.WOOD to base)
-        if (target >= 11) costs += ItemId.STONE to kotlin.math.ceil(base * .25f).toInt().coerceAtLeast(1)
-        if (target >= 30) costs += ItemId.IRON to kotlin.math.ceil(base * .2f).toInt().coerceAtLeast(1)
-        if (target in listOf(10, 20, 30, 40, 45) || (target > 40 && target % 5 == 0)) costs += ItemId.MAGIC_STONE to 1
-        return costs
-    }
+    fun weaponDamage(weapon: ItemId): Float = WeaponUpgrades.totalDamage(weapon, weaponRank(weapon))
+
+    fun weaponUpgradeCosts(weapon: ItemId): List<Pair<ItemId, Int>> =
+        WeaponUpgrades.costForNextRank(weapon, weaponRank(weapon)) ?: emptyList()
 
     private fun equipWeapon(weapon: ItemId) {
         equippedWeapon = weapon
@@ -738,7 +731,7 @@ class Game(private val context: Context, private val input: InputState) {
         }
 
         val weaponPower = weapon?.let(::weaponDamage) ?: 10f
-        val damage = weaponPower * if (powerPotionTimer > 0f) 1.5f else 1f
+        val damage = weaponPower * player.stats.attackMultiplier()
         for (animal in animals) {
             if (inWeaponArc(animal, style, range)) damageCreature(animal, damage)
         }
@@ -849,7 +842,7 @@ class Game(private val context: Context, private val input: InputState) {
         val isGun = weapon == ItemId.GUN
         val speed = if (isGun) 900f else 610f
         val weaponPower = weapon?.let(::weaponDamage) ?: 10f
-        val damage = weaponPower * if (powerPotionTimer > 0f) 1.5f else 1f
+        val damage = weaponPower * player.stats.attackMultiplier()
         val color = if (isGun) 0xFFFFD45A.toInt() else 0xFFE9D2A2.toInt()
         projectiles.add(
             Projectile(
@@ -949,7 +942,7 @@ class Game(private val context: Context, private val input: InputState) {
             return
         }
         player.stats.mana -= cost
-        spellCooldown = 0.85f
+        spellCooldown = spell.cooldownSeconds
         juice.triggerShake(1.8f, 130)
         spawnParticles(player.x, player.y, spell.color, 12)
 
@@ -978,7 +971,7 @@ class Game(private val context: Context, private val input: InputState) {
                 val centerX = target?.x ?: (player.x + player.facingX * 140f)
                 val centerY = target?.y ?: (player.y + player.facingY * 140f)
                 spawnParticles(centerX, centerY, spell.color, 24)
-                applySpellAoE(centerX, centerY, 115f, magicDamage(spell), freeze = 2.6f, knockback = 0f)
+                applySpellAoE(centerX, centerY, 115f, magicDamage(spell), freeze = spell.stunSeconds, knockback = 0f)
             }
 
             Spell.WATER_TSUNAMI -> {
@@ -1042,49 +1035,19 @@ class Game(private val context: Context, private val input: InputState) {
             AnimalSpecies.BOAR -> 10
             else -> 4
         })
-        when (animal.species) {
-            AnimalSpecies.RABBIT -> {
-                addXp(8)
-                player.stats.heal(6f)
-                player.stats.restoreMana(6f)
-                dropLoot(animal.x, animal.y, ItemId.RAW_MEAT, 1)
-                if (Random.nextFloat() < 0.6f) dropLoot(animal.x, animal.y, ItemId.HIDE, 1)
-            }
-
-            AnimalSpecies.DEER -> {
-                addXp(14)
-                player.stats.heal(10f)
-                player.stats.restoreMana(8f)
-                dropLoot(animal.x, animal.y, ItemId.RAW_MEAT, 2)
-                dropLoot(animal.x, animal.y, ItemId.HIDE, 1 + Random.nextInt(2))
-            }
-
-            AnimalSpecies.BOAR -> {
-                addXp(22)
-                player.stats.heal(14f)
-                player.stats.restoreMana(10f)
-                dropLoot(animal.x, animal.y, ItemId.RAW_MEAT, 3)
-                dropLoot(animal.x, animal.y, ItemId.HIDE, 2)
-            }
-            else -> {
-                addXp(10)
-                dropLoot(animal.x, animal.y, ItemId.RAW_MEAT, 1)
-            }
-        }
+        addXp(animal.xpReward)
+        player.stats.heal(6f)
+        player.stats.restoreMana(6f)
+        for ((id, count) in animal.rollDrops()) dropLoot(animal.x, animal.y, id, count)
         spawnParticles(animal.x, animal.y, 0xFFB5793F.toInt(), 8)
     }
 
     private fun killWolf(wolf: Wolf) {
         addGold(18)
-        addXp(32)
+        addXp(wolf.xpReward)
         player.stats.heal(5f)
         player.stats.restoreMana(10f)
-        dropLoot(wolf.x, wolf.y, ItemId.HIDE, 2)
-        dropLoot(wolf.x, wolf.y, ItemId.RAW_MEAT, 1 + Random.nextInt(2))
-        if (Random.nextFloat() < 0.35f) dropLoot(wolf.x, wolf.y, ItemId.MAGIC_STONE, 1)
-        if (Random.nextFloat() < 0.18f) dropLoot(wolf.x, wolf.y, ItemId.MANA_POTION, 1)
-        if (Random.nextFloat() < 0.12f) dropLoot(wolf.x, wolf.y, ItemId.POWER_POTION, 1)
-        if (Random.nextFloat() < 0.08f) dropLoot(wolf.x, wolf.y, ItemId.REGEN_POTION, 1)
+        for ((id, count) in wolf.rollDrops()) dropLoot(wolf.x, wolf.y, id, count)
         spawnParticles(wolf.x, wolf.y, 0xFF767C86.toInt(), 10)
     }
 
@@ -1095,18 +1058,11 @@ class Game(private val context: Context, private val input: InputState) {
         activeBoss = null
         defeatedBosses.add(boss.def.id)
         addGold(if (boss.isDragon) 500 else 100 + defeatedBosses.size * 40)
-        addDiamonds(if (boss.isDragon) 5 else 1)
-
+        addDiamonds(boss.def.diamondReward)
         val stats = player.stats
         stats.addXp(boss.def.xpReward)
         stats.grantBossReward(boss.def.healthReward, boss.def.manaReward)
         stats.restoreMana(60f)
-        // Every boss always drops a visible Magic Stone, even if the inventory is full.
-        dropLoot(boss.x, boss.y, ItemId.MAGIC_STONE, 1)
-        for ((id, count) in boss.def.loot) dropLoot(boss.x, boss.y, id, count)
-        for (material in ItemId.values().filter { it.category == ItemCategory.MATERIAL || it == ItemId.MAGIC_STONE }) {
-            dropLoot(boss.x, boss.y, material, 1)
-        }
         val newLevel = stage + defeatedBosses.size
         for (other in bosses) if (!other.defeated) other.setLevel(newLevel)
 
@@ -1115,12 +1071,6 @@ class Game(private val context: Context, private val input: InputState) {
         spawnParticles(boss.x, boss.y, boss.def.color, 28)
         BossSignatures.byId(boss.def.id)?.let {
             texts.add(FloatingText(boss.x, boss.y - 36f, it.defeatLine, boss.def.color, 3.6f, 12f))
-        }
-        val tier = defeatedBosses.size
-        val unique = ItemId.values().firstOrNull { it.category == ItemCategory.WEAPON && inventory.count(it) == 0 }
-        if (unique != null) dropLoot(boss.x, boss.y, unique, 1)
-        for (material in listOf(ItemId.RAW_MEAT, ItemId.STONE, ItemId.WOOD, ItemId.FRUIT, ItemId.IRON, ItemId.FIBER, ItemId.MAGIC_STONE)) {
-            dropLoot(boss.x, boss.y, material, tier)
         }
         if (boss.def.id == Bosses.DRAGON.id) {
             stageAdvancePending = true
@@ -1161,7 +1111,7 @@ class Game(private val context: Context, private val input: InputState) {
 
     private fun clampToArena() {
         val boss = activeBoss ?: return
-        if (!boss.engaged || boss.defeated) return
+        if (!boss.engaged || boss.defeated || boss.isDragon) return
         val dx = player.x - boss.arenaX
         val dy = player.y - boss.arenaY
         val distance = hypot(dx.toDouble(), dy.toDouble()).toFloat()
@@ -1300,15 +1250,13 @@ class Game(private val context: Context, private val input: InputState) {
         val rewards = mutableListOf<Pair<ItemId, Int>>()
         when (type) {
             TileType.TREE, TileType.FOREST_TREE -> {
-                rewards += ItemId.WOOD to (2 + Random.nextInt(2))
-                if (Random.nextFloat() < 0.45f) rewards += ItemId.FIBER to 1
-                if (Random.nextFloat() < 0.30f) rewards += ItemId.FRUIT to (1 + Random.nextInt(2))
+                rewards += ItemId.WOOD to 1
+                if (Random.nextFloat() < 0.35f) rewards += ItemId.FIBER to 1
             }
 
             TileType.ROCK -> {
-                rewards += ItemId.STONE to (2 + Random.nextInt(2))
-                if (Random.nextFloat() < 0.35f) rewards += ItemId.IRON to 1
-                if (Random.nextFloat() < 0.12f) rewards += ItemId.MAGIC_STONE to 1
+                rewards += ItemId.STONE to 1
+                if (Random.nextFloat() < 0.20f) rewards += ItemId.IRON to 1
             }
 
             TileType.FLOWERS -> {
@@ -1820,7 +1768,7 @@ class Game(private val context: Context, private val input: InputState) {
 
     private fun drawArenaSeal(canvas: Canvas) {
         val boss = activeBoss ?: return
-        if (!boss.engaged || boss.defeated) return
+        if (!boss.engaged || boss.defeated || boss.isDragon) return
         arenaPaint.style = Paint.Style.STROKE
         arenaPaint.strokeWidth = 5f
         arenaPaint.color = 0x66FF4A3A
@@ -1849,7 +1797,7 @@ class Game(private val context: Context, private val input: InputState) {
         val weapon = equippedWeapon ?: activeWeapon() ?: run { toast("Equip a weapon first"); return }
         if (equippedWeapon == null) { toast("Select a weapon first"); return }
         val level = weaponLevels[weapon] ?: 1
-        if (level >= 50) { toast("Weapon is max level"); return }
+        if (weaponRank(weapon) >= WeaponUpgrades.MAX_RANK) { toast("Weapon is max rank"); return }
         val costs = weaponUpgradeCosts(weapon)
         if (costs.any { inventory.count(it.first) < it.second }) { toast("Need ${costs.joinToString { "${it.second} ${it.first.displayName}" }}"); return }
         costs.forEach { inventory.remove(it.first, it.second) }

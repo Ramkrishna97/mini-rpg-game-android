@@ -3,7 +3,7 @@ package com.emberfall.game.world
 import com.emberfall.game.item.ItemId
 
 /**
- * Static definitions for the five world bosses. Each one owns an arena carved
+ * Static definitions for the world bosses. Each one owns an arena carved
  * into the terrain by [WorldGenerator]; the boss stays dormant until the
  * player steps inside and seals the arena until one of them dies.
  */
@@ -21,16 +21,33 @@ data class BossDef(
     val healthReward: Float,
     val manaReward: Float,
     val loot: List<Pair<ItemId, Int>>,
+    /** Diamonds are a currency, not an item, so they are granted separately. */
+    val diamondReward: Int = 0,
 )
 
 object Bosses {
 
-    val DRAGON = BossDef("dragon", "The Reincarnation Dragon", 0, 0, 14f, 620f * 2f / 3f, 42f, 82f, 0xFFE05A35.toInt(), 1000, 50f, 30f, listOf(ItemId.MAGIC_STONE to 10))
+    val DRAGON = BossDef(
+        id = "dragon",
+        name = "Reincarnation Dragon",
+        tileX = 0,
+        tileY = 0,
+        arenaRadiusTiles = 14f,
+        maxHealth = 400f,
+        damage = 42f,
+        speed = 82f,
+        color = 0xFFE05A35.toInt(),
+        xpReward = 1000,
+        healthReward = 50f,
+        manaReward = 30f,
+        loot = listOf(ItemId.MAGIC_STONE to 10),
+        diamondReward = 1,
+    )
 
     val ALL: List<BossDef> = listOf(
         BossDef(
             id = "gloomfang",
-            name = "Armadillo, the Alpha",
+            name = "Gloomfang (Armadillo Alpha)",
             tileX = 0,
             tileY = -40,
             arenaRadiusTiles = 10f,
@@ -45,7 +62,7 @@ object Bosses {
         ),
         BossDef(
             id = "stonewarden",
-            name = "Vulchar, Sky Hunter",
+            name = "Stonewarden (Vulchar)",
             tileX = 68,
             tileY = 30,
             arenaRadiusTiles = 11f,
@@ -60,7 +77,7 @@ object Bosses {
         ),
         BossDef(
             id = "mirewitch",
-            name = "Giant Mole of the Fen",
+            name = "Mirewitch (Giant Mole)",
             tileX = -82,
             tileY = 52,
             arenaRadiusTiles = 10f,
@@ -75,7 +92,7 @@ object Bosses {
         ),
         BossDef(
             id = "ashtitan",
-            name = "Ember Tiger",
+            name = "Ashtitan (Ember Tiger)",
             tileX = 40,
             tileY = 108,
             arenaRadiusTiles = 12f,
@@ -90,7 +107,7 @@ object Bosses {
         ),
         BossDef(
             id = "hollowking",
-            name = "The Wolf King",
+            name = "Hollow King (Wolf King)",
             tileX = -122,
             tileY = -94,
             arenaRadiusTiles = 12f,
