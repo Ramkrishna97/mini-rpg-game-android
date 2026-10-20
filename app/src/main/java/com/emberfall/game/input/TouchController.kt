@@ -1,6 +1,8 @@
 package com.emberfall.game.input
 
 import android.view.MotionEvent
+import com.emberfall.game.core.Game
+import com.emberfall.game.item.ShopCatalog
 import com.emberfall.game.item.Recipes
 import com.emberfall.game.ui.UiLayout
 import com.emberfall.game.util.clamp
@@ -18,10 +20,12 @@ class TouchController(
     private val input: InputState,
     private val density: Float,
     private val inventoryCapacity: Int,
+    private val game: Game,
 ) {
 
     private var joystickPointerId = -1
     private var attackPointerId = -1
+    private var rangedPointerId = -1
     private var lastSettingsY = Float.NaN
     private var resolutionTap = 0
     private var fpsTap = 0
@@ -35,7 +39,8 @@ class TouchController(
             MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
                 if (event.actionMasked == MotionEvent.ACTION_POINTER_DOWN) {
                     if (input.settingsOpen ||
-                        input.spellPickerOpen || input.weaponPickerOpen || input.mapOpen || input.campMenuOpen
+                        input.spellPickerOpen || input.weaponPickerOpen || input.mapOpen ||
+                        input.optionsOpen || input.shopOpen || input.campMenuOpen
                     ) {
                         return true
                     }
@@ -47,7 +52,17 @@ class TouchController(
 
                 when {
                     input.mapOpen -> {
-                        input.mapOpen = false
+                        handleMapTap(x, y, width, height)
+                        return true
+                    }
+
+                    input.optionsOpen -> {
+                        handleOptionsTap(x, y, width, height)
+                        return true
+                    }
+
+                    input.shopOpen -> {
+                        handleShopTap(x, y, width, height)
                         return true
                     }
 
@@ -111,6 +126,7 @@ class TouchController(
                     }
                     UiLayout.minimapContains(x, y, width, height, density) -> {
                         input.mapOpen = true
+                        input.selectedCampfireId = -1
                         resetJoystick()
                         joystickPointerId = -1
                     }
@@ -121,14 +137,14 @@ class TouchController(
                         joystickPointerId = -1
                     }
 
-                    isOnWeaponSelect(x, y, width, height) -> {
-                        input.weaponPickerOpen = true
-                        resetJoystick()
-                        joystickPointerId = -1
-                    }
-
                     isOnMagic(x, y, width, height) -> {
                         input.requestMagic()
+                    }
+
+                    rangedPointerId == -1 && isOnRanged(x, y, width, height) -> {
+                        rangedPointerId = pointerId
+                        input.rangedDown = true
+                        input.requestRanged()
                     }
 
                     attackPointerId == -1 && isOnAttack(x, y, width, height) -> {
@@ -148,6 +164,12 @@ class TouchController(
                     isOnGear(x, y, width, height) -> {
                         input.settingsOpen = true
                         input.inventoryOpen = false
+                        resetJoystick()
+                        joystickPointerId = -1
+                    }
+
+                    isOnOptions(x, y) -> {
+                        input.optionsOpen = true
                         resetJoystick()
                         joystickPointerId = -1
                     }
@@ -177,7 +199,8 @@ class TouchController(
                 if (input.inventoryOpen) {
                     return true
                 }
-                if (input.spellPickerOpen || input.weaponPickerOpen || input.mapOpen || input.campMenuOpen) return true
+                if (input.spellPickerOpen || input.weaponPickerOpen || input.mapOpen ||
+                    input.optionsOpen || input.shopOpen || input.campMenuOpen) return true
                 val joystickIndex = event.findPointerIndex(joystickPointerId)
                 if (joystickIndex >= 0) {
                     moveJoystick(
@@ -202,8 +225,10 @@ class TouchController(
             MotionEvent.ACTION_CANCEL -> {
                 joystickPointerId = -1
                 attackPointerId = -1
+                rangedPointerId = -1
                 resetJoystick()
                 input.attackDown = false
+                input.rangedDown = false
                 inventoryPointerId = -1
                 inventoryStartY = Float.NaN
             }
@@ -281,6 +306,80 @@ class TouchController(
         }
     }
 
+    private fun handleMapTap(x: Float, y: Float, width: Int, height: Int) {
+        val w = width.toFloat(); val h = height.toFloat()
+        val selected = input.selectedCampfireId
+        if (selected >= 0 && UiLayout.teleportButton(w, h, density).contains(x, y)) {
+            input.pushCommand(UiCommand.TELEPORT_BASE + selected)
+            input.mapOpen = false
+            input.selectedCampfireId = -1
+            return
+        }
+        val playerTx = game.world.tileX(game.player.x)
+        val playerTy = game.world.tileY(game.player.y)
+        val camp = game.campfires.minByOrNull { fire ->
+            val point = UiLayout.regionMapPoint(game.world.tileX(fire.x), game.world.tileY(fire.y),
+                playerTx, playerTy, w, h, density)
+            hypot(x - point.x, y - point.y)
+        }
+        if (camp != null) {
+            val point = UiLayout.regionMapPoint(game.world.tileX(camp.x), game.world.tileY(camp.y),
+                playerTx, playerTy, w, h, density)
+            if (hypot(x - point.x, y - point.y) <= 18f * density) {
+                input.selectedCampfireId = camp.index
+                return
+            }
+        }
+        input.selectedCampfireId = -1
+        if (!UiLayout.regionMapRect(w, h, density).contains(x, y)) input.mapOpen = false
+    }
+
+    private fun handleOptionsTap(x: Float, y: Float, width: Int, height: Int) {
+        val w = width.toFloat(); val h = height.toFloat()
+        val panel = UiLayout.optionsPanel(w, h, density)
+        if (!panel.contains(x, y) || UiLayout.optionsClose(w, h, density).contains(x, y)) {
+            input.optionsOpen = false
+            return
+        }
+        val choice = (0 until 6).firstOrNull { UiLayout.optionsCell(it, w, h, density).contains(x, y) } ?: return
+        input.optionsOpen = false
+        when (choice) {
+            0 -> { input.inventoryOpen = true; input.craftingOpen = false }
+            1 -> input.weaponPickerOpen = true
+            2 -> input.campMenuOpen = true
+            3 -> { input.shopOpen = true; input.shopScroll = 0 }
+            4 -> { input.inventoryOpen = true; input.craftingOpen = true; input.craftScroll = 0 }
+            5 -> input.settingsOpen = true
+        }
+    }
+
+    private fun handleShopTap(x: Float, y: Float, width: Int, height: Int) {
+        val w = width.toFloat(); val h = height.toFloat()
+        val panel = UiLayout.inventoryPanel(w, h, density)
+        if (!panel.contains(x, y)) { input.shopOpen = false; return }
+        val pageSize = UiLayout.marketRowsPerPage(w, h, density)
+        val lastPage = ((ShopCatalog.offers.size - 1) / pageSize) * pageSize
+        if (UiLayout.panelPageButton(false, w, h, density).contains(x, y)) {
+            input.shopScroll = (input.shopScroll - pageSize).coerceAtLeast(0)
+            return
+        }
+        if (UiLayout.panelPageButton(true, w, h, density).contains(x, y)) {
+            input.shopScroll = (input.shopScroll + pageSize).coerceAtMost(lastPage)
+            return
+        }
+        for (index in input.shopScroll until minOf(ShopCatalog.offers.size, input.shopScroll + pageSize)) {
+            val row = UiLayout.marketRow(index, input.shopScroll, w, h, density)
+            if (UiLayout.marketActionButton(row, true, density).contains(x, y)) {
+                input.pushCommand(UiCommand.BUY_ITEM_BASE + index)
+                return
+            }
+            if (UiLayout.marketActionButton(row, false, density).contains(x, y)) {
+                input.pushCommand(UiCommand.SELL_ITEM_BASE + index)
+                return
+            }
+        }
+    }
+
     private fun handleSettingsTap(x: Float, y: Float, width: Int, height: Int) {
         val panel = UiLayout.settingsPanel(width.toFloat(), height.toFloat(), density)
         for (tab in 0..2) if (UiLayout.settingsTab(tab,width.toFloat(),height.toFloat(),density).contains(x,y)) {
@@ -316,10 +415,20 @@ class TouchController(
             attackPointerId = -1
             input.attackDown = false
         }
+        if (pointerId == rangedPointerId) {
+            rangedPointerId = -1
+            input.rangedDown = false
+        }
     }
 
+    private fun isOnRanged(x: Float, y: Float, width: Int, height: Int): Boolean =
+        hypot(x - UiLayout.rangedX(width, density), y - UiLayout.rangedY(height, density)) <=
+            UiLayout.rangedRadius(density) * 1.1f
+
+    private fun isOnOptions(x: Float, y: Float): Boolean = UiLayout.optionsButton(density).contains(x, y)
+
     private fun isOnAttack(x: Float, y: Float, width: Int, height: Int): Boolean {
-        val radius = UiLayout.attackRadius(density) * 1.28f
+        val radius = UiLayout.attackRadius(density) * 1.08f
         return hypot(
             x - UiLayout.attackX(width, density),
             y - UiLayout.attackY(height, density),
@@ -327,7 +436,7 @@ class TouchController(
     }
 
     private fun isOnMagic(x: Float, y: Float, width: Int, height: Int): Boolean {
-        val radius = UiLayout.magicRadius(density) * 1.3f
+        val radius = UiLayout.magicRadius(density) * 1.1f
         return hypot(
             x - UiLayout.magicX(width, density),
             y - UiLayout.magicY(height, density),
@@ -335,14 +444,11 @@ class TouchController(
     }
 
     private fun isOnSpellSelect(x: Float, y: Float, width: Int, height: Int): Boolean {
-        return hypot(x - UiLayout.spellSelectX(width, density), y - UiLayout.spellSelectY(height, density)) <= UiLayout.spellSelectRadius(density) * 1.3f
+        return hypot(x - UiLayout.spellSelectX(width, density), y - UiLayout.spellSelectY(height, density)) <= UiLayout.spellSelectRadius(density) * 1.1f
     }
 
-    private fun isOnWeaponSelect(x: Float, y: Float, width: Int, height: Int): Boolean =
-        hypot(x - UiLayout.weaponSelectX(width, density), y - UiLayout.weaponSelectY(height, density)) <= UiLayout.weaponSelectRadius(density) * 1.15f
-
     private fun isOnInteract(x: Float, y: Float, width: Int, height: Int): Boolean {
-        val radius = UiLayout.interactRadius(density) * 1.3f
+        val radius = UiLayout.interactRadius(density) * 1.08f
         return hypot(
             x - UiLayout.interactX(width, density),
             y - UiLayout.interactY(height, density),
@@ -350,7 +456,7 @@ class TouchController(
     }
 
     private fun isOnBag(x: Float, y: Float, width: Int, height: Int): Boolean {
-        val radius = UiLayout.bagRadius(density) * 1.25f
+        val radius = UiLayout.bagRadius(density) * 1.12f
         return hypot(
             x - UiLayout.bagX(width, density),
             y - UiLayout.bagY(height, density),
@@ -358,7 +464,7 @@ class TouchController(
     }
 
     private fun isOnGear(x: Float, y: Float, width: Int, height: Int): Boolean {
-        val radius = UiLayout.gearRadius(density) * 1.5f
+        val radius = UiLayout.gearRadius(density) * 1.15f
         return hypot(
             x - UiLayout.gearX(width, density),
             y - UiLayout.gearY(height, density),

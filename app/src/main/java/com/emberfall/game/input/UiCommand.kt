@@ -26,4 +26,7 @@ object UiCommand {
     const val EXCHANGE_IRON = 752
     const val EXCHANGE_MAGIC = 753
     const val SELL_WEAPON = 754
+    const val BUY_ITEM_BASE = 900
+    const val SELL_ITEM_BASE = 950
+    const val TELEPORT_BASE = 1000
 }

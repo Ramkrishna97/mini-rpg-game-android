@@ -26,11 +26,15 @@ data class SaveState(
     val bonusHealth: Float = 0f,
     val bonusMana: Float = 0f,
     val inventory: List<Pair<ItemId, Int>> = emptyList(),
+    val gold: Int = 0,
+    val diamonds: Int = 0,
     val campfireX: Float = 0f,
     val campfireY: Float = 0f,
     val defeatedBosses: Set<String> = emptySet(),
     val openedChests: Set<Int> = emptySet(),
     val equippedWeapon: String? = null,
+    val meleeWeapon: String? = null,
+    val rangedWeapon: String? = null,
     val weaponLevels: Map<String, Int> = emptyMap(),
     val weaponStars: Map<String, Int> = emptyMap(),
     val graphics: GraphicsSettings = GraphicsSettings(),
@@ -84,11 +88,15 @@ class SaveManager(context: Context) {
                     bonusHealth = json.optDouble("bonusHealth", 0.0).toFloat(),
                     bonusMana = json.optDouble("bonusMana", 0.0).toFloat(),
                     inventory = inventory,
+                    gold = json.optInt("gold", 0).coerceAtLeast(0),
+                    diamonds = json.optInt("diamonds", 0).coerceAtLeast(0),
                     campfireX = json.optDouble("campfireX", 0.0).toFloat(),
                     campfireY = json.optDouble("campfireY", 0.0).toFloat(),
                     defeatedBosses = json.optJSONArray("defeatedBosses").toStringSet(),
                     openedChests = json.optJSONArray("openedChests").toIntSet(),
                     equippedWeapon = json.optString("equippedWeapon").takeIf { it.isNotBlank() },
+                    meleeWeapon = json.optString("meleeWeapon").takeIf { it.isNotBlank() },
+                    rangedWeapon = json.optString("rangedWeapon").takeIf { it.isNotBlank() },
                     weaponLevels = json.optJSONObject("weaponLevels").toIntMap(),
                     weaponStars = json.optJSONObject("weaponStars").toIntMap(),
                     graphics = json.optJSONObject("graphics").toGraphics(),
@@ -129,11 +137,15 @@ class SaveManager(context: Context) {
                 .put("bonusHealth", state.bonusHealth.toDouble())
                 .put("bonusMana", state.bonusMana.toDouble())
                 .put("inventory", inventoryJson)
+                .put("gold", state.gold)
+                .put("diamonds", state.diamonds)
                 .put("campfireX", state.campfireX.toDouble())
                 .put("campfireY", state.campfireY.toDouble())
                 .put("defeatedBosses", bossesJson)
                 .put("openedChests", chestsJson)
                 .put("equippedWeapon", state.equippedWeapon ?: "")
+                .put("meleeWeapon", state.meleeWeapon ?: "")
+                .put("rangedWeapon", state.rangedWeapon ?: "")
                 .put("weaponLevels", JSONObject(state.weaponLevels))
                 .put("weaponStars", JSONObject(state.weaponStars))
                 .put(

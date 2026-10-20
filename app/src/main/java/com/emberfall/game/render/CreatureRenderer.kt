@@ -89,6 +89,36 @@ class CreatureRenderer(context: Context) {
         canvas.drawCircle(headX - 1.8f, headY, 0.9f, paint)
         canvas.drawCircle(headX + 1.8f, headY, 0.9f, paint)
 
+        // Species silhouettes: these are deliberately exaggerated so animals
+        // are recognizable at the game camera's small sprite scale.
+        when (animal.species) {
+            AnimalSpecies.RABBIT -> {
+                paint.color = 0xFFCFC7B8.toInt()
+                canvas.drawOval(headX - 5f, headY - 14f, headX - 1f, headY - 3f, paint)
+                canvas.drawOval(headX + 1f, headY - 14f, headX + 5f, headY - 3f, paint)
+                paint.color = 0xFFE3A2AA.toInt(); canvas.drawLine(headX - 3f, headY - 12f, headX - 2f, headY - 5f, paint)
+            }
+            AnimalSpecies.FOX -> {
+                paint.color = 0xFFC06B3E.toInt()
+                path.reset(); path.moveTo(headX - 6f, headY - 3f); path.lineTo(headX - 3f, headY - 12f); path.lineTo(headX, headY - 4f); path.close(); canvas.drawPath(path, paint)
+                path.reset(); path.moveTo(headX + 6f, headY - 3f); path.lineTo(headX + 3f, headY - 12f); path.lineTo(headX, headY - 4f); path.close(); canvas.drawPath(path, paint)
+                paint.strokeWidth = 5f; paint.strokeCap = Paint.Cap.ROUND; canvas.drawLine(x - animal.facingX * r, y, x - animal.facingX * (r + 11f), y - 4f, paint)
+                paint.color = 0xFFFAE5D0.toInt(); canvas.drawCircle(x - animal.facingX * (r + 11f), y - 4f, 2.6f, paint)
+            }
+            AnimalSpecies.SHEEP -> {
+                paint.color = 0xFFF7F2E5.toInt()
+                canvas.drawCircle(x - r * .45f, y - r * .55f, r * .42f, paint); canvas.drawCircle(x + r * .25f, y - r * .72f, r * .46f, paint)
+                canvas.drawCircle(x + r * .55f, y - r * .35f, r * .4f, paint)
+            }
+            AnimalSpecies.SHARK -> {
+                paint.color = 0xFF3E6477.toInt()
+                path.reset(); path.moveTo(x - r*.15f, y - r*.45f); path.lineTo(x, y-r*1.35f); path.lineTo(x+r*.3f,y-r*.4f); path.close(); canvas.drawPath(path,paint)
+                path.reset(); path.moveTo(x-r, y); path.lineTo(x-r*1.65f,y-r*.55f); path.lineTo(x-r*1.4f,y+r*.15f); path.close(); canvas.drawPath(path,paint)
+                paint.color = 0xFFF0F4F1.toInt(); canvas.drawLine(headX, headY + r*.2f, headX + r*.3f, headY + r*.2f, paint)
+            }
+            else -> Unit
+        }
+
         if (detailed) {
             paint.color = 0xFF4A3A2C.toInt()
             paint.strokeWidth = 1.4f
@@ -201,6 +231,27 @@ class CreatureRenderer(context: Context) {
                 y + (boss.chargeDirX + boss.chargeDirY) * 75f,
                 paint,
             )
+        }
+
+        // A visible wind-up / release layer makes boss attacks readable even
+        // when the sprite's attack frame is momentarily obscured by terrain.
+        if (boss.engaged && (boss.phase == BossPhase.TELEGRAPH || boss.phase == BossPhase.DASH)) {
+            val pulse = .65f + .35f * sin(elapsed * 18f)
+            paint.color = (tellColor and 0x00FFFFFF) or (((if (boss.phase == BossPhase.DASH) 120 else 70) * pulse).toInt() shl 24)
+            when (boss.activeMove) {
+                com.emberfall.game.entity.BossMove.BREATH -> {
+                    paint.style = Paint.Style.STROKE; paint.strokeWidth = 4f
+                    canvas.drawArc(x - r*1.7f, y-r*1.4f, x+r*1.7f, y+r*1.1f, -75f, 150f, false, paint); paint.style = Paint.Style.FILL
+                }
+                com.emberfall.game.entity.BossMove.SHOT, com.emberfall.game.entity.BossMove.SPINE_FAN,
+                com.emberfall.game.entity.BossMove.DIRT_ARC, com.emberfall.game.entity.BossMove.TALONS -> {
+                    canvas.drawCircle(x + boss.chargeDirX*r, y - r*.55f + boss.chargeDirY*r*.25f, r*.52f*pulse, paint)
+                }
+                else -> {
+                    paint.style = Paint.Style.STROKE; paint.strokeWidth = 2.5f
+                    canvas.drawCircle(x, y, r * (1.15f + .2f*pulse), paint); paint.style = Paint.Style.FILL
+                }
+            }
         }
 
         shadow(canvas, x, y, r * 1.15f)

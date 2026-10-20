@@ -24,6 +24,7 @@ import com.emberfall.game.item.Inventory
 import com.emberfall.game.item.ItemCategory
 import com.emberfall.game.item.ItemId
 import com.emberfall.game.item.Recipes
+import com.emberfall.game.item.ShopCatalog
 import com.emberfall.game.item.WeaponStyle
 import com.emberfall.game.render.CreatureRenderer
 import com.emberfall.game.render.ObjectRenderer
@@ -63,6 +64,10 @@ class Game(private val context: Context, private val input: InputState) {
     val player: Player
     val camera = Camera()
     val inventory = Inventory(36)
+    var gold = restored?.gold ?: 25
+        private set
+    var diamonds = restored?.diamonds ?: 0
+        private set
     val graphics: GraphicsSettings = restored?.graphics ?: GraphicsSettings()
 
     val animals = mutableListOf<Animal>()
@@ -237,6 +242,8 @@ class Game(private val context: Context, private val input: InputState) {
     private fun applySavedProgress(state: SaveState) {
         inventory.clear()
         for ((id, count) in state.inventory) inventory.add(id, count)
+        gold = state.gold
+        diamonds = state.diamonds
 
         val stats = player.stats
         stats.level = state.level
@@ -255,7 +262,14 @@ class Game(private val context: Context, private val input: InputState) {
         equippedWeapon = state.equippedWeapon?.let { name ->
             runCatching { ItemId.valueOf(name) }.getOrNull()
         }
-        equippedWeapon?.let { if (it.style == WeaponStyle.PROJECTILE) rangedWeapon = it else meleeWeapon = it }
+        meleeWeapon = state.meleeWeapon?.let { runCatching { ItemId.valueOf(it) }.getOrNull() }
+            ?.takeIf { it.category == ItemCategory.WEAPON && it.style != WeaponStyle.PROJECTILE && inventory.count(it) > 0 }
+        rangedWeapon = state.rangedWeapon?.let { runCatching { ItemId.valueOf(it) }.getOrNull() }
+            ?.takeIf { it.category == ItemCategory.WEAPON && it.style == WeaponStyle.PROJECTILE && inventory.count(it) > 0 }
+        equippedWeapon?.let {
+            if (it.style == WeaponStyle.PROJECTILE && rangedWeapon == null) rangedWeapon = it
+            else if (it.style != WeaponStyle.PROJECTILE && meleeWeapon == null) meleeWeapon = it
+        }
 
         for ((name, level) in state.weaponLevels) runCatching { ItemId.valueOf(name) }.getOrNull()?.let { weaponLevels[it] = level.coerceIn(1, 50) }
         for ((name, stars) in state.weaponStars) runCatching { ItemId.valueOf(name) }.getOrNull()?.let { weaponStars[it] = stars.coerceIn(1, 5) }
@@ -317,7 +331,7 @@ class Game(private val context: Context, private val input: InputState) {
         processCommands()
         juice.update(dt)
 
-        if (input.inventoryOpen || input.settingsOpen ||
+        if (input.inventoryOpen || input.settingsOpen || input.optionsOpen || input.shopOpen ||
             input.spellPickerOpen || input.weaponPickerOpen || input.mapOpen || input.campMenuOpen
         ) return
         if (juice.isFrozen()) return
@@ -337,9 +351,12 @@ class Game(private val context: Context, private val input: InputState) {
 
         if (input.consumeAttackRequest()) playerAttack()
         rapidFireTimer = max(0f, rapidFireTimer - dt)
-        if (input.attackDown && rangedWeapon == ItemId.GUN && rapidFireTimer <= 0f) {
+        if (input.consumeRangedRequest()) {
+            playerRangedAttack()
             rapidFireTimer = .14f
-            fireProjectile(ItemId.GUN)
+        } else if (input.rangedDown && rangedWeapon == ItemId.GUN && rapidFireTimer <= 0f) {
+            playerRangedAttack()
+            rapidFireTimer = .14f
         }
         if (input.consumeMagicRequest()) castSelectedSpell()
         val interactRequested = input.consumeInteractRequest()
@@ -461,6 +478,9 @@ class Game(private val context: Context, private val input: InputState) {
                 command == UiCommand.EXCHANGE_IRON -> exchangeResources(ItemId.IRON)
                 command == UiCommand.EXCHANGE_MAGIC -> exchangeResources(ItemId.MAGIC_STONE)
                 command == UiCommand.SELL_WEAPON -> sellWeapon()
+                command in UiCommand.BUY_ITEM_BASE until UiCommand.BUY_ITEM_BASE + ShopCatalog.offers.size -> buyItem(command - UiCommand.BUY_ITEM_BASE)
+                command in UiCommand.SELL_ITEM_BASE until UiCommand.SELL_ITEM_BASE + ShopCatalog.offers.size -> sellItem(command - UiCommand.SELL_ITEM_BASE)
+                command in UiCommand.TELEPORT_BASE until UiCommand.TELEPORT_BASE + campfires.size -> teleportToCampfire(command - UiCommand.TELEPORT_BASE)
                 command in UiCommand.EQUIP_WEAPON_BASE until UiCommand.EQUIP_WEAPON_BASE + ItemId.values().size -> {
                     val id = ItemId.values().getOrNull(command - UiCommand.EQUIP_WEAPON_BASE)
                     if (id?.category == ItemCategory.WEAPON && inventory.count(id) > 0) equipWeapon(id)
@@ -593,16 +613,76 @@ class Game(private val context: Context, private val input: InputState) {
         toast("Exchanged $amount ${input.displayName} for 1 ${result.displayName}")
     }
 
+    private fun addGold(amount: Int) {
+        gold = (gold.toLong() + amount).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+    }
+
+    private fun addDiamonds(amount: Int) {
+        diamonds = (diamonds.toLong() + amount).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+    }
+
+    private fun buyItem(index: Int) {
+        val offer = ShopCatalog.offers.getOrNull(index) ?: return
+        if (gold < offer.goldPrice || diamonds < offer.diamondPrice) {
+            toast("Need ${if (offer.diamondPrice > 0) "${offer.diamondPrice} diamonds" else "${offer.goldPrice} gold"}")
+            return
+        }
+        if (!inventory.canFit(listOf(offer.item to 1))) {
+            toast("Inventory full")
+            return
+        }
+        gold -= offer.goldPrice
+        diamonds -= offer.diamondPrice
+        inventory.add(offer.item, 1)
+        toast("Bought ${offer.item.displayName}")
+        saveNow()
+    }
+
+    private fun sellItem(index: Int) {
+        val item = ShopCatalog.offers.getOrNull(index)?.item ?: return
+        if (inventory.remove(item, 1) == 0) { toast("You do not have ${item.displayName}"); return }
+        addGold(ShopCatalog.sellGold(item))
+        if (inventory.count(item) == 0) {
+            if (equippedWeapon == item) equippedWeapon = null
+            if (meleeWeapon == item) meleeWeapon = null
+            if (rangedWeapon == item) rangedWeapon = null
+        }
+        toast("Sold ${item.displayName} for ${ShopCatalog.sellGold(item)} gold")
+        saveNow()
+    }
+
+    private fun teleportToCampfire(id: Int) {
+        val fire = campfires.firstOrNull { it.index == id } ?: return
+        if (activeBoss?.engaged == true) { toast("Cannot teleport during a boss fight"); return }
+        player.teleportTo(fire.x, fire.y)
+        respawnX = fire.x
+        respawnY = fire.y
+        input.moveX = 0f
+        input.moveY = 0f
+        input.run = false
+        input.joystickActive = false
+        camera.snapTo(fire.x, fire.y)
+        toast("Teleported to campfire ${id + 1}")
+        saveNow()
+    }
+
     fun defeatedBossIds(): Set<String> = defeatedBosses
 
     private fun playerAttack() {
         if (!player.isAlive) return
-        val weapon = activeWeapon()?.takeIf { it.style != WeaponStyle.PROJECTILE }
-        val ranged = rangedWeapon?.takeIf { inventory.count(it) > 0 }
+        val weapon = meleeWeapon?.takeIf { inventory.count(it) > 0 }
+            ?: ItemId.values().filter { it.category == ItemCategory.WEAPON && it.style != WeaponStyle.PROJECTILE && inventory.count(it) > 0 }
+                .maxByOrNull { it.damage }
+        if (weapon != null) meleeWeapon = weapon
         val style = weapon?.style ?: WeaponStyle.MELEE
+        val range = when (style) {
+            WeaponStyle.ARC -> 70f
+            WeaponStyle.RING -> 64f
+            else -> 54f
+        }
 
         // Auto-aim: snap toward the closest enemy before committing the swing.
-        val target = nearestEnemy(if (ranged != null) 14f * Config.TILE else 6f * Config.TILE)
+        val target = nearestEnemy(range + 20f)
         if (target != null) player.faceTowards(target.x - player.x, target.y - player.y)
 
         player.swing()
@@ -621,12 +701,6 @@ class Game(private val context: Context, private val input: InputState) {
 
         val weaponPower = weapon?.let(::weaponDamage) ?: 10f
         val damage = weaponPower * if (powerPotionTimer > 0f) 1.5f else 1f
-        val range = when (style) {
-            WeaponStyle.ARC -> 70f
-            WeaponStyle.RING -> 64f
-            else -> 54f
-        }
-
         for (animal in animals) {
             if (inWeaponArc(animal, style, range)) damageCreature(animal, damage)
         }
@@ -638,7 +712,19 @@ class Game(private val context: Context, private val input: InputState) {
             if (inWeaponArc(boss, style, range)) damageCreature(boss, damage)
         }
         processDeaths()
-        if (ranged != null) fireProjectile(ranged)
+    }
+
+    private fun playerRangedAttack() {
+        if (!player.isAlive) return
+        val weapon = rangedWeapon?.takeIf { inventory.count(it) > 0 }
+            ?: ItemId.values().filter { it.category == ItemCategory.WEAPON && it.style == WeaponStyle.PROJECTILE && inventory.count(it) > 0 }
+                .maxByOrNull { it.damage }
+        if (weapon == null) { toast("Equip a bow or gun first"); return }
+        rangedWeapon = weapon
+        val target = nearestEnemy(14f * Config.TILE)
+        if (target != null) player.faceTowards(target.x - player.x, target.y - player.y)
+        player.swing()
+        fireProjectile(weapon)
     }
 
     private fun nearestEnemy(maxDistance: Float): Creature? {
@@ -912,6 +998,12 @@ class Game(private val context: Context, private val input: InputState) {
     }
 
     private fun killAnimal(animal: Animal) {
+        addGold(when (animal.species) {
+            AnimalSpecies.RABBIT -> 3
+            AnimalSpecies.DEER -> 7
+            AnimalSpecies.BOAR -> 10
+            else -> 4
+        })
         when (animal.species) {
             AnimalSpecies.RABBIT -> {
                 addXp(8)
@@ -945,6 +1037,7 @@ class Game(private val context: Context, private val input: InputState) {
     }
 
     private fun killWolf(wolf: Wolf) {
+        addGold(18)
         addXp(32)
         player.stats.heal(5f)
         player.stats.restoreMana(10f)
@@ -963,6 +1056,8 @@ class Game(private val context: Context, private val input: InputState) {
         boss.defeatedAtSeconds = elapsedSeconds
         activeBoss = null
         defeatedBosses.add(boss.def.id)
+        addGold(if (boss.isDragon) 500 else 100 + defeatedBosses.size * 40)
+        addDiamonds(if (boss.isDragon) 5 else 1)
 
         val stats = player.stats
         stats.addXp(boss.def.xpReward)
@@ -1050,6 +1145,7 @@ class Game(private val context: Context, private val input: InputState) {
 
     fun hurtPlayer(amount: Float, sourceX: Float, sourceY: Float) {
         if (deathTimer > 0f || !player.isAlive) return
+        if (campfires.any { it.isSafe(player.x, player.y) }) return
         if (player.takeDamage(amount)) {
             juice.triggerShake(2.2f, 120)
             hapticHit()
@@ -1280,6 +1376,7 @@ class Game(private val context: Context, private val input: InputState) {
         if (!inventory.canFit(rewards)) { showInventoryFull(chest.x, chest.y); return }
         chest.opened = true
         openedChests.add(chest.id)
+        addGold(20 + (chest.id % 4) * 10)
         rewards.forEach { (id, count) -> giveItem(id, count) }
 
         banner("CHEST OPENED")
@@ -1342,8 +1439,8 @@ class Game(private val context: Context, private val input: InputState) {
         wolves.removeAll { wolf -> campfires.any { it.isSafe(wolf.x, wolf.y) } }
         val playerInCamp = campfires.any { it.isSafe(player.x, player.y) }
         if (playerInCamp) {
-            for (boss in bosses) if (!boss.isDragon && !boss.defeated && boss.engaged) boss.resetFight()
-            if (activeBoss?.isDragon != true) activeBoss = null
+            for (boss in bosses) if (!boss.defeated && boss.engaged) boss.resetFight()
+            activeBoss = null
         }
 
         for (boss in bosses) {
@@ -1424,7 +1521,6 @@ class Game(private val context: Context, private val input: InputState) {
     }
 
     private fun spawnAnimal() {
-        val point = randomSpawnPoint(12f, 24f) ?: return
         val roll = Random.nextFloat()
         val species = when {
             roll < 0.30f -> AnimalSpecies.RABBIT
@@ -1438,6 +1534,8 @@ class Game(private val context: Context, private val input: InputState) {
             roll < 0.95f -> AnimalSpecies.SHARK
             else -> AnimalSpecies.RAT
         }
+        val point = (if (species == AnimalSpecies.SHARK) randomWaterSpawnPoint(12f, 24f) else randomSpawnPoint(12f, 24f))
+            ?: return
         animals.add(Animal(species, point.first, point.second))
     }
 
@@ -1455,6 +1553,19 @@ class Game(private val context: Context, private val input: InputState) {
             val tileX = world.tileX(x)
             val tileY = world.tileY(y)
             if (!world.isSolid(tileX, tileY) && campfires.none { it.isSafe(x, y) }) return x to y
+        }
+        return null
+    }
+
+    /** Sharks are aquatic encounters: choose only water, never a land tile. */
+    private fun randomWaterSpawnPoint(minTiles: Float, maxTiles: Float): Pair<Float, Float>? {
+        repeat(28) {
+            val angle = Random.nextFloat() * (PI * 2).toFloat()
+            val distance = (minTiles + Random.nextFloat() * (maxTiles - minTiles)) * Config.TILE
+            val x = player.x + cos(angle) * distance; val y = player.y + sin(angle) * distance
+            val tile = world.tileAt(world.tileX(x), world.tileY(y))
+            if ((tile == com.emberfall.game.world.TileType.WATER || tile == com.emberfall.game.world.TileType.DEEP_WATER) &&
+                campfires.none { it.isSafe(x, y) }) return x to y
         }
         return null
     }
@@ -1581,7 +1692,7 @@ class Game(private val context: Context, private val input: InputState) {
         for (animal in animals) add(animal.x, animal.y) { drawAtIso(canvas, animal.x, animal.y) { creatureRenderer.drawAnimal(canvas, animal, graphics) } }
         for (wolf in wolves) add(wolf.x, wolf.y) { drawAtIso(canvas, wolf.x, wolf.y) { creatureRenderer.drawWolf(canvas, wolf, elapsedSeconds) } }
         for (boss in bosses) if (!boss.defeated || elapsedSeconds - boss.defeatedAtSeconds < 1f) add(boss.x, boss.y) { drawAtIso(canvas, boss.x, boss.y) { creatureRenderer.drawBoss(canvas, boss, graphics, elapsedSeconds) } }
-        add(player.x, player.y) { drawAtIso(canvas, player.x, player.y) { playerRenderer.draw(canvas, player, elapsedSeconds) } }
+        add(player.x, player.y) { drawAtIso(canvas, player.x, player.y) { playerRenderer.draw(canvas, player, elapsedSeconds, equippedWeapon ?: activeWeapon()) } }
         for (projectile in projectiles) add(projectile.x, projectile.y) {
             drawProjectile(canvas, projectile)
         }
@@ -1646,6 +1757,13 @@ class Game(private val context: Context, private val input: InputState) {
                 canvas.drawCircle(head.x, head.y, 3.2f, arenaPaint)
             }
             ProjectileKind.MAGIC -> {
+                arenaPaint.color = (projectile.color and 0x00FFFFFF) or 0x33000000
+                canvas.drawCircle(head.x, head.y, projectile.radius * 1.25f, arenaPaint)
+                arenaPaint.style = Paint.Style.STROKE
+                arenaPaint.strokeWidth = 1.5f
+                arenaPaint.color = 0xCCFFFFFF.toInt()
+                canvas.drawCircle(head.x, head.y, projectile.radius * .7f, arenaPaint)
+                arenaPaint.style = Paint.Style.FILL
                 arenaPaint.style = Paint.Style.FILL
                 arenaPaint.color = projectile.color
                 canvas.drawCircle(head.x, head.y, projectile.radius * .55f, arenaPaint)
@@ -1691,7 +1809,7 @@ class Game(private val context: Context, private val input: InputState) {
 
     private fun upgradeWeapon() {
         val weapon = equippedWeapon ?: activeWeapon() ?: run { toast("Equip a weapon first"); return }
-        if (equippedWeapon == null) { toast("Equip a weapon at the campfire first"); return }
+        if (equippedWeapon == null) { toast("Select a weapon first"); return }
         val level = weaponLevels[weapon] ?: 1
         if (level >= 50) { toast("Weapon is max level"); return }
         val costs = weaponUpgradeCosts(weapon)
@@ -1703,7 +1821,7 @@ class Game(private val context: Context, private val input: InputState) {
 
     private fun combineWeapon() {
         val weapon = equippedWeapon ?: activeWeapon() ?: run { toast("Equip a weapon first"); return }
-        if (equippedWeapon == null) { toast("Equip a weapon at the campfire first"); return }
+        if (equippedWeapon == null) { toast("Select a weapon first"); return }
         val stars = weaponStars[weapon] ?: 1
         if (stars >= 5) { toast("Weapon is already 5 stars"); return }
         val copies = inventory.count(weapon)
@@ -1718,23 +1836,17 @@ class Game(private val context: Context, private val input: InputState) {
     private fun sellWeapon() {
         val weapon = equippedWeapon ?: activeWeapon() ?: run { toast("Select a weapon first"); return }
         val level = weaponLevels[weapon] ?: 1
-        val refund = kotlin.math.ceil(4f * 1.5f.pow((level - 1).coerceAtLeast(0)) * .5f).toInt()
-        val rewards = mutableListOf(ItemId.WOOD to refund)
-        if (level >= 11) rewards += ItemId.STONE to (refund / 4).coerceAtLeast(1)
-        if (level >= 30) rewards += ItemId.IRON to (refund / 5).coerceAtLeast(1)
-        if (level >= 40) rewards += ItemId.MAGIC_STONE to 1
-        if (!inventory.canFitAfterRemoving(weapon, 1, rewards)) {
-            showInventoryFull(player.x, player.y)
-            return
-        }
+        val stars = weaponStars[weapon] ?: 1
+        val payout = ShopCatalog.sellGold(weapon) + (level - 1) * 10 + (stars - 1) * 35
         if (inventory.remove(weapon, 1) == 0) { toast("Weapon not found"); return }
-        rewards.forEach { (id, count) -> inventory.add(id, count) }
+        addGold(payout)
         if (inventory.count(weapon) == 0) {
             equippedWeapon = null
             if (meleeWeapon == weapon) meleeWeapon = null
             if (rangedWeapon == weapon) rangedWeapon = null
         }
-        toast("Sold ${weapon.displayName} for upgrade materials")
+        toast("Sold ${weapon.displayName} for $payout gold")
+        saveNow()
     }
 
     private fun loadSavedState() {
@@ -1769,7 +1881,17 @@ class Game(private val context: Context, private val input: InputState) {
         player.stats.mana = state.mana.coerceIn(0f, player.stats.maxMana)
         player.stats.hunger = state.hunger.coerceIn(0f, 100f)
         inventory.clear(); state.inventory.forEach { (id, count) -> inventory.add(id, count) }
+        gold = state.gold
+        diamonds = state.diamonds
         equippedWeapon = state.equippedWeapon?.let { runCatching { ItemId.valueOf(it) }.getOrNull() }
+        meleeWeapon = state.meleeWeapon?.let { runCatching { ItemId.valueOf(it) }.getOrNull() }
+            ?.takeIf { it.category == ItemCategory.WEAPON && it.style != WeaponStyle.PROJECTILE && inventory.count(it) > 0 }
+        rangedWeapon = state.rangedWeapon?.let { runCatching { ItemId.valueOf(it) }.getOrNull() }
+            ?.takeIf { it.category == ItemCategory.WEAPON && it.style == WeaponStyle.PROJECTILE && inventory.count(it) > 0 }
+        equippedWeapon?.let {
+            if (it.style == WeaponStyle.PROJECTILE && rangedWeapon == null) rangedWeapon = it
+            else if (it.style != WeaponStyle.PROJECTILE && meleeWeapon == null) meleeWeapon = it
+        }
         camera.snapTo(player.x, player.y)
     }
 
@@ -1796,11 +1918,15 @@ class Game(private val context: Context, private val input: InputState) {
                 bonusHealth = player.stats.bonusHealth,
                 bonusMana = player.stats.bonusMana,
                 inventory = items,
+                gold = gold,
+                diamonds = diamonds,
                 campfireX = respawnX,
                 campfireY = respawnY,
                 defeatedBosses = defeatedBosses.toSet(),
                 openedChests = openedChests.toSet(),
                 equippedWeapon = equippedWeapon?.name,
+                meleeWeapon = meleeWeapon?.name,
+                rangedWeapon = rangedWeapon?.name,
                 weaponLevels = weaponLevels.mapKeys { it.key.name },
                 weaponStars = weaponStars.mapKeys { it.key.name },
                 graphics = graphics,

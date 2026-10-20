@@ -9,6 +9,7 @@ import android.graphics.Typeface
 import com.emberfall.game.core.Game
 import com.emberfall.game.entity.Boss
 import com.emberfall.game.input.InputState
+import com.emberfall.game.item.ShopCatalog
 import java.util.Locale
 import kotlin.math.cos
 import kotlin.math.min
@@ -60,8 +61,10 @@ class HudRenderer(context: Context) {
         drawHurtFlash(canvas, game, width, height)
 
         if (input.campMenuOpen) { drawCampMenu(canvas, game, width, height); return }
+        if (input.optionsOpen) { drawOptions(canvas, game, width, height); return }
+        if (input.shopOpen) { drawMarket(canvas, game, input, width, height); return }
         if (input.mapOpen) {
-            worldMap.draw(canvas, game, width, height, density)
+            worldMap.draw(canvas, game, input, width, height, density)
             return
         }
 
@@ -95,12 +98,77 @@ class HudRenderer(context: Context) {
         if (game.deathTimer > 0f) drawDeath(canvas, game, width, height)
     }
 
+    private fun drawOptions(canvas: Canvas, game: Game, width: Float, height: Float) {
+        fillPaint.color = 0xD9000000.toInt(); canvas.drawRect(0f, 0f, width, height, fillPaint)
+        val panel = UiLayout.optionsPanel(width, height, density)
+        art.panel(canvas, panel, density)
+        textPaint.color = 0xFFFFD08A.toInt(); textPaint.textAlign = Paint.Align.LEFT; textPaint.textSize = dp(15f)
+        canvas.drawText("OPTIONS", panel.left + dp(18f), panel.top + dp(29f), textPaint)
+        smallPaint.color = 0xFFE8E8DE.toInt(); smallPaint.textAlign = Paint.Align.CENTER; smallPaint.textSize = dp(9f)
+        canvas.drawText("Gold ${game.gold}   |   Diamonds ${game.diamonds}", panel.centerX(), panel.top + dp(43f), smallPaint)
+        val labels = arrayOf("INVENTORY", "WEAPONS", "UPGRADE", "MARKET", "CRAFTING", "SETTINGS")
+        labels.forEachIndexed { index, label ->
+            val cell = UiLayout.optionsCell(index, width, height, density)
+            fillPaint.color = if (index == 3) 0xFF655236.toInt() else 0xFF2D4936.toInt()
+            canvas.drawRoundRect(cell, dp(6f), dp(6f), fillPaint)
+            textPaint.color = 0xFFF4E9D8.toInt(); textPaint.textAlign = Paint.Align.CENTER; textPaint.textSize = dp(10f)
+            canvas.drawText(label, cell.centerX(), cell.centerY() + dp(3f), textPaint)
+        }
+        val close = UiLayout.optionsClose(width, height, density)
+        textPaint.color = 0xFFE8A64C.toInt(); textPaint.textSize = dp(9f)
+        canvas.drawText("CLOSE", close.centerX(), close.centerY() + dp(3f), textPaint)
+    }
+
+    private fun drawMarket(canvas: Canvas, game: Game, input: InputState, width: Float, height: Float) {
+        fillPaint.color = 0xD9000000.toInt(); canvas.drawRect(0f, 0f, width, height, fillPaint)
+        val panel = UiLayout.inventoryPanel(width, height, density)
+        art.panel(canvas, panel, density)
+        textPaint.color = 0xFFFFD08A.toInt(); textPaint.textAlign = Paint.Align.LEFT; textPaint.textSize = dp(15f)
+        canvas.drawText("MARKET", panel.left + dp(17f), panel.top + dp(29f), textPaint)
+        smallPaint.color = 0xFFFFE0A0.toInt(); smallPaint.textAlign = Paint.Align.RIGHT; smallPaint.textSize = dp(9f)
+        canvas.drawText("GOLD ${game.gold}   DIAMONDS ${game.diamonds}", panel.right - dp(17f), panel.top + dp(28f), smallPaint)
+        smallPaint.textAlign = Paint.Align.LEFT; smallPaint.color = 0xFFAFC4AE.toInt(); smallPaint.textSize = dp(8f)
+        canvas.drawText(if (game.toastTimer > 0f) game.toastText else "Tap BUY or SELL; tap outside to close", panel.left + dp(18f), panel.top + dp(47f), smallPaint)
+
+        val pageSize = UiLayout.marketRowsPerPage(width, height, density)
+        val scroll = input.shopScroll
+        for (index in scroll until minOf(ShopCatalog.offers.size, scroll + pageSize)) {
+            val offer = ShopCatalog.offers[index]
+            val row = UiLayout.marketRow(index, scroll, width, height, density)
+            fillPaint.color = 0xFF263429.toInt(); canvas.drawRoundRect(row, dp(4f), dp(4f), fillPaint)
+            art.item(canvas, offer.item, row.left + dp(15f), row.centerY(), dp(23f))
+            smallPaint.textAlign = Paint.Align.LEFT; smallPaint.color = 0xFFF0E5D0.toInt(); smallPaint.textSize = dp(8.5f)
+            canvas.drawText("${offer.item.displayName}  x${game.inventory.count(offer.item)}", row.left + dp(31f), row.centerY() - dp(2f), smallPaint)
+            smallPaint.color = 0xFFFFD08A.toInt(); smallPaint.textSize = dp(7f)
+            val price = if (offer.diamondPrice > 0) "${offer.diamondPrice} diamonds" else "${offer.goldPrice} gold"
+            canvas.drawText("$price  |  SELL ${ShopCatalog.sellGold(offer.item)} gold",
+                row.left + dp(31f), row.centerY() + dp(9f), smallPaint)
+            for (buy in listOf(true, false)) {
+                val button = UiLayout.marketActionButton(row, buy, density)
+                fillPaint.color = if (buy) 0xFF386A48.toInt() else 0xFF76503B.toInt()
+                canvas.drawRoundRect(button, dp(4f), dp(4f), fillPaint)
+                smallPaint.textAlign = Paint.Align.CENTER; smallPaint.color = 0xFFFFFFFF.toInt(); smallPaint.textSize = dp(8f)
+                canvas.drawText(if (buy) "BUY" else "SELL", button.centerX(), button.centerY() + dp(3f), smallPaint)
+            }
+        }
+        val pages = (ShopCatalog.offers.size + pageSize - 1) / pageSize
+        val page = scroll / pageSize + 1
+        for (next in listOf(false, true)) {
+            val button = UiLayout.panelPageButton(next, width, height, density)
+            fillPaint.color = 0xFF405B45.toInt(); canvas.drawRoundRect(button, dp(4f), dp(4f), fillPaint)
+            textPaint.color = 0xFFFFE0A0.toInt(); textPaint.textAlign = Paint.Align.CENTER; textPaint.textSize = dp(18f)
+            canvas.drawText(if (next) ">" else "<", button.centerX(), button.centerY() + dp(6f), textPaint)
+        }
+        smallPaint.textAlign = Paint.Align.CENTER; smallPaint.color = 0xFFC1CDBD.toInt(); smallPaint.textSize = dp(9f)
+        canvas.drawText("PAGE $page / $pages", panel.centerX(), panel.bottom - dp(12f), smallPaint)
+    }
+
     private fun drawCampMenu(canvas: Canvas, game: Game, width: Float, height: Float) {
         fillPaint.color = 0xD9000000.toInt(); canvas.drawRect(0f, 0f, width, height, fillPaint)
         val panel = UiLayout.workbenchPanel(width, height, density)
         art.panel(canvas, panel, density)
         textPaint.color = 0xFFFFD08A.toInt(); textPaint.textAlign = Paint.Align.CENTER; textPaint.textSize = dp(15f)
-        canvas.drawText("CAMPFIRE WORKBENCH", width/2f, panel.top+dp(27f), textPaint)
+        canvas.drawText("WORKBENCH", width/2f, panel.top+dp(27f), textPaint)
         textPaint.textAlign=Paint.Align.RIGHT; textPaint.textSize=dp(9f); canvas.drawText("CLOSE",panel.right-dp(18f),panel.top+dp(28f),textPaint)
         textPaint.textAlign=Paint.Align.LEFT; canvas.drawText("MAGIC",panel.left+dp(23f),panel.top+dp(28f),textPaint)
         textPaint.textAlign=Paint.Align.CENTER; canvas.drawText("CRAFT",panel.centerX(),panel.top+dp(28f),textPaint)
@@ -149,7 +217,7 @@ class HudRenderer(context: Context) {
         weapons.forEachIndexed { index, weapon ->
             val row = UiLayout.weaponRow(index, width, height, density)
             val owned = game.inventory.count(weapon) > 0
-            fillPaint.color = if (weapon == game.activeWeapon()) 0xFF34583C.toInt() else 0xFF273329.toInt()
+            fillPaint.color = if (weapon == game.meleeWeapon || weapon == game.rangedWeapon) 0xFF34583C.toInt() else 0xFF273329.toInt()
             canvas.drawRoundRect(row, dp(4f), dp(4f), fillPaint)
             smallPaint.color = if (owned) 0xFFF0E5D0.toInt() else 0xFF788779.toInt()
             smallPaint.textAlign = Paint.Align.LEFT; smallPaint.textSize = dp(10f)
@@ -208,6 +276,10 @@ class HudRenderer(context: Context) {
             top + dp(44f),
             smallPaint,
         )
+        smallPaint.textAlign = Paint.Align.LEFT
+        smallPaint.color = 0xFFFFD08A.toInt()
+        smallPaint.textSize = dp(8f)
+        canvas.drawText("GOLD ${game.gold}   DIAMONDS ${game.diamonds}", left + dp(12f), top + dp(110f), smallPaint)
         smallPaint.textSize = dp(8.5f)
     }
 
@@ -329,12 +401,15 @@ class HudRenderer(context: Context) {
         ringPaint.strokeWidth = dp(2f)
         paintSword(canvas, attackX, attackY, if (pressed) 0xFF2A1A08.toInt() else 0xE6F0F0E6.toInt())
 
-        val weaponX = UiLayout.weaponSelectX(width.toInt(), density)
-        val weaponY = UiLayout.weaponSelectY(height.toInt(), density)
-        fillPaint.color = 0x770B120F; canvas.drawCircle(weaponX, weaponY, UiLayout.weaponSelectRadius(density), fillPaint)
-        ringPaint.color = 0xFFE8A64C.toInt(); canvas.drawCircle(weaponX, weaponY, UiLayout.weaponSelectRadius(density), ringPaint)
-        textPaint.color = 0xFFFFD08A.toInt(); textPaint.textAlign = Paint.Align.CENTER; textPaint.textSize = dp(7f)
-        canvas.drawText("SET", weaponX, weaponY + dp(2f), textPaint)
+        val rangedX = UiLayout.rangedX(width.toInt(), density)
+        val rangedY = UiLayout.rangedY(height.toInt(), density)
+        val rangedRadius = UiLayout.rangedRadius(density)
+        fillPaint.color = if (input.rangedDown) 0x6689BC7B else 0x4D0B120F
+        canvas.drawCircle(rangedX, rangedY, rangedRadius, fillPaint)
+        ringPaint.color = if (input.rangedDown) 0xFFBDE6AB.toInt() else 0x88FFFFFF.toInt()
+        canvas.drawCircle(rangedX, rangedY, rangedRadius, ringPaint)
+        textPaint.color = 0xFFE3EED8.toInt(); textPaint.textAlign = Paint.Align.CENTER; textPaint.textSize = dp(9f)
+        canvas.drawText("RANGED", rangedX, rangedY + dp(3f), textPaint)
 
         // Interact.
         val interactX = UiLayout.interactX(width.toInt(), density)
@@ -369,6 +444,12 @@ class HudRenderer(context: Context) {
         ringPaint.color = 0x55FFFFFF
         canvas.drawCircle(gearX, gearY, gearRadius, ringPaint)
         paintGear(canvas, gearX, gearY, gearRadius * 0.55f, 0xCCF0F0E6.toInt())
+
+        val options = UiLayout.optionsButton(density)
+        fillPaint.color = 0xFF294132.toInt()
+        canvas.drawRoundRect(options, dp(6f), dp(6f), fillPaint)
+        textPaint.color = 0xFFFFE0A0.toInt(); textPaint.textAlign = Paint.Align.CENTER; textPaint.textSize = dp(9f)
+        canvas.drawText("OPTIONS", options.centerX(), options.centerY() + dp(3f), textPaint)
 
         // Magic action casts the selected spell; tap its name above to choose another.
         val magicX = UiLayout.magicX(width.toInt(), density)
@@ -453,7 +534,7 @@ class HudRenderer(context: Context) {
         smallPaint.textAlign = Paint.Align.CENTER
         smallPaint.textSize = dp(9f)
         canvas.drawText(
-            "DRAG LEFT TO MOVE  /  ATTACK AND CAST  /  TAP INTERACT TO GATHER",
+            "DRAG LEFT TO MOVE  /  MELEE OR RANGED ATTACK  /  OPTIONS FOR MARKET",
             width / 2f,
             height * 0.155f,
             smallPaint,

@@ -28,6 +28,7 @@ class MinimapRenderer {
     private var timer = 0f
     private var lastTileX = Int.MIN_VALUE
     private var lastTileY = Int.MIN_VALUE
+    private var lastSampleTime = Float.NEGATIVE_INFINITY
 
     fun update(dt: Float, game: Game) {
         timer -= dt
@@ -39,6 +40,7 @@ class MinimapRenderer {
         lastTileX = tileX
         lastTileY = tileY
         refresh(game, tileX, tileY)
+        lastSampleTime = game.elapsedSeconds
     }
 
     private fun refresh(game: Game, centerX: Int, centerY: Int) {
@@ -54,6 +56,15 @@ class MinimapRenderer {
     }
 
     fun draw(canvas: Canvas, game: Game, width: Float, height: Float, density: Float) {
+        val tileX = game.world.tileX(game.player.x)
+        val tileY = game.world.tileY(game.player.y)
+        // The Vulkan overlay owns a separate HUD instance from the simulation.
+        if (tileX != lastTileX || tileY != lastTileY || game.elapsedSeconds - lastSampleTime >= .45f) {
+            lastTileX = tileX
+            lastTileY = tileY
+            lastSampleTime = game.elapsedSeconds
+            refresh(game, tileX, tileY)
+        }
         val size = UiLayout.minimapSize(density)
         val left = width - 14f * density - size
         val top = 14f * density
@@ -66,7 +77,7 @@ class MinimapRenderer {
         canvas.drawRect(rect, paint)
         canvas.drawBitmap(bitmap, null, rect, paint)
 
-        markerPaint.color = 0x33000000
+        markerPaint.color = 0x16000000
         canvas.drawRect(rect, markerPaint)
 
         val scale = size / VIEW_TILES.toFloat()
@@ -102,12 +113,12 @@ class MinimapRenderer {
         // Bosses.
         for (boss in game.bosses) {
             if (boss.defeated) continue
-            marker(boss.arenaX, boss.arenaY, 0xFFFF3B30.toInt(), 3.6f * density)
+            marker(boss.x, boss.y, 0xFFFF3B30.toInt(), 3.6f * density)
             markerPaint.style = Paint.Style.STROKE
             markerPaint.strokeWidth = 1.2f * density
             markerPaint.color = 0xAAFFB4A8.toInt()
-            val dx = (boss.arenaX - game.player.x) / Config.TILE * scale
-            val dy = (boss.arenaY - game.player.y) / Config.TILE * scale
+            val dx = (boss.x - game.player.x) / Config.TILE * scale
+            val dy = (boss.y - game.player.y) / Config.TILE * scale
             canvas.drawCircle(centerScreenX + dx, centerScreenY + dy, 6f * density, markerPaint)
             markerPaint.style = Paint.Style.FILL
         }

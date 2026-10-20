@@ -115,6 +115,8 @@ class Boss(val def: BossDef) : Creature(
     val magicTargetY: Float get() = magicY
     val chargeDirX: Float get() = chargeX
     val chargeDirY: Float get() = chargeY
+    /** Exposed for the renderer so every phase has a readable attack pose/effect. */
+    val activeMove: BossMove get() = currentMove
     val displayName: String get() = def.name
 
     /** True while the mole is underground: unhittable and drawn as a mound. */
@@ -164,8 +166,12 @@ class Boss(val def: BossDef) : Creature(
         velocityY = 0f
         burrowing = false
         rolling = false
-        x = arenaX
-        y = arenaY
+        if (isDragon) {
+            dragonFlying = true
+        } else {
+            x = arenaX
+            y = arenaY
+        }
         knockbackX = 0f
         knockbackY = 0f
     }
@@ -220,7 +226,8 @@ class Boss(val def: BossDef) : Creature(
         if (distance > .01f) {
             faceDirection(dx, dy)
             val onLand = !game.world.isSolid(game.world.tileX(x), game.world.tileY(y))
-            val approach = if (onLand) DRAGON_LAND_DISTANCE else 18f
+            // Keep crossing water until there is dry ground to land on.
+            val approach = if (onLand) DRAGON_LAND_DISTANCE else 0f
             val speed = (distance / 10f).coerceIn(DRAGON_FLIGHT_SPEED, 480f)
             val step = (speed * dt).coerceAtMost((distance - approach).coerceAtLeast(0f))
             x += dx / distance * step

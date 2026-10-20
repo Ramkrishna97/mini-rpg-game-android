@@ -43,6 +43,14 @@ class Player(var x: Float, var y: Float) {
     val isSwinging: Boolean get() = swingTimer > 0f
     val isAlive: Boolean get() = stats.health > 0f
 
+    fun teleportTo(newX: Float, newY: Float) {
+        x = newX
+        y = newY
+        vx = 0f
+        vy = 0f
+        walkPhase = 0f
+    }
+
     private val moveResult = Collision.MoveResult()
 
     fun swing() {

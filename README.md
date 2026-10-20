@@ -27,8 +27,8 @@ four attack styles, four high-cost spells, a full-screen region map and music.**
 | Touch | Floating joystick, attack, contextual interact, inventory and settings buttons |
 | Survival | Health, mana, hunger, regeneration, starvation damage, death and campfire respawn |
 | Items | 16 item types: wood, stone, fiber, iron, hide, magic stones, fruit, raw/cooked meat, elixir, and six weapons |
-| Inventory | 18 slots, stacking, tap-to-consume, tap-to-equip, craft tab |
-| Combat | Auto-aim to the nearest enemy; melee, wide-arc, 360° ring, arrow and piercing gun attacks |
+| Inventory | 36 slots, stacking, tap-to-consume, tap-to-equip, craft tab and page arrows |
+| Combat | Separate melee and ranged buttons, each auto-aiming at the nearest target; wide-arc, 360° ring, bow and gun attacks |
 | Gathering | Chop trees, mine rocks and pick fruit with the **E** button |
 | Crafting | 8 recipes: wooden/iron/cross swords, ring blade, bow, gun, cooked meat, elixir |
 | Magic | Fireball, Ice Freeze, Water Tsunami, Wind Tornado; high mana, high damage |
@@ -37,7 +37,8 @@ four attack styles, four high-cost spells, a full-screen region map and music.**
 | Progression | XP and levels (+8 max HP, +4 max mana), boss bonuses; **level is never lost on death** |
 | Bosses | Five named bosses in sealed arenas, telegraphed dash attacks, permanent rewards |
 | Checkpoints | Five campfires; resting heals, saves and sets the respawn point |
-| Minimap | Tap it for a full-screen region map with all five boss locations |
+| Minimap | Live terrain preview; tap it for a region map and campfire teleportation |
+| Economy | Gold from creatures and chests, diamonds from bosses; Options opens a market for item and weapon buying and selling |
 | Textures | 1024×1024 atlas, 12 material types × 4 variants at 128 px, bilinear-filtered |
 | Lighting | AGSL RuntimeShader (API 33+) with ambient darkness and three dynamic light pools; legacy fallback |
 | Animation | SpriteAnimation frame parser; 8-frame flame sheet; shimmering water variants |

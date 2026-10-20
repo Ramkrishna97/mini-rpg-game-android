@@ -1,6 +1,7 @@
 package com.emberfall.game.ui
 
 import android.graphics.RectF
+import android.graphics.PointF
 import com.emberfall.game.util.clamp
 import kotlin.math.min
 
@@ -33,6 +34,10 @@ object UiLayout {
 
     fun attackY(height: Int, density: Float): Float = height - 100f * density
 
+    fun rangedRadius(density: Float): Float = 27f * density
+    fun rangedX(width: Int, density: Float): Float = width - 246f * density
+    fun rangedY(height: Int, density: Float): Float = height - 112f * density
+
     fun interactRadius(density: Float): Float = 30f * density
 
     fun interactX(width: Int, density: Float): Float = width - 170f * density
@@ -47,9 +52,30 @@ object UiLayout {
 
     fun gearRadius(density: Float): Float = 19f * density
 
-    fun gearX(width: Int, density: Float): Float = width - 33f * density
+    fun gearX(width: Int, density: Float): Float = 286f * density
 
-    fun gearY(height: Int, density: Float): Float = (14f + 122f + 26f) * density
+    fun gearY(height: Int, density: Float): Float = 72f * density
+
+    fun optionsButton(density: Float): RectF =
+        RectF(316f * density, 53f * density, 398f * density, 91f * density)
+
+    fun optionsPanel(width: Float, height: Float, density: Float): RectF = inventoryPanel(width, height, density)
+
+    fun optionsCell(index: Int, width: Float, height: Float, density: Float): RectF {
+        val panel = optionsPanel(width, height, density)
+        val gap = 9f * density
+        val cellWidth = (panel.width() - 36f * density - gap) / 2f
+        val cellHeight = (panel.height() - 116f * density) / 3f
+        val x = panel.left + 18f * density + (index % 2) * (cellWidth + gap)
+        val y = panel.top + 54f * density + (index / 2) * (cellHeight + gap)
+        return RectF(x, y, x + cellWidth, y + cellHeight)
+    }
+
+    fun optionsClose(width: Float, height: Float, density: Float): RectF {
+        val panel = optionsPanel(width, height, density)
+        return RectF(panel.right - 80f * density, panel.top + 10f * density,
+            panel.right - 12f * density, panel.top + 40f * density)
+    }
 
     // ---- Minimap -----------------------------------------------------------
 
@@ -58,6 +84,34 @@ object UiLayout {
     fun minimapLeft(width: Int, density: Float): Float = width - 14f * density - minimapSize(density)
 
     fun minimapTop(density: Float): Float = 14f * density
+
+    fun regionMapRect(width: Float, height: Float, density: Float): RectF {
+        val top = 54f * density
+        val side = min(width - 80f * density, height - 94f * density)
+        val left = (width - side) / 2f
+        return RectF(left, top, left + side, top + side)
+    }
+
+    fun regionMapPoint(tileX: Int, tileY: Int, playerTileX: Int, playerTileY: Int,
+                       width: Float, height: Float, density: Float): PointF {
+        val map = regionMapRect(width, height, density)
+        val scale = map.width() / 256f
+        val pad = 10f * density
+        return PointF(
+            (map.centerX() + (tileX - playerTileX) * scale).coerceIn(map.left + pad, map.right - pad),
+            (map.centerY() + (tileY - playerTileY) * scale).coerceIn(map.top + pad, map.bottom - pad),
+        )
+    }
+
+    fun teleportPopup(width: Float, height: Float, density: Float): RectF =
+        RectF(width / 2f - 126f * density, height / 2f - 48f * density,
+            width / 2f + 126f * density, height / 2f + 52f * density)
+
+    fun teleportButton(width: Float, height: Float, density: Float): RectF {
+        val popup = teleportPopup(width, height, density)
+        return RectF(popup.left + 18f * density, popup.top + 48f * density,
+            popup.right - 18f * density, popup.bottom - 10f * density)
+    }
 
     // ---- Inventory panel ---------------------------------------------------
 
@@ -108,6 +162,20 @@ object UiLayout {
         val panel = inventoryPanel(width, height, density)
         val left = if (next) panel.right - 64f * density else panel.left + 16f * density
         return RectF(left, panel.bottom - 31f * density, left + 48f * density, panel.bottom - 4f * density)
+    }
+
+    fun marketRowsPerPage(width: Float, height: Float, density: Float): Int =
+        ((inventoryPanel(width, height, density).height() / density - 95f) / 34f).toInt().coerceAtLeast(1)
+
+    fun marketRow(index: Int, scroll: Int, width: Float, height: Float, density: Float): RectF {
+        val panel = inventoryPanel(width, height, density)
+        val top = panel.top + 53f * density + (index - scroll) * 34f * density
+        return RectF(panel.left + 15f * density, top, panel.right - 15f * density, top + 30f * density)
+    }
+
+    fun marketActionButton(row: RectF, buy: Boolean, density: Float): RectF {
+        val right = if (buy) row.right - 75f * density else row.right - 7f * density
+        return RectF(right - 63f * density, row.top + 3f * density, right, row.bottom - 3f * density)
     }
 
     // ---- Settings panel ----------------------------------------------------
@@ -173,10 +241,6 @@ object UiLayout {
     fun spellSelectX(width: Int, density: Float): Float = width - 248f * density
     fun spellSelectY(height: Int, density: Float): Float = height - 198f * density
     fun spellSelectRadius(density: Float): Float = 24f * density
-
-    fun weaponSelectX(width: Int, density: Float): Float = attackX(width, density)
-    fun weaponSelectY(height: Int, density: Float): Float = attackY(height, density) - 34f * density
-    fun weaponSelectRadius(density: Float): Float = 16f * density
 
     fun weaponRow(index: Int, width: Float, height: Float, density: Float): RectF {
         val panel = inventoryPanel(width, height, density)

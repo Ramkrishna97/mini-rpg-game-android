@@ -91,7 +91,8 @@ class InventoryPanelRenderer(context: Context) {
         panel: RectF,
         inventoryScroll: Int,
     ) {
-        val equipped = game.activeWeapon()
+        val equippedMelee = game.meleeWeapon
+        val equippedRanged = game.rangedWeapon
         for (index in 0 until UiLayout.INVENTORY_COLUMNS * UiLayout.INVENTORY_ROWS) {
             val cell = UiLayout.inventoryCell(index, width, height, density)
             paint.color = 0xFF232D25.toInt()
@@ -133,10 +134,10 @@ class InventoryPanelRenderer(context: Context) {
                 textPaint.textAlign = Paint.Align.LEFT; textPaint.color = 0xFFFFD08A.toInt(); textPaint.textSize = 7f*density
                 canvas.drawText("${"*".repeat(game.weaponStars[stack.id] ?: 1)}  Lv.${game.weaponLevels[stack.id] ?: 1}", cell.left+5f*density, cell.top+10f*density, textPaint)
             }
-            if (stack.id == equipped) {
+            if (stack.id == equippedMelee || stack.id == equippedRanged) {
                 paint.style = Paint.Style.STROKE
                 paint.strokeWidth = 2f * density
-                paint.color = 0xFFE8A64C.toInt()
+                paint.color = if (stack.id == equippedRanged) 0xFF9BC8E8.toInt() else 0xFFE8A64C.toInt()
                 canvas.drawRoundRect(cell, 5f * density, 5f * density, paint)
                 paint.style = Paint.Style.FILL
             }

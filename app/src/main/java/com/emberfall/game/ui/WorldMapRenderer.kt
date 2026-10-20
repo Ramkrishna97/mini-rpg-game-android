@@ -9,6 +9,7 @@ import android.graphics.RectF
 import android.graphics.Typeface
 import com.emberfall.game.core.Config
 import com.emberfall.game.core.Game
+import com.emberfall.game.input.InputState
 import com.emberfall.game.world.Bosses
 import com.emberfall.game.world.TileType
 import kotlin.math.abs
@@ -41,7 +42,7 @@ class WorldMapRenderer {
     private var lastBuildTileX = Int.MIN_VALUE
     private var lastBuildTileY = Int.MIN_VALUE
 
-    fun draw(canvas: Canvas, game: Game, width: Float, height: Float, density: Float) {
+    fun draw(canvas: Canvas, game: Game, input: InputState, width: Float, height: Float, density: Float) {
         val playerTileX = game.world.tileX(game.player.x)
         val playerTileY = game.world.tileY(game.player.y)
         if (bitmap == null || playerTileX != lastBuildTileX || playerTileY != lastBuildTileY) {
@@ -51,13 +52,8 @@ class WorldMapRenderer {
         paint.color = 0xE6000000.toInt()
         canvas.drawRect(0f, 0f, width, height, paint)
 
-        val top = 54f * density
-        val bottom = height - 40f * density
-        val maxWidth = width - 80f * density
-        val maxHeight = bottom - top
-        val side = min(maxWidth, maxHeight)
-        val left = (width - side) / 2f
-        rect.set(left, top, left + side, top + side)
+        rect.set(UiLayout.regionMapRect(width, height, density))
+        val side = rect.width()
 
         paint.color = 0xFF0E1410.toInt()
         canvas.drawRoundRect(rect, 10f * density, 10f * density, paint)
@@ -71,7 +67,9 @@ class WorldMapRenderer {
         fun mapY(tileY: Int): Float = centerY + (tileY - playerTileY) * scale
 
         for (fire in game.campfires) {
-            val fx = mapX(game.world.tileX(fire.x)); val fy = mapY(game.world.tileY(fire.y))
+            val point = UiLayout.regionMapPoint(game.world.tileX(fire.x), game.world.tileY(fire.y),
+                playerTileX, playerTileY, width, height, density)
+            val fx = point.x; val fy = point.y
             paint.color = 0x55FFA64C
             canvas.drawCircle(fx, fy, 7f * density, paint)
             mark(canvas, fx, fy, 0xFFFFA64C.toInt(), 3.2f * density)
@@ -108,6 +106,15 @@ class WorldMapRenderer {
             textPaint.textAlign = Paint.Align.LEFT
             canvas.drawText(boss.name, x + 10f * density, y + 2.5f * density, textPaint)
         }
+        for (dragon in game.bosses) {
+            if (!dragon.isDragon || dragon.defeated) continue
+            val pad = 10f * density
+            val x = mapX(game.world.tileX(dragon.x)).coerceIn(rect.left + pad, rect.right - pad)
+            val y = mapY(game.world.tileY(dragon.y)).coerceIn(rect.top + pad, rect.bottom - pad)
+            mark(canvas, x, y, 0xFFFF6A42.toInt(), 6f * density)
+            textPaint.color = 0xFFFFB49A.toInt(); textPaint.textSize = 7f * density
+            canvas.drawText("DRAGON", x + 10f * density, y + 2f * density, textPaint)
+        }
 
         // Player arrow.
         paint.color = 0xFFFFFFFF.toInt()
@@ -140,12 +147,27 @@ class WorldMapRenderer {
 
         textPaint.color = 0xFF90A090.toInt()
         textPaint.textSize = 8.5f * density
+        canvas.drawText("Tap a campfire marker to teleport", width / 2f, height - 29f * density, textPaint)
         canvas.drawText(
-            "Red = boss  ·  Orange = campfire  ·  Gold = chest  ·  Tap to close",
+            "Red boss  /  Orange campfire  /  Yellow chest  /  Tap outside to close",
             width / 2f,
             height - 16f * density,
             textPaint,
         )
+        if (input.selectedCampfireId >= 0) {
+            val popup = UiLayout.teleportPopup(width, height, density)
+            paint.color = 0xF01C281E.toInt()
+            canvas.drawRoundRect(popup, 8f * density, 8f * density, paint)
+            textPaint.color = 0xFFFFD08A.toInt()
+            textPaint.textSize = 12f * density
+            canvas.drawText("CAMPFIRE ${input.selectedCampfireId + 1}", popup.centerX(), popup.top + 30f * density, textPaint)
+            val button = UiLayout.teleportButton(width, height, density)
+            paint.color = 0xFF386A48.toInt()
+            canvas.drawRoundRect(button, 5f * density, 5f * density, paint)
+            textPaint.color = 0xFFFFFFFF.toInt()
+            textPaint.textSize = 10f * density
+            canvas.drawText("TELEPORT HERE", button.centerX(), button.centerY() + 3f * density, textPaint)
+        }
     }
 
     private fun mark(canvas: Canvas, x: Float, y: Float, color: Int, radius: Float) {

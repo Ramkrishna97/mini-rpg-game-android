@@ -70,7 +70,15 @@ class Animal(
         }
 
         applyKnockback(dt, game)
-        val moved = moveWithCollision(game, dirX * speed * dt, dirY * speed * dt)
+        // Sharks intentionally inhabit water. Land creatures use the normal
+        // collision path; sharks may move only if their next tile is water.
+        val moved = if (species == AnimalSpecies.SHARK) {
+            val nextX = x + dirX * speed * dt
+            val nextY = y + dirY * speed * dt
+            val tile = game.world.tileAt(game.world.tileX(nextX), game.world.tileY(nextY))
+            val inWater = tile == com.emberfall.game.world.TileType.WATER || tile == com.emberfall.game.world.TileType.DEEP_WATER
+            if (inWater) { x = nextX; y = nextY; faceDirection(dirX, dirY); true } else false
+        } else moveWithCollision(game, dirX * speed * dt, dirY * speed * dt)
         if (!moved && fleeTimer <= 0f) wanderTimer = 0f
     }
 

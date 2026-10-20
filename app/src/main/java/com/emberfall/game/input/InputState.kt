@@ -20,6 +20,7 @@ class InputState {
     @Volatile var joystickKnobY = 0f
 
     @Volatile var attackDown = false
+    @Volatile var rangedDown = false
 
     @Volatile var inventoryOpen = false
     @Volatile var craftingOpen = false
@@ -29,6 +30,10 @@ class InputState {
     @Volatile var settingsScroll = 0
     @Volatile var spellPickerOpen = false
     @Volatile var mapOpen = false
+    @Volatile var optionsOpen = false
+    @Volatile var shopOpen = false
+    @Volatile var shopScroll = 0
+    @Volatile var selectedCampfireId = -1
     @Volatile var campMenuOpen = false
     @Volatile var weaponPickerOpen = false
     @Volatile var musicEnabled = true
@@ -37,6 +42,7 @@ class InputState {
     val bossSoundRequested = AtomicBoolean(false)
 
     private val attackRequested = AtomicBoolean(false)
+    private val rangedRequested = AtomicBoolean(false)
     private val interactRequested = AtomicBoolean(false)
     private val magicRequested = AtomicBoolean(false)
     private val commands = ConcurrentLinkedQueue<Int>()
@@ -46,6 +52,9 @@ class InputState {
     }
 
     fun consumeAttackRequest(): Boolean = attackRequested.getAndSet(false)
+
+    fun requestRanged() { rangedRequested.set(true) }
+    fun consumeRangedRequest(): Boolean = rangedRequested.getAndSet(false)
 
     fun requestInteract() {
         interactRequested.set(true)
@@ -65,6 +74,8 @@ class InputState {
     fun pollCommand(): Int? = commands.poll()
 
     fun closePanels() {
+        attackDown = false
+        rangedDown = false
         inventoryOpen = false
         craftingOpen = false
         craftScroll = 0
@@ -73,6 +84,10 @@ class InputState {
         settingsScroll = 0
         spellPickerOpen = false
         mapOpen = false
+        optionsOpen = false
+        shopOpen = false
+        shopScroll = 0
+        selectedCampfireId = -1
         campMenuOpen = false
         weaponPickerOpen = false
     }
