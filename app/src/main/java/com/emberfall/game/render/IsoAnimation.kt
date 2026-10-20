@@ -13,12 +13,13 @@ import kotlin.math.PI
 import kotlin.math.atan2
 import kotlin.math.roundToInt
 
-/** 32x32 PNG sheets: eight direction rows and idle/walk/attack, four frames each. */
+/** 32px frames: eight directions; boss sheets add a fourth death clip. */
 class IsoAnimation(context: Context, assetName: String) {
+    private val isBoss = assetName != "player"
     private val sheet: Bitmap = requireNotNull(ContentRepository.from(context).bitmap(
         ContentAssetIds.sprite(assetName),
         "sprites/$assetName.png",
-    ) { bitmap -> bitmap.width == 384 && bitmap.height == 256 }) {
+    ) { bitmap -> bitmap.width == (if (isBoss) 512 else 384) && bitmap.height == 256 }) {
         "Missing sprite sheet '$assetName'"
     }
     private val outlineOffsets = arrayOf(-1f to 0f, 1f to 0f, 0f to -1f, 0f to 1f)
@@ -36,8 +37,11 @@ class IsoAnimation(context: Context, assetName: String) {
             AnimationState.IDLE -> 2f
             AnimationState.WALK -> 8f
             AnimationState.ATTACK -> 12f
+            AnimationState.DEATH -> 4f
         }
-        val frame = (elapsed * speed).toInt().mod(4)
+        val frame = if (state == AnimationState.DEATH)
+            (elapsed * speed).toInt().coerceIn(0, 3)
+        else (elapsed * speed).toInt().mod(4)
         val column = state.ordinal * 4 + frame
         source.set(column * 32, direction * 32, column * 32 + 32, direction * 32 + 32)
         destination.set(x - size * .5f, y - size * .9f, x + size * .5f, y + size * .1f)

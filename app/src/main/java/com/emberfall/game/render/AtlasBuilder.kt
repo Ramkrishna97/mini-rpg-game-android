@@ -84,8 +84,8 @@ object AtlasBuilder {
             val bitmap = content.bitmap(
                 ContentAssetIds.sprite(name),
                 "sprites/$name.png",
-            ) { it.width == AtlasLayout.SHEET_W && it.height == AtlasLayout.SHEET_H } ?: continue
-            if (bitmap.width != AtlasLayout.SHEET_W || bitmap.height != AtlasLayout.SHEET_H) {
+            ) { it.width == (if (name == "player") 384 else AtlasLayout.SHEET_W) && it.height == AtlasLayout.SHEET_H } ?: continue
+            if (bitmap.width != (if (name == "player") 384 else AtlasLayout.SHEET_W) || bitmap.height != AtlasLayout.SHEET_H) {
                 Log.w(TAG, "sprite sheet $name is ${bitmap.width}x${bitmap.height}, expected " +
                         "${AtlasLayout.SHEET_W}x${AtlasLayout.SHEET_H}; skipped")
                 bitmap.recycle()
@@ -143,7 +143,7 @@ object AtlasBuilder {
         val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
             strokeWidth = 3f
-            color = 0xFFDA86FF.toInt()
+            color = 0xFFFFFFFF.toInt()
         }
         canvas.drawCircle(AtlasLayout.ENT_CELL / 2f, AtlasLayout.ENT_CELL / 2f, 29f, paint)
     }

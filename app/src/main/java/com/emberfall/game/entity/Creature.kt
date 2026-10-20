@@ -51,16 +51,20 @@ abstract class Creature(
 
     protected fun moveWithCollision(game: Game, dx: Float, dy: Float): Boolean {
         if (dx == 0f && dy == 0f) return false
-        val dirLength = kotlin.math.sqrt(dx * dx + dy * dy)
-        if (dirLength > 0.001f) {
-            facingX = dx / dirLength
-            facingY = dy / dirLength
-        }
+        faceDirection(dx, dy)
         Collision.moveAndSlide(game.world, x, y, dx, dy, radius, moveResult)
         val moved = moveResult.x != x || moveResult.y != y
         x = moveResult.x
         y = moveResult.y
         return moved
+    }
+
+    protected fun faceDirection(dx: Float, dy: Float) {
+        val dirLength = kotlin.math.sqrt(dx * dx + dy * dy)
+        if (dirLength > 0.001f) {
+            facingX = dx / dirLength
+            facingY = dy / dirLength
+        }
     }
 
     fun calm() { knockbackX = 0f; knockbackY = 0f; freezeTimer = 0f }

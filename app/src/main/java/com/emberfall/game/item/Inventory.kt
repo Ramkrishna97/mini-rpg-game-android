@@ -95,6 +95,30 @@ class Inventory(val capacity: Int = 18) {
         return slots.any { it == null }
     }
 
+    /** Checks a whole harvest or chest reward before consuming its source. */
+    fun canFit(rewards: List<Pair<ItemId, Int>>): Boolean {
+        var freeSlots = slots.count { it == null }
+        for ((id, amount) in rewards.groupBy { it.first }.mapValues { entry -> entry.value.sumOf { it.second } }) {
+            val existingRoom = slots.sumOf { stack ->
+                if (stack?.id == id) id.maxStack - stack.count else 0
+            }
+            val remaining = (amount - existingRoom).coerceAtLeast(0)
+            val neededSlots = (remaining + id.maxStack - 1) / id.maxStack
+            freeSlots -= neededSlots
+            if (freeSlots < 0) return false
+        }
+        return true
+    }
+
+    fun canFitAfterRemoving(id: ItemId, amount: Int, rewards: List<Pair<ItemId, Int>>): Boolean {
+        val preview = Inventory(capacity)
+        for (index in slots.indices) {
+            val stack = slots[index] ?: continue
+            preview.slots[index] = ItemStack(stack.id, stack.count)
+        }
+        return preview.remove(id, amount) == amount && preview.canFit(rewards)
+    }
+
     fun totalItems(): Int = slots.sumOf { it?.count ?: 0 }
 
     companion object {

@@ -97,7 +97,7 @@ class HudRenderer(context: Context) {
 
     private fun drawCampMenu(canvas: Canvas, game: Game, width: Float, height: Float) {
         fillPaint.color = 0xD9000000.toInt(); canvas.drawRect(0f, 0f, width, height, fillPaint)
-        val panel = UiLayout.inventoryPanel(width, height, density)
+        val panel = UiLayout.workbenchPanel(width, height, density)
         art.panel(canvas, panel, density)
         textPaint.color = 0xFFFFD08A.toInt(); textPaint.textAlign = Paint.Align.CENTER; textPaint.textSize = dp(15f)
         canvas.drawText("CAMPFIRE WORKBENCH", width/2f, panel.top+dp(27f), textPaint)
@@ -105,27 +105,37 @@ class HudRenderer(context: Context) {
         textPaint.textAlign=Paint.Align.LEFT; canvas.drawText("MAGIC",panel.left+dp(23f),panel.top+dp(28f),textPaint)
         textPaint.textAlign=Paint.Align.CENTER; canvas.drawText("CRAFT",panel.centerX(),panel.top+dp(28f),textPaint)
         smallPaint.color = 0xFFE8E8DE.toInt(); smallPaint.textAlign = Paint.Align.CENTER; smallPaint.textSize=dp(9f)
-        canvas.drawText("Select a weapon  |  use IRON to upgrade / duplicate to combine", width/2f, panel.top+dp(45f), smallPaint)
+        canvas.drawText(if (game.toastTimer > 0f) game.toastText else "Tap a weapon to select it; combine needs a duplicate", width/2f, panel.top+dp(45f), smallPaint)
         val weapons = com.emberfall.game.item.ItemId.values().filter { it.category == com.emberfall.game.item.ItemCategory.WEAPON }
         weapons.take(6).forEachIndexed { index, weapon ->
-            val row = UiLayout.weaponRow(index, width, height, density)
+            val row = UiLayout.workbenchRow(index, width, height, density)
             val owned = game.inventory.count(weapon) > 0
-            fillPaint.color = if(game.activeWeapon()==weapon) 0x553F8A56 else 0xFF232D25.toInt(); canvas.drawRoundRect(row, dp(5f), dp(5f), fillPaint)
+            fillPaint.color = if(game.equippedWeapon==weapon) 0xFF385C40.toInt() else 0xFF232D25.toInt(); canvas.drawRoundRect(row, dp(5f), dp(5f), fillPaint)
             smallPaint.textAlign=Paint.Align.LEFT; smallPaint.color=if(owned) weapon.color else 0xFF718075.toInt(); smallPaint.textSize=dp(9f)
             val detail = if (owned) "${"*".repeat(game.weaponStars[weapon]?:1)}  Lv.${game.weaponLevels[weapon]?:1}  DMG ${game.weaponDamage(weapon).toInt()}" else "LOCKED"
             val slot = if (weapon.style == com.emberfall.game.item.WeaponStyle.PROJECTILE) "RANGED" else "MELEE"
             canvas.drawText("${weapon.displayName} [$slot]  $detail",row.left+dp(8f),row.centerY()+dp(3f),smallPaint)
         }
-        textPaint.color=0xFFFFD08A.toInt(); textPaint.textSize=dp(9f)
-        canvas.drawText("TAP LEFT: UPGRADE  ·  TAP RIGHT: COMBINE DUPLICATE",width/2f,panel.bottom-dp(26f),textPaint)
-        val upgrade = RectF(panel.left + dp(18f), panel.bottom - dp(48f), panel.centerX() - dp(5f), panel.bottom - dp(20f))
-        val combine = RectF(panel.centerX() + dp(5f), panel.bottom - dp(48f), panel.right - dp(18f), panel.bottom - dp(20f))
-        fillPaint.color = 0xFF386A48.toInt(); canvas.drawRoundRect(upgrade, dp(5f), dp(5f), fillPaint)
-        fillPaint.color = 0xFF80513A.toInt(); canvas.drawRoundRect(combine, dp(5f), dp(5f), fillPaint)
-        textPaint.color=0xFFFFFFFF.toInt(); textPaint.textSize=dp(9f); textPaint.textAlign=Paint.Align.CENTER
-        canvas.drawText("UPGRADE SELECTED",upgrade.centerX(),upgrade.centerY()+dp(3f),textPaint)
-        canvas.drawText("COMBINE / SELL",combine.centerX(),combine.centerY()+dp(3f),textPaint)
-        canvas.drawText("TAP ANYWHERE TO CLOSE",width/2f,panel.bottom-dp(10f),textPaint)
+        val selected = game.equippedWeapon?.takeIf { game.inventory.count(it) > 0 }
+        val requirement = if (selected == null) "Select a weapon to see upgrade materials" else {
+            val level = game.weaponLevels[selected] ?: 1
+            if (level >= 50) "${selected.displayName} is max level" else
+                "UPGRADE Lv.${level + 1}: " + game.weaponUpgradeCosts(selected).joinToString("  ") { (id, count) ->
+                    "${id.displayName} ${game.inventory.count(id)}/$count"
+                }
+        }
+        smallPaint.textAlign = Paint.Align.CENTER; smallPaint.color = 0xFFFFD08A.toInt(); smallPaint.textSize = dp(8f)
+        canvas.drawText(requirement, panel.centerX(), panel.bottom - dp(57f), smallPaint)
+        val labels = arrayOf("UPGRADE", "COMBINE", "SELL")
+        val colors = intArrayOf(0xFF386A48.toInt(), 0xFF80513A.toInt(), 0xFF774242.toInt())
+        labels.forEachIndexed { index, label ->
+            val button = UiLayout.workbenchActionButton(index, width, height, density)
+            fillPaint.color = colors[index]; canvas.drawRoundRect(button, dp(5f), dp(5f), fillPaint)
+            textPaint.color = 0xFFFFFFFF.toInt(); textPaint.textSize = dp(9f); textPaint.textAlign = Paint.Align.CENTER
+            canvas.drawText(label, button.centerX(), button.centerY() + dp(3f), textPaint)
+        }
+        textPaint.color = 0xFF90A090.toInt(); textPaint.textSize = dp(7f)
+        canvas.drawText("Tap outside to close", panel.centerX(), panel.bottom - dp(4f), textPaint)
     }
 
     private fun drawWeaponPicker(canvas: Canvas, game: Game, width: Float, height: Float) {
