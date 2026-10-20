@@ -10,3 +10,11 @@ captures/
 .cxx/
 *.apk
 *.aab
+tools/unity/EmberfallArtProject/[Ll]ibrary/
+tools/unity/EmberfallArtProject/[Tt]emp/
+tools/unity/EmberfallArtProject/[Oo]bj/
+tools/unity/EmberfallArtProject/[Ll]ogs/
+tools/unity/EmberfallArtProject/[Uu]serSettings/
+tools/unity/EmberfallArtProject/[Pp]rojectSettings/
+tools/unity/emberfall-art-build.log
+content-pack/generated/

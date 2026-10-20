@@ -7,6 +7,8 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
+import com.emberfall.game.content.ContentAssetIds
+import com.emberfall.game.content.ContentRepository
 import com.emberfall.game.world.TileType
 import java.util.Random
 
@@ -36,6 +38,7 @@ class TileAtlas(context: Context) {
         Array(TileType.values().size) { arrayOfNulls<Bitmap>(VARIANTS) }
     private val transitionSheets: Array<MutableMap<Int, Bitmap>> =
         Array(TileType.values().size) { HashMap() }
+    private val content = ContentRepository.from(context)
 
     init {
         val atlas = loadAtlas(context)
@@ -58,12 +61,12 @@ class TileAtlas(context: Context) {
         }
     }
 
-    private fun loadAtlas(context: Context): Bitmap? = try {
-        context.assets.open("tileset.png").use { stream ->
-            BitmapFactory.decodeStream(stream)
-        }
-    } catch (t: Throwable) {
-        null
+    private fun loadAtlas(context: Context): Bitmap? = content.bitmap(
+        ContentAssetIds.TILESET,
+        "tileset.png",
+    ) { bitmap ->
+        bitmap.width >= ATLAS_COLUMNS * ATLAS_CELL &&
+            bitmap.height >= ((TileType.values().size * VARIANTS + ATLAS_COLUMNS - 1) / ATLAS_COLUMNS) * ATLAS_CELL
     }
 
     fun bitmap(type: TileType, variant: Int): Bitmap =

@@ -5,6 +5,8 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
+val contentManifestUrl = providers.gradleProperty("contentManifestUrl").orElse("")
+
 android {
     namespace = "com.emberfall.game"
     compileSdk = 35
@@ -16,6 +18,7 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
+        manifestPlaceholders["contentManifestUrl"] = contentManifestUrl.get()
 
         ndk {
             // arm64 for devices; x86_64 so the emulator can run the build.

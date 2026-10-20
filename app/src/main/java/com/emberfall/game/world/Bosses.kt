@@ -90,7 +90,7 @@ object Bosses {
         ),
         BossDef(
             id = "hollowking",
-            name = "The Final Wolf King",
+            name = "The Wolf King",
             tileX = -122,
             tileY = -94,
             arenaRadiusTiles = 12f,

@@ -9,7 +9,10 @@ import android.view.WindowInsets
 import android.view.WindowInsetsController
 import android.view.WindowManager
 import android.widget.FrameLayout
+import android.widget.Toast
 import com.emberfall.game.audio.MusicPlayer
+import com.emberfall.game.content.ContentUpdateResult
+import com.emberfall.game.content.ContentUpdater
 import com.emberfall.game.core.RendererConfig
 
 /**
@@ -56,6 +59,17 @@ class MainActivity : Activity() {
             if (enabled) music.start() else music.pause()
             music.setFinalBossMode(gameView.game.activeBoss?.def?.id == "hollowking")
         } }
+
+        // This is intentionally non-blocking. A completed pack is activated only
+        // after every file is verified, then GameView rebuilds its visual caches.
+        ContentUpdater.from(this).checkForUpdatesAsync { result ->
+            if (result is ContentUpdateResult.Applied) {
+                gameView.reloadContent()
+                runOnUiThread {
+                    Toast.makeText(this, "Content pack ${result.version} installed", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
 
         // Must run after setContentView: the window's insets controller does not
         // exist until the decor view has been created.

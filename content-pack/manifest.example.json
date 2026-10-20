@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "contentVersion": "art-pack-2026-01",
+  "minimumAppVersion": 1,
+  "assets": [
+    {
+      "id": "tileset",
+      "path": "art/tileset.png",
+      "sha256": "replace-with-the-lowercase-64-character-sha256-of-the-file",
+      "bytes": 1048576
+    },
+    {
+      "id": "sprite.player",
+      "path": "art/player.png",
+      "sha256": "replace-with-the-lowercase-64-character-sha256-of-the-file",
+      "bytes": 98304
+    }
+  ]
+}

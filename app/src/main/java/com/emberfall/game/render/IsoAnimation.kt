@@ -7,13 +7,20 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Rect
 import android.graphics.RectF
+import com.emberfall.game.content.ContentAssetIds
+import com.emberfall.game.content.ContentRepository
 import kotlin.math.PI
 import kotlin.math.atan2
 import kotlin.math.roundToInt
 
 /** 32x32 PNG sheets: eight direction rows and idle/walk/attack, four frames each. */
 class IsoAnimation(context: Context, assetName: String) {
-    private val sheet: Bitmap = context.assets.open("sprites/$assetName.png").use { BitmapFactory.decodeStream(it) }
+    private val sheet: Bitmap = requireNotNull(ContentRepository.from(context).bitmap(
+        ContentAssetIds.sprite(assetName),
+        "sprites/$assetName.png",
+    ) { bitmap -> bitmap.width == 384 && bitmap.height == 256 }) {
+        "Missing sprite sheet '$assetName'"
+    }
     private val outlineOffsets = arrayOf(-1f to 0f, 1f to 0f, 0f to -1f, 0f to 1f)
     private val source = Rect()
     private val destination = RectF()

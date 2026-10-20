@@ -2,11 +2,12 @@ package com.emberfall.game.render
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.RectF
 import android.util.Log
+import com.emberfall.game.content.ContentAssetIds
+import com.emberfall.game.content.ContentRepository
 import com.emberfall.game.core.GraphicsSettings
 import com.emberfall.game.entity.Animal
 import com.emberfall.game.entity.Boss as BossEntity
@@ -78,8 +79,12 @@ object AtlasBuilder {
 
     private fun buildSheets(context: Context, pixels: IntArray, layout: AtlasLayout) {
         val width = AtlasLayout.ATLAS_W
+        val content = ContentRepository.from(context)
         for (name in AtlasLayout.SHEET_NAMES) {
-            val bitmap = context.assets.open("sprites/$name.png").use { BitmapFactory.decodeStream(it) }
+            val bitmap = content.bitmap(
+                ContentAssetIds.sprite(name),
+                "sprites/$name.png",
+            ) { it.width == AtlasLayout.SHEET_W && it.height == AtlasLayout.SHEET_H } ?: continue
             if (bitmap.width != AtlasLayout.SHEET_W || bitmap.height != AtlasLayout.SHEET_H) {
                 Log.w(TAG, "sprite sheet $name is ${bitmap.width}x${bitmap.height}, expected " +
                         "${AtlasLayout.SHEET_W}x${AtlasLayout.SHEET_H}; skipped")

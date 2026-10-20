@@ -20,6 +20,7 @@ import com.emberfall.game.render.ObjectRenderer
 import com.emberfall.game.render.SpriteBatch
 import com.emberfall.game.render.WorldBatchBuilder
 import com.emberfall.game.ui.HudRenderer
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * SurfaceView host. The UI thread owns touch handling and lifecycle; a
@@ -34,8 +35,12 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
     private val touch = TouchController(input, resources.displayMetrics.density)
     private var loop: GameThread? = null
     private var audioSync: ((Boolean, Boolean) -> Unit)? = null
+    private val contentReloadRequested = AtomicBoolean(false)
 
     fun setAudioSync(callback: (Boolean, Boolean) -> Unit) { audioSync = callback }
+
+    /** Applies an already verified content pack on the render thread. */
+    fun reloadContent() { contentReloadRequested.set(true) }
 
     /** Set by MainActivity. Receives the HUD and floating text when the Vulkan renderer is active. */
     var hudOverlay: HudOverlayView? = null
@@ -144,7 +149,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
             val atlasLayout = AtlasLayout()
             val worldBuilder = WorldBatchBuilder(atlasLayout)
             val entityBuilder = EntityBatchBuilder(atlasLayout)
-            val vulkanReady = native != null &&
+            var vulkanReady = native != null &&
                     native.uploadAtlas(AtlasBuilder.build(view.context, atlasLayout), AtlasLayout.ATLAS_W, atlasLayout.height)
 
             val batch = SpriteBatch()
@@ -172,6 +177,14 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
             }.getOrNull()
 
             while (running) {
+                if (view.contentReloadRequested.getAndSet(false)) {
+                    view.game.reloadVisuals()
+                    vulkanReady = native != null && native.uploadAtlas(
+                        AtlasBuilder.build(view.context, atlasLayout),
+                        AtlasLayout.ATLAS_W,
+                        atlasLayout.height,
+                    )
+                }
                 if (view.input.bossSoundRequested.getAndSet(false) && view.input.soundEnabled) {
                     bossTone?.startTone(android.media.ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD, 800)
                 }

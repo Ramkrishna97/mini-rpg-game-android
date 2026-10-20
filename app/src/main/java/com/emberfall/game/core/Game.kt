@@ -137,9 +137,9 @@ class Game(private val context: Context, private val input: InputState) {
     var deathTimer = 0f
         private set
 
-    private val worldRenderer = WorldRenderer(context)
-    private val playerRenderer = PlayerRenderer(context)
-    private val creatureRenderer = CreatureRenderer(context)
+    private var worldRenderer = WorldRenderer(context)
+    private var playerRenderer = PlayerRenderer(context)
+    private var creatureRenderer = CreatureRenderer(context)
     private val objectRenderer = ObjectRenderer()
     private val hud = HudRenderer(context)
     private val arenaPaint = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -160,6 +160,13 @@ class Game(private val context: Context, private val input: InputState) {
     private var powerPotionTimer = 0f
     private var regenPotionTimer = 0f
     private var rapidFireTimer = 0f
+
+    /** Recreates render-only objects after an atomically activated art pack. */
+    fun reloadVisuals() {
+        worldRenderer = WorldRenderer(context)
+        playerRenderer = PlayerRenderer(context)
+        creatureRenderer = CreatureRenderer(context)
+    }
 
     init {
         input.pushAudioState(graphics.music, graphics.sound)
