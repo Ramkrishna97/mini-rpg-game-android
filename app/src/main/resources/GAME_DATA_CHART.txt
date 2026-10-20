@@ -1,0 +1,135 @@
+================================================================================
+EMBERFALL - STANDARDIZED GAME BALANCE DATA CHART
+================================================================================
+
+1. RESOURCE NODES & PRACTICAL DROPS (HARVESTING)
+--------------------------------------------------------------------------------
+* Tree Node      : 1 Wood (100%), 1 Fiber (35% chance) [Respawn: 120s]
+* Rock / Boulder : 1 Stone (100%), 1 Iron Ore (20% chance) [Respawn: 180s]
+* Iron Deposit   : 1 Iron Ore (100%), 1 Stone (50% chance) [Respawn: 240s]
+* Berry Bush     : 1 Wild Fruit (100%), 1 Fiber (40% chance) [Respawn: 90s]
+* Magic Crystal  : 1 Magic Stone (100%), 1 Fiber (15% chance) [Respawn: 300s]
+
+
+2. WEAPONS MATRIX & UPGRADE SCALING
+--------------------------------------------------------------------------------
+Player Unarmed Strike Base Damage: 10
+Total Attack Damage = Player Base (10) + Weapon Base Damage + Upgrade Rank Bonus
+
+Weapon Name     Style      Base Dmg  Total Dmg  +1 Dmg  +2 Dmg  +3 Dmg  +4 Max  Upgrade Cost / Rank
+---------------------------------------------------------------------------------------------------
+Wooden Sword    Melee         8         18        21      24      27      30    1 Magic Stone + 2 Wood
+Iron Sword      Melee        14         24        28      32      36      40    1 Magic Stone + 2 Iron
+Hunting Bow     Ranged       16         26        30      34      38      42    1 Magic Stone + 2 Fiber
+Ring Blade      360° Ring    18         28        33      38      43      48    2 Magic Stone + 2 Iron
+Cross Sword     Arc Swing    22         32        37      42      47      52    2 Magic Stone + 3 Iron
+Flintlock Gun   Piercing     26         36        42      48      54      60    3 Magic Stone + 4 Iron
+
+Elemental Spells:
+* Fireball      : 35 Mana | 78 Dmg | Exploding Orb | Cooldown: 2.5s
+* Ice Freeze    : 30 Mana | 52 Dmg | Area Freeze (2.5s stun) | Cooldown: 4.0s
+* Water Tsunami : 45 Mana | 68 Dmg | Directional Wave | Cooldown: 5.0s
+* Wind Tornado  : 42 Mana | 60 Dmg | Vortex around Caster | Cooldown: 3.5s
+
+
+3. PLAYER CHARACTER PROGRESSION
+--------------------------------------------------------------------------------
+Leveling Formula: XP Needed for Level N = 55 + (N - 1) * 45
+Stat Gains per Level: +8 Max HP, +4 Max Mana, +25 Instant Heal, +12 Mana Restore
+
+Level  Cumulative XP Req.  Max HP  Max Mana  Max Hunger
+-------------------------------------------------------
+  1             0           100       50        100
+  2            55           108       54        100
+  3           155           116       58        100
+  4           300           124       62        100
+  5           490           132       66        100
+  6           725           140       70        100
+  7          1005           148       74        100
+  8          1330           156       78        100
+  9          1700           164       82        100
+ 10          2115           172       86        100
+
+
+4. BESTIARY & ENTITY STATS
+--------------------------------------------------------------------------------
+Passive Wildlife:
+Species     HP   Speed  Radius  XP Yield  Guaranteed Drop  Chance Drop
+--------------------------------------------------------------------------------
+Rat         12    84     5.0       5      1 Raw Meat       -
+Chicken     14    62     5.0       6      1 Raw Meat       1 Fiber (20%)
+Rabbit      14    58     6.0       8      1 Raw Meat       1 Hide (30%)
+Bird        18    78     6.0       8      1 Raw Meat       1 Fiber (40%)
+Fox         28    68     8.0      15      1 Hide           1 Raw Meat (50%)
+Sheep       32    40     9.0      18      1 Raw Meat       1 Fiber (60%)
+Deer        34    46     9.0      20      1 Raw Meat       1 Hide (60%)
+Dog         42    58     9.0      22      1 Raw Meat       1 Hide (75%)
+Shark       50    52    10.0      35      2 Raw Meat       1 Hide (80%)
+Boar        55    40    10.0      30      2 Raw Meat       1 Hide (100%)
+
+Aggressive Mobs (Wolf Level Scaling):
+Level   Max HP   Lunge Damage   Speed   XP Yield   Drops
+--------------------------------------------------------------------------------
+Lv 1     46.0         9.0        92.0      25      1 Raw Meat, 2 Hide, Magic Stone (35%)
+Lv 2     57.5        10.4        95.7      35      1 Raw Meat, 2 Hide, Mana Potion (18%)
+Lv 3     69.0        11.9        99.4      50      2 Raw Meat, 2 Hide, Power Potion (12%)
+Lv 4     80.5        13.3       103.0      70      2 Raw Meat, 3 Hide, Regen Potion (8%)
+Lv 5     92.0        14.8       106.7      95      2 Raw Meat, 3 Hide, Elixir (15%)
+
+World Bosses:
+Boss Name & Title              Arena Coords  Max HP  Damage  Speed  XP Reward  Stat Rewards       Primary Loot Drops
+------------------------------------------------------------------------------------------------------------------------------------------
+Gloomfang (Armadillo Alpha)       (0, -40)     170    12.0    78       120     +10 HP / +4 Mana   1 Elixir, 3 Raw Meat, 1 Magic Stone
+Stonewarden (Vulchar)            (68, 30)      280    16.0    62       190     +14 HP / +5 Mana   4 Iron Ore, 8 Stone, 1 Elixir
+Mirewitch (Giant Mole)          (-82, 52)      340    18.0    88       240     +16 HP / +8 Mana   2 Elixir, 2 Magic Stone
+Ashtitan (Ember Tiger)           (40, 108)     470    22.0    60       330     +20 HP / +6 Mana   1 Iron Sword, 6 Iron Ore, 2 Elixir
+Hollow King (Wolf King)         (-122, -94)    620    26.0    70       460     +25 HP / +10 Mana  1 Iron Sword, 3 Elixir, 3 Magic Stone
+Reincarnation Dragon              (0, 0)       413.3  42.0    82      1000     +50 HP / +30 Mana  10 Magic Stone, 1 Diamond
+
+
+5. INVENTORY & ITEM ECONOMY
+--------------------------------------------------------------------------------
+Inventory Capacity Progression:
+* Leather Pouch (Default)      : 18 Slots
+* Adventurer Backpack (Tier 1) : 24 Slots (10 Hide + 10 Fiber + 100 Gold)
+* Explorer Pack (Tier 2)       : 30 Slots (15 Hide + 5 Iron + 250 Gold)
+* Vault Pack (Tier 3)          : 36 Slots (20 Hide + 2 Magic Stone + 500 Gold)
+
+Item Valuation & Setup Values (Buy vs Sell Ratio: 2:1):
+Item Name       Category    Rarity    Max Stack  Buy (Gold)  Sell (Gold)  Diamonds  Effect
+-----------------------------------------------------------------------------------------------------
+Wood            Material    Common       50           5           2          -      Crafting material
+Stone           Material    Common       50           8           4          -      Crafting material
+Fiber           Material    Common       50           6           3          -      Crafting material
+Iron Ore        Material    Uncommon     50          24          12          -      Rare crafting
+Hide            Material    Common       30          14           7          -      Crafting material
+Magic Stone     Material    Rare         20          90          45          1      High-tier crafting
+Wild Fruit      Consumable  Common       20           8           4          -      +12 HP, +18 Hunger
+Raw Meat        Consumable  Common       20          12           6          -      +6 HP, +20 Hunger
+Cooked Meat     Consumable  Common       20          22          11          -      +20 HP, +40 Hunger
+Elixir          Consumable  Uncommon     10          40          20          -      +30 HP, +50 Mana
+Mana Potion     Consumable  Common       10          35          17          -      +45 Mana
+Power Potion    Consumable  Rare         10          65          32          -      +25% Attack power
+Regen Potion    Consumable  Rare         10          55          27          -      +5 HP/sec (15 sec)
+Wooden Sword    Weapon      Common        1          80          40          -      Base 8 Dmg (Total 18)
+Iron Sword      Weapon      Uncommon      1         220         110          -      Base 14 Dmg (Total 24)
+Hunting Bow     Weapon      Uncommon      1         260         130          -      Base 16 Dmg (Total 26)
+Ring Blade      Weapon      Rare          1         340         170          -      Base 18 Dmg (Total 28)
+Cross Sword     Weapon      Rare          1         360         180          -      Base 22 Dmg (Total 32)
+Flintlock Gun   Weapon      Epic          1         560         280          4      Base 26 Dmg (Total 36)
+
+
+6. CRAFTING RECIPES
+--------------------------------------------------------------------------------
+* Wooden Sword  : 4 Wood + 2 Fiber
+* Iron Sword    : 6 Iron Ore + 3 Wood
+* Hunting Bow   : 6 Wood + 4 Fiber
+* Cross Sword   : 8 Iron Ore + 4 Wood + 2 Stone
+* Ring Blade    : 10 Iron Ore + 6 Stone + 2 Magic Stone
+* Flintlock Gun : 12 Iron Ore + 8 Stone + 3 Magic Stone
+* Cooked Meat   : 1 Raw Meat + 1 Wood
+* Elixir        : 1 Magic Stone + 2 Wild Fruit
+* Mana Potion   : 1 Magic Stone + 2 Fiber
+* Power Potion  : 1 Magic Stone + 1 Raw Meat
+* Regen Potion  : 2 Wild Fruit + 2 Fiber
+================================================================================

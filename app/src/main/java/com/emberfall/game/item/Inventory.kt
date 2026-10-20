@@ -9,7 +9,7 @@ data class ItemStack(val id: ItemId, var count: Int)
  * Fixed-slot inventory with stacking. Pure Kotlin so it can be unit tested
  * without an emulator.
  */
-class Inventory(val capacity: Int = 18) {
+class Inventory(val capacity: Int = DEFAULT_CAPACITY) {
 
     private val slots = arrayOfNulls<ItemStack>(capacity)
 
@@ -124,4 +124,22 @@ class Inventory(val capacity: Int = 18) {
     companion object {
         const val DEFAULT_CAPACITY = 18
     }
+}
+
+/**
+ * Backpack tiers from the balance chart. Each upgrade costs gold and materials
+ * and grows capacity. Upgrading creates a new [Inventory] and copies stacks over.
+ */
+enum class PackTier(
+    val capacity: Int,
+    val goldCost: Int,
+    val materialCost: List<Pair<ItemId, Int>>,
+) {
+    LEATHER_POUCH(18, 0, emptyList()),
+    ADVENTURER_BACKPACK(24, 100, listOf(ItemId.HIDE to 10, ItemId.FIBER to 10)),
+    EXPLORER_PACK(30, 250, listOf(ItemId.HIDE to 15, ItemId.IRON to 5)),
+    VAULT_PACK(36, 500, listOf(ItemId.HIDE to 20, ItemId.MAGIC_STONE to 2));
+
+    /** The tier you upgrade to next, or null if already at the top. */
+    fun next(): PackTier? = values().getOrNull(ordinal + 1)
 }
