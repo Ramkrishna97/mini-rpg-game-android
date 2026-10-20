@@ -20,7 +20,7 @@ object UiCommand {
     const val LOAD_SAVE = 731
     const val UPGRADE_WEAPON = 732
     const val COMBINE_WEAPON = 733
-    const val EQUIP_WEAPON_BASE = 740
+    const val EQUIP_WEAPON_BASE = 800
     const val UPGRADE_MAGIC = 750
     const val EXCHANGE_STONE = 751
     const val EXCHANGE_IRON = 752

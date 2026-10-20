@@ -11,6 +11,7 @@ import com.emberfall.game.entity.Animal
 import com.emberfall.game.entity.AnimalSpecies
 import com.emberfall.game.entity.Boss
 import com.emberfall.game.entity.BossPhase
+import com.emberfall.game.entity.BossSignatures
 import com.emberfall.game.entity.Wolf
 import kotlin.math.sin
 
@@ -27,6 +28,7 @@ class CreatureRenderer(context: Context) {
         "mirewitch" to IsoAnimation(context, "mirewitch"),
         "ashtitan" to IsoAnimation(context, "ashtitan"),
         "hollowking" to IsoAnimation(context, "hollowking"),
+        "dragon" to IsoAnimation(context, "dragon"),
     )
 
     private val rim = android.graphics.PorterDuffColorFilter(0xFFFFE6A0.toInt(), android.graphics.PorterDuff.Mode.SRC_IN)
@@ -178,16 +180,18 @@ class CreatureRenderer(context: Context) {
         val x = boss.x
         val y = boss.y
         val r = boss.radius
+        val tellColor = BossSignatures.byId(boss.def.id)?.telegraphColor
+            ?: ((boss.def.color and 0x00FFFFFF) or 0x66000000)
 
         // Telegraph: a red corridor in the locked lunge direction.
         if (boss.engaged && boss.phase == BossPhase.TELEGRAPH && boss.attackType == 4) {
             val offset = IsoMath.worldToIso(boss.magicTargetX - x, boss.magicTargetY - y)
-            paint.style = Paint.Style.STROKE; paint.strokeWidth = 3f; paint.color = 0xFFDA86FF.toInt()
+            paint.style = Paint.Style.STROKE; paint.strokeWidth = 3f; paint.color = tellColor
             canvas.drawOval(x+offset.x-65f, y+offset.y-32f, x+offset.x+65f, y+offset.y+32f, paint)
             paint.style = Paint.Style.FILL
         }
         if (boss.engaged && boss.phase == BossPhase.TELEGRAPH && boss.attackType != 4) {
-            paint.color = 0x55FF3B30
+            paint.color = tellColor
             paint.strokeWidth = r * 1.4f
             paint.strokeCap = Paint.Cap.ROUND
             canvas.drawLine(
@@ -200,7 +204,7 @@ class CreatureRenderer(context: Context) {
         }
 
         shadow(canvas, x, y, r * 1.15f)
-        val state = when (boss.phase) {
+        val state = if (boss.defeated) AnimationState.DEATH else if (boss.dragonFlying) AnimationState.WALK else when (boss.phase) {
             BossPhase.CHASE -> if (boss.engaged) AnimationState.WALK else AnimationState.IDLE
             BossPhase.TELEGRAPH, BossPhase.DASH -> AnimationState.ATTACK
             BossPhase.RECOVER -> AnimationState.IDLE
@@ -208,8 +212,10 @@ class CreatureRenderer(context: Context) {
         val lift = boss.airborne
         val sprite = bossSprites[boss.def.id]
         when {
-            boss.isBurrowed -> drawMoleMound(canvas, x, y, r, elapsed)
-            sprite != null -> sprite.draw(canvas, x, y - lift, boss.facingX, boss.facingY, state, elapsed, 52f)
+            boss.isBurrowed && !boss.defeated -> drawMoleMound(canvas, x, y, r, elapsed)
+            sprite != null -> sprite.draw(canvas, x, y - lift, boss.facingX, boss.facingY, state,
+                if (boss.defeated) elapsed - boss.defeatedAtSeconds else elapsed,
+                if (boss.isDragon) 76f else 52f)
             else -> drawDragon(canvas, x, y - lift, boss.facingX, boss.facingY, r * 1.6f, boss.def.color, elapsed)
         }
         flash(canvas, x, y - 15f, r, boss.hitFlash)

@@ -1,8 +1,8 @@
-"""Generate original 32px directional player and boss sprite sheets.
+"""Generate the original 32px directional player sprite sheet.
 
 Eight rows are screen directions; columns are four idle, four walk and four
-attack frames. Uses only Python's standard library so the assets are easy to
-rebuild without a graphics toolchain.
+attack frames. Boss sprites are exported from Unity so rerunning this older
+generator never overwrites the newer 16-column boss sheets.
 """
 from __future__ import annotations
 
@@ -160,7 +160,7 @@ def save_png(name, pixels):
         file.write(data)
 
 
-for name in ("player", *BOSSES):
+for name in ("player",):
     canvas = Canvas()
     for direction in range(8):
         for state in range(3):

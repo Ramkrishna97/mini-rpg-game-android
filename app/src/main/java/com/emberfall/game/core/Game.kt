@@ -13,6 +13,7 @@ import com.emberfall.game.entity.LootChest
 import com.emberfall.game.entity.Particle
 import com.emberfall.game.entity.Pickup
 import com.emberfall.game.entity.Projectile
+import com.emberfall.game.entity.ProjectileKind
 import com.emberfall.game.entity.Player
 import com.emberfall.game.entity.BossSignatures
 import com.emberfall.game.entity.Wolf
@@ -106,6 +107,7 @@ class Game(private val context: Context, private val input: InputState) {
     var victoryTimer = 0f
         private set
     private var stageAdvancePending = false
+    private var dragonSpawnTimer = -1f
 
     var screenWidth = 0
         private set
@@ -188,8 +190,9 @@ class Game(private val context: Context, private val input: InputState) {
             applySavedProgress(restored)
         }
         val dragonSaved = defeatedBosses.size == Bosses.ALL.size
+        if (dragonSaved) dragonSpawnTimer = 15f
 
-        val fireSpot = openSpotNear(world.spawn.x + 12, world.spawn.y + 12)
+        val fireSpot = dryCampSpotNear(world.spawn.x + 12, world.spawn.y + 12)
         campfires.add(Campfire(0, fireSpot.first, fireSpot.second))
         if (restored == null) {
             respawnX = fireSpot.first
@@ -197,8 +200,14 @@ class Game(private val context: Context, private val input: InputState) {
         }
         for (index in 1 until WorldPoints.campfires.size) {
             val point = WorldPoints.campfires[index]
-            val spot = openSpotNear(point.tileX, point.tileY)
+            val spot = dryCampSpotNear(point.tileX, point.tileY)
             campfires.add(Campfire(index, spot.first, spot.second))
+        }
+
+        if (restored != null) {
+            val checkpoint = campfires.minByOrNull { hypot(it.x - respawnX, it.y - respawnY) }!!
+            respawnX = checkpoint.x
+            respawnY = checkpoint.y
         }
 
         if (Bosses.ALL.any { hypot(respawnX-it.tileX*Config.TILE, respawnY-it.tileY*Config.TILE) < (it.arenaRadiusTiles+5f)*Config.TILE }) {
@@ -221,8 +230,6 @@ class Game(private val context: Context, private val input: InputState) {
             if (defeatedBosses.contains(def.id)) boss.markDefeated()
             bosses.add(boss)
         }
-        if (dragonSaved) bosses.add(Boss(Bosses.DRAGON))
-
         camera.snapTo(player.x, player.y)
         biomeLabel = world.biomeAt(world.tileX(player.x), world.tileY(player.y)).label
     }
@@ -272,6 +279,23 @@ class Game(private val context: Context, private val input: InputState) {
             }
         }
         return (tileX + 0.5f) * Config.TILE to (tileY + 0.5f) * Config.TILE
+    }
+
+    private fun dryCampSpotNear(tileX: Int, tileY: Int): Pair<Float, Float> {
+        for (radius in 0..32) {
+            for (dy in -radius..radius) for (dx in -radius..radius) {
+                if (max(abs(dx), abs(dy)) != radius) continue
+                val tx = tileX + dx
+                val ty = tileY + dy
+                if (world.isSolid(tx, ty)) continue
+                val touchesWater = (-1..1).any { oy -> (-1..1).any { ox ->
+                    val tile = world.tileAt(tx + ox, ty + oy)
+                    tile == TileType.WATER || tile == TileType.DEEP_WATER
+                } }
+                if (!touchesWater) return (tx + .5f) * Config.TILE to (ty + .5f) * Config.TILE
+            }
+        }
+        return (world.spawn.x + .5f) * Config.TILE to (world.spawn.y + .5f) * Config.TILE
     }
 
     fun setViewport(width: Int, height: Int) {
@@ -351,9 +375,10 @@ class Game(private val context: Context, private val input: InputState) {
 
         camera.update(player.x, player.y, player.facingX, player.facingY, dt)
 
+        updateDragonSpawn(dt)
         updateCreatures(dt)
         updateProjectiles(dt)
-        if (stageAdvancePending) advanceStage()
+        if (stageAdvancePending && bosses.none { it.isDragon && elapsedSeconds - it.defeatedAtSeconds < 1f }) advanceStage()
         updateEffects(dt)
         objectRenderer.update(dt)
         updateSpawns(dt)
@@ -468,11 +493,25 @@ class Game(private val context: Context, private val input: InputState) {
             }
             ItemCategory.MATERIAL -> toast("${id.displayName}: crafting material")
             ItemCategory.CONSUMABLE, ItemCategory.VALUABLE -> {
-                if (id.heal > 0f && id.mana <= 0f && id != ItemId.REGEN_POTION && player.stats.health >= player.stats.maxHealth) {
-                    toast("Health is already full"); return
+                val stats = player.stats
+                val helpsHealth = id.heal > 0f && stats.health < stats.maxHealth
+                val helpsMana = id.mana > 0f && stats.mana < stats.maxMana
+                val helpsHunger = id.food > 0f && stats.hunger < 100f
+                when (id) {
+                    ItemId.POWER_POTION -> {
+                        if (powerPotionTimer > 0f) { toast("Power is already active"); return }
+                        powerPotionTimer = 30f
+                    }
+                    ItemId.REGEN_POTION -> {
+                        if (stats.health >= stats.maxHealth || regenPotionTimer > 0f) {
+                            toast("Health is full or regeneration is active"); return
+                        }
+                        regenPotionTimer = 15f
+                    }
+                    else -> if (!helpsHealth && !helpsMana && !helpsHunger) {
+                        toast("Health, mana and hunger are already full"); return
+                    }
                 }
-                if (id == ItemId.POWER_POTION) powerPotionTimer = 30f
-                if (id == ItemId.REGEN_POTION) regenPotionTimer = 15f
                 if (id.heal > 0f) player.stats.heal(id.heal)
                 if (id.mana > 0f) player.stats.restoreMana(id.mana)
                 if (id.food > 0f) player.stats.feed(id.food)
@@ -524,6 +563,17 @@ class Game(private val context: Context, private val input: InputState) {
     }
 
     fun weaponDamage(weapon: ItemId): Float = (10f + weapon.damage) * 1.5f.pow((weaponStars[weapon] ?: 1) - 1) * (1f + ((weaponLevels[weapon] ?: 1) - 1) * .025f)
+
+    fun weaponUpgradeCosts(weapon: ItemId): List<Pair<ItemId, Int>> {
+        val level = weaponLevels[weapon] ?: 1
+        val target = level + 1
+        val base = kotlin.math.ceil(4f * 1.5f.pow(level - 1)).toInt().coerceAtLeast(4)
+        val costs = mutableListOf(ItemId.WOOD to base)
+        if (target >= 11) costs += ItemId.STONE to kotlin.math.ceil(base * .25f).toInt().coerceAtLeast(1)
+        if (target >= 30) costs += ItemId.IRON to kotlin.math.ceil(base * .2f).toInt().coerceAtLeast(1)
+        if (target in listOf(10, 20, 30, 40, 45) || (target > 40 && target % 5 == 0)) costs += ItemId.MAGIC_STONE to 1
+        return costs
+    }
 
     private fun equipWeapon(weapon: ItemId) {
         equippedWeapon = weapon
@@ -672,10 +722,11 @@ class Game(private val context: Context, private val input: InputState) {
     }
 
     private fun fireProjectile(weapon: ItemId?) {
-        val speed = 560f
+        val isGun = weapon == ItemId.GUN
+        val speed = if (isGun) 900f else 610f
         val weaponPower = weapon?.let(::weaponDamage) ?: 10f
         val damage = weaponPower * if (powerPotionTimer > 0f) 1.5f else 1f
-        val color = if (weapon == ItemId.GUN) 0xFFFFD45A.toInt() else 0xFFD9C08A.toInt()
+        val color = if (isGun) 0xFFFFD45A.toInt() else 0xFFE9D2A2.toInt()
         projectiles.add(
             Projectile(
                 x = player.x + player.facingX * 18f,
@@ -684,11 +735,13 @@ class Game(private val context: Context, private val input: InputState) {
                 vy = player.facingY * speed,
                 damage = damage,
                 color = color,
+                radius = if (isGun) 3.5f else 4.5f,
+                kind = if (isGun) ProjectileKind.BULLET else ProjectileKind.ARROW,
                 pierces = weapon?.pierces == true,
-                life = 1.1f,
+                life = if (isGun) .85f else 1.3f,
             ),
         )
-        spawnParticles(player.x + player.facingX * 20f, player.y + player.facingY * 20f, color, 5)
+        spawnParticles(player.x + player.facingX * 20f, player.y + player.facingY * 20f, color, if (isGun) 9 else 3)
     }
 
     private fun updateProjectiles(dt: Float) {
@@ -697,6 +750,10 @@ class Game(private val context: Context, private val input: InputState) {
         while (iterator.hasNext()) {
             val projectile = iterator.next()
             projectile.update(dt)
+
+            if (graphics.particles && !projectile.hostile && projectile.kind == ProjectileKind.BULLET) {
+                particles.add(Particle(projectile.x, projectile.y, 0f, 0f, .10f, projectile.color, 1.8f, 0f, true))
+            }
 
             var finished = projectile.dead
             if (!finished && world.isSolid(
@@ -903,6 +960,7 @@ class Game(private val context: Context, private val input: InputState) {
     private fun defeatBoss(boss: Boss) {
         if (boss.defeated) return
         boss.markDefeated()
+        boss.defeatedAtSeconds = elapsedSeconds
         activeBoss = null
         defeatedBosses.add(boss.def.id)
 
@@ -912,9 +970,8 @@ class Game(private val context: Context, private val input: InputState) {
         stats.restoreMana(60f)
         // Every boss always drops a visible Magic Stone, even if the inventory is full.
         dropLoot(boss.x, boss.y, ItemId.MAGIC_STONE, 1)
-        for ((id, count) in boss.def.loot) giveItem(id, scaledLootCount(count))
+        for ((id, count) in boss.def.loot) dropLoot(boss.x, boss.y, id, count)
         for (material in ItemId.values().filter { it.category == ItemCategory.MATERIAL || it == ItemId.MAGIC_STONE }) {
-            giveItem(material, 1)
             dropLoot(boss.x, boss.y, material, 1)
         }
         val newLevel = stage + defeatedBosses.size
@@ -928,21 +985,23 @@ class Game(private val context: Context, private val input: InputState) {
         }
         val tier = defeatedBosses.size
         val unique = ItemId.values().firstOrNull { it.category == ItemCategory.WEAPON && inventory.count(it) == 0 }
-        if (unique != null) giveItem(unique, 1)
-        for (material in listOf(ItemId.RAW_MEAT, ItemId.STONE, ItemId.WOOD, ItemId.FRUIT, ItemId.IRON, ItemId.FIBER, ItemId.MAGIC_STONE)) giveItem(material, tier)
+        if (unique != null) dropLoot(boss.x, boss.y, unique, 1)
+        for (material in listOf(ItemId.RAW_MEAT, ItemId.STONE, ItemId.WOOD, ItemId.FRUIT, ItemId.IRON, ItemId.FIBER, ItemId.MAGIC_STONE)) {
+            dropLoot(boss.x, boss.y, material, tier)
+        }
         if (boss.def.id == Bosses.DRAGON.id) {
             stageAdvancePending = true
         } else if (defeatedBosses.size == Bosses.ALL.size) {
-            val dragon = Boss(Bosses.DRAGON).also { it.setLevel(stage + 1) }
-            bosses.add(dragon)
-            banner("THE REINCARNATION DRAGON AWAKENS")
-            toast("Defeat the dragon to reincarnate")
+            dragonSpawnTimer = 15f
+            banner("THE DRAGON ARRIVES IN 15 SECONDS")
+            toast("Prepare for the Reincarnation Dragon")
             saveNow()
         } else saveNow()
     }
 
     private fun advanceStage() {
         stageAdvancePending = false
+        dragonSpawnTimer = -1f
         stage += 1
         victoryTimer = 4f
         banner("VICTORY! LEVEL $stage")
@@ -1025,9 +1084,11 @@ class Game(private val context: Context, private val input: InputState) {
 
     fun interactionPrompt(): String? {
         if (deathTimer > 0f || !player.isAlive) return null
-        val chest = nearestChest(52f)
-        if (chest != null) return if (chest.opened) null else "OPEN CHEST"
-        val fire = nearestCampfire(56f)
+        val pickup = nearestPickup(Config.PICKUP_REACH)
+        if (pickup != null) return "PICK UP ${pickup.item.displayName.uppercase()}"
+        val chest = nearestChest(Config.CHEST_REACH)
+        if (chest != null) return "OPEN CHEST"
+        val fire = nearestCampfire(Config.CAMP_REACH)
         if (fire != null) return "REST AT CAMPFIRE"
         val node = harvestTarget()
         if (node != null) {
@@ -1042,12 +1103,17 @@ class Game(private val context: Context, private val input: InputState) {
     }
 
     private fun interact() {
-        val chest = nearestChest(52f)
-        if (chest != null && !chest.opened) {
+        val pickup = nearestPickup(Config.PICKUP_REACH)
+        if (pickup != null) {
+            collectPickup(pickup)
+            return
+        }
+        val chest = nearestChest(Config.CHEST_REACH)
+        if (chest != null) {
             openChest(chest)
             return
         }
-        val fire = nearestCampfire(56f)
+        val fire = nearestCampfire(Config.CAMP_REACH)
         if (fire != null) {
             respawnX = fire.x
             respawnY = fire.y
@@ -1067,9 +1133,9 @@ class Game(private val context: Context, private val input: InputState) {
         val ptx = floor(player.x / Config.TILE).toInt()
         val pty = floor(player.y / Config.TILE).toInt()
         var best: TilePos? = null
-        var bestDistance = Float.MAX_VALUE
-        for (dy in -2..2) {
-            for (dx in -2..2) {
+        var bestDistance = Config.HARVEST_REACH
+        for (dy in -1..1) {
+            for (dx in -1..1) {
                 val tx = ptx + dx
                 val ty = pty + dy
                 val type = world.tileAt(tx, ty)
@@ -1097,37 +1163,34 @@ class Game(private val context: Context, private val input: InputState) {
         val type = world.tileAt(node.x, node.y)
         val cx = (node.x + 0.5f) * Config.TILE
         val cy = (node.y + 0.5f) * Config.TILE
+        val rewards = mutableListOf<Pair<ItemId, Int>>()
         when (type) {
             TileType.TREE, TileType.FOREST_TREE -> {
-                giveItem(ItemId.WOOD, 2 + Random.nextInt(2))
-                if (Random.nextFloat() < 0.45f) giveItem(ItemId.FIBER, 1)
-                if (Random.nextFloat() < 0.30f) giveItem(ItemId.FRUIT, 1 + Random.nextInt(2))
-                if (Random.nextFloat() < 0.30f) giveItem(ItemId.STONE, 1)
-                if (Random.nextFloat() < 0.10f) giveItem(ItemId.IRON, 1)
-                world.setTile(
-                    node.x,
-                    node.y,
-                    if (type == TileType.TREE) TileType.GRASS else TileType.FOREST_FLOOR,
-                )
-                spawnParticles(cx, cy, 0xFF8A6A43.toInt(), 10)
+                rewards += ItemId.WOOD to (2 + Random.nextInt(2))
+                if (Random.nextFloat() < 0.45f) rewards += ItemId.FIBER to 1
+                if (Random.nextFloat() < 0.30f) rewards += ItemId.FRUIT to (1 + Random.nextInt(2))
             }
 
             TileType.ROCK -> {
-                giveItem(ItemId.STONE, 2 + Random.nextInt(2))
-                if (Random.nextFloat() < 0.35f) giveItem(ItemId.IRON, 1)
-                if (Random.nextFloat() < 0.12f) giveItem(ItemId.MAGIC_STONE, 1)
-                world.setTile(node.x, node.y, TileType.GRASS)
-                spawnParticles(cx, cy, 0xFF8C8C94.toInt(), 10)
+                rewards += ItemId.STONE to (2 + Random.nextInt(2))
+                if (Random.nextFloat() < 0.35f) rewards += ItemId.IRON to 1
+                if (Random.nextFloat() < 0.12f) rewards += ItemId.MAGIC_STONE to 1
             }
 
             TileType.FLOWERS -> {
-                giveItem(ItemId.FIBER, 1)
-                world.setTile(node.x, node.y, TileType.GRASS)
-                spawnParticles(cx, cy, 0xFFD95F6A.toInt(), 8)
+                rewards += ItemId.FIBER to 1
             }
 
             else -> return
         }
+        if (!inventory.canFit(rewards)) { showInventoryFull(cx, cy); return }
+        rewards.forEach { (id, count) -> giveItem(id, count) }
+        world.setTile(node.x, node.y, if (type == TileType.FOREST_TREE) TileType.FOREST_FLOOR else TileType.GRASS)
+        spawnParticles(cx, cy, when (type) {
+            TileType.TREE, TileType.FOREST_TREE -> 0xFF8A6A43.toInt()
+            TileType.ROCK -> 0xFF8C8C94.toInt()
+            else -> 0xFFD95F6A.toInt()
+        }, if (type == TileType.FLOWERS) 8 else 10)
         addXp(2)
     }
 
@@ -1135,6 +1198,7 @@ class Game(private val context: Context, private val input: InputState) {
         var best: LootChest? = null
         var bestDistance = range
         for (chest in chests) {
+            if (chest.opened) continue
             val distance = hypot(
                 (chest.x - player.x).toDouble(),
                 (chest.y - player.y).toDouble(),
@@ -1145,6 +1209,36 @@ class Game(private val context: Context, private val input: InputState) {
             }
         }
         return best
+    }
+
+    private fun nearestPickup(range: Float): Pickup? {
+        var best: Pickup? = null
+        var bestDistance = range
+        for (pickup in pickups) {
+            val distance = hypot(
+                (pickup.x - player.x).toDouble(),
+                (pickup.y - player.y).toDouble(),
+            ).toFloat()
+            if (distance <= bestDistance) {
+                bestDistance = distance
+                best = pickup
+            }
+        }
+        return best
+    }
+
+    private fun collectPickup(pickup: Pickup) {
+        val leftover = inventory.add(pickup.item, pickup.count)
+        val collected = pickup.count - leftover
+        if (collected > 0) {
+            texts.add(FloatingText(player.x, player.y - 34f, "+$collected ${pickup.item.displayName}", 0xFFFFE08A.toInt(), 1.2f))
+        }
+        if (leftover == 0) {
+            pickups.remove(pickup)
+        } else {
+            pickup.count = leftover
+            showInventoryFull(pickup.x, pickup.y)
+        }
     }
 
     private fun nearestCampfire(range: Float): Campfire? {
@@ -1164,9 +1258,6 @@ class Game(private val context: Context, private val input: InputState) {
     }
 
     private fun openChest(chest: LootChest) {
-        chest.opened = true
-        openedChests.add(chest.id)
-
         val random = Random(chest.id * 7919 + world.seed)
         val pool = listOf(
             ItemId.WOOD,
@@ -1177,14 +1268,19 @@ class Game(private val context: Context, private val input: InputState) {
             ItemId.ELIXIR,
             ItemId.MAGIC_STONE,
         )
+        val rewards = mutableListOf<Pair<ItemId, Int>>()
         repeat(2 + random.nextInt(2)) {
             val id = pool[random.nextInt(pool.size)]
             val count = 1 + random.nextInt(if (id == ItemId.ELIXIR) 2 else 5)
-            giveItem(id, count)
+            rewards += id to count
         }
-        if (chest.id % 3 == 1) giveItem(ItemId.WOODEN_SWORD, 1)
-        if (chest.id == 0) giveItem(ItemId.MAGIC_STONE, 1)
-        if (chest.id == 5) giveItem(ItemId.IRON_SWORD, 1)
+        if (chest.id % 3 == 1) rewards += ItemId.WOODEN_SWORD to 1
+        if (chest.id == 0) rewards += ItemId.MAGIC_STONE to 1
+        if (chest.id == 5) rewards += ItemId.IRON_SWORD to 1
+        if (!inventory.canFit(rewards)) { showInventoryFull(chest.x, chest.y); return }
+        chest.opened = true
+        openedChests.add(chest.id)
+        rewards.forEach { (id, count) -> giveItem(id, count) }
 
         banner("CHEST OPENED")
         spawnParticles(chest.x, chest.y, 0xFFE8C85A.toInt(), 14)
@@ -1205,6 +1301,32 @@ class Game(private val context: Context, private val input: InputState) {
 
     // ---- Entities ----------------------------------------------------------
 
+    private fun updateDragonSpawn(dt: Float) {
+        if (dragonSpawnTimer < 0f) return
+        dragonSpawnTimer -= dt
+        if (dragonSpawnTimer > 0f) return
+        dragonSpawnTimer = -1f
+        if (bosses.any { it.isDragon && !it.defeated }) return
+
+        val centreX = 0f
+        val centreY = 0f
+        val fromCentre = hypot(player.x - centreX, player.y - centreY)
+        val (spawnX, spawnY) = if (fromCentre >= 10f * Config.TILE) {
+            centreX to centreY
+        } else {
+            val dx = if (fromCentre > 1f) player.x / fromCentre else 1f
+            val dy = if (fromCentre > 1f) player.y / fromCentre else 0f
+            player.x + dx * 12f * Config.TILE to player.y + dy * 12f * Config.TILE
+        }
+        bosses.add(Boss(Bosses.DRAGON).also {
+            it.setLevel(stage + 1)
+            it.x = spawnX
+            it.y = spawnY
+        })
+        banner("THE REINCARNATION DRAGON AWAKENS")
+        toast("The dragon is flying toward you")
+    }
+
     private fun updateCreatures(dt: Float) {
         for (animal in animals) {
             if (campfires.any { it.isSafe(animal.x, animal.y) }) { animal.calm(); continue }
@@ -1220,19 +1342,19 @@ class Game(private val context: Context, private val input: InputState) {
         wolves.removeAll { wolf -> campfires.any { it.isSafe(wolf.x, wolf.y) } }
         val playerInCamp = campfires.any { it.isSafe(player.x, player.y) }
         if (playerInCamp) {
-            for (boss in bosses) if (!boss.defeated && boss.engaged) boss.resetFight()
-            activeBoss = null
+            for (boss in bosses) if (!boss.isDragon && !boss.defeated && boss.engaged) boss.resetFight()
+            if (activeBoss?.isDragon != true) activeBoss = null
         }
 
         for (boss in bosses) {
             if (boss.defeated) continue
-            if (playerInCamp) continue
-            if (campfires.any { it.isSafe(boss.x, boss.y) } && !boss.engaged) { boss.calm(); continue }
+            if (playerInCamp && !boss.isDragon) continue
+            if (!boss.isDragon && campfires.any { it.isSafe(boss.x, boss.y) } && !boss.engaged) { boss.calm(); continue }
             val distance = hypot(
                 (boss.x - player.x).toDouble(),
                 (boss.y - player.y).toDouble(),
             ).toFloat()
-            if (boss.engaged || (distance < 90f * Config.TILE && campfires.none { it.isSafe(boss.x, boss.y) })) {
+            if (boss.isDragon || boss.engaged || (distance < 90f * Config.TILE && campfires.none { it.isSafe(boss.x, boss.y) })) {
                 boss.update(dt, this)
             }
             if (boss.health <= 0f) defeatBoss(boss)
@@ -1280,29 +1402,7 @@ class Game(private val context: Context, private val input: InputState) {
 
         val pickupIterator = pickups.iterator()
         while (pickupIterator.hasNext()) {
-            val pickup = pickupIterator.next()
-            pickup.update(dt)
-            val distance = hypot(
-                (pickup.x - player.x).toDouble(),
-                (pickup.y - player.y).toDouble(),
-            ).toFloat()
-            if (player.isAlive && distance < 34f) {
-                val leftover = inventory.add(pickup.item, pickup.count)
-                if (leftover == 0) {
-                    texts.add(
-                        FloatingText(
-                            player.x,
-                            player.y - 34f,
-                            "+${pickup.count} ${pickup.item.displayName}",
-                            0xFFFFE08A.toInt(),
-                            1.2f,
-                        ),
-                    )
-                    pickupIterator.remove()
-                } else {
-                    pickup.count = leftover
-                }
-            }
+            pickupIterator.next().update(dt)
         }
         pickups.removeAll { it.life <= 0f }
 
@@ -1370,27 +1470,38 @@ class Game(private val context: Context, private val input: InputState) {
     private fun giveItem(id: ItemId, count: Int) {
         val leftover = inventory.add(id, count)
         if (leftover > 0) {
-            pickups.add(Pickup(id, leftover, player.x + 12f, player.y + 6f))
+            showInventoryFull(player.x, player.y)
         }
+        val received = count - leftover
+        if (received <= 0) return
         texts.add(
             FloatingText(
                 player.x,
                 player.y - 40f,
-                "+$count ${id.displayName}",
+                "+$received ${id.displayName}",
                 0xFFFFE08A.toInt(),
                 1.4f,
             ),
         )
     }
 
+    private fun showInventoryFull(x: Float, y: Float) {
+        texts.add(FloatingText(x, y - 18f, "FULL", 0xFFFF4D4D.toInt(), .7f, 10f))
+        toast("Inventory full")
+    }
+
     private fun dropLoot(x: Float, y: Float, id: ItemId, count: Int) {
         val adjustedCount = scaledLootCount(count)
+        val angle = Random.nextFloat() * (PI * 2).toFloat()
+        val speed = 42f + Random.nextFloat() * 56f
         pickups.add(
             Pickup(
                 id,
                 adjustedCount,
-                x + (Random.nextFloat() - 0.5f) * 18f,
-                y + (Random.nextFloat() - 0.5f) * 18f,
+                x + (Random.nextFloat() - 0.5f) * 6f,
+                y + (Random.nextFloat() - 0.5f) * 6f,
+                cos(angle) * speed,
+                sin(angle) * speed,
             ),
         )
     }
@@ -1469,15 +1580,10 @@ class Game(private val context: Context, private val input: InputState) {
         for (pickup in pickups) add(pickup.x, pickup.y) { drawAtIso(canvas, pickup.x, pickup.y) { objectRenderer.drawPickup(canvas, pickup) } }
         for (animal in animals) add(animal.x, animal.y) { drawAtIso(canvas, animal.x, animal.y) { creatureRenderer.drawAnimal(canvas, animal, graphics) } }
         for (wolf in wolves) add(wolf.x, wolf.y) { drawAtIso(canvas, wolf.x, wolf.y) { creatureRenderer.drawWolf(canvas, wolf, elapsedSeconds) } }
-        for (boss in bosses) if (!boss.defeated) add(boss.x, boss.y) { drawAtIso(canvas, boss.x, boss.y) { creatureRenderer.drawBoss(canvas, boss, graphics, elapsedSeconds) } }
+        for (boss in bosses) if (!boss.defeated || elapsedSeconds - boss.defeatedAtSeconds < 1f) add(boss.x, boss.y) { drawAtIso(canvas, boss.x, boss.y) { creatureRenderer.drawBoss(canvas, boss, graphics, elapsedSeconds) } }
         add(player.x, player.y) { drawAtIso(canvas, player.x, player.y) { playerRenderer.draw(canvas, player, elapsedSeconds) } }
         for (projectile in projectiles) add(projectile.x, projectile.y) {
-            arenaPaint.style = Paint.Style.STROKE; arenaPaint.strokeWidth = 3f; arenaPaint.color = projectile.color
-            val head = IsoMath.worldToIso(projectile.x, projectile.y)
-            val tail = IsoMath.worldToIso(projectile.x - projectile.vx * .018f, projectile.y - projectile.vy * .018f)
-            canvas.drawLine(head.x, head.y, tail.x, tail.y, arenaPaint)
-            arenaPaint.style = Paint.Style.FILL
-            canvas.drawCircle(head.x, head.y, projectile.radius * .55f, arenaPaint)
+            drawProjectile(canvas, projectile)
         }
         renderables.sortWith(compareBy<Renderable> { it.gridDepth }.thenBy { it.isoX })
         for (item in renderables) item.draw()
@@ -1500,6 +1606,52 @@ class Game(private val context: Context, private val input: InputState) {
     private fun scaledLootCount(count: Int): Int {
         val bonus = if (stage >= 2) 1.2f + Random.nextFloat() * .8f else 1f
         return max(1, kotlin.math.ceil(count * bonus).toInt())
+    }
+
+    /** Draws a recognisable arrow or bullet in isometric canvas space. */
+    private fun drawProjectile(canvas: Canvas, projectile: Projectile) {
+        val head = IsoMath.worldToIso(projectile.x, projectile.y)
+        val tail = IsoMath.worldToIso(
+            projectile.x - projectile.vx * projectile.trailSeconds,
+            projectile.y - projectile.vy * projectile.trailSeconds,
+        )
+        val dx = head.x - tail.x
+        val dy = head.y - tail.y
+        val length = hypot(dx.toDouble(), dy.toDouble()).toFloat().coerceAtLeast(.01f)
+        val nx = -dy / length
+        val ny = dx / length
+
+        when (projectile.kind) {
+            ProjectileKind.ARROW -> {
+                arenaPaint.style = Paint.Style.STROKE
+                arenaPaint.strokeWidth = 2.7f
+                arenaPaint.color = 0xFF5A351F.toInt()
+                canvas.drawLine(tail.x, tail.y, head.x, head.y, arenaPaint)
+                arenaPaint.strokeWidth = 1.3f
+                arenaPaint.color = projectile.color
+                canvas.drawLine(tail.x + dx * .35f, tail.y + dy * .35f, head.x, head.y, arenaPaint)
+                arenaPaint.style = Paint.Style.FILL
+                arenaPaint.color = 0xFFECE6D4.toInt()
+                canvas.drawCircle(head.x, head.y, 2.7f, arenaPaint)
+                arenaPaint.color = 0xFFE8D8B0.toInt()
+                canvas.drawLine(tail.x - nx * 3f, tail.y - ny * 3f, tail.x + nx * 3f, tail.y + ny * 3f, arenaPaint)
+            }
+            ProjectileKind.BULLET -> {
+                arenaPaint.style = Paint.Style.STROKE
+                arenaPaint.strokeWidth = 3.3f
+                arenaPaint.color = projectile.color
+                canvas.drawLine(tail.x, tail.y, head.x, head.y, arenaPaint)
+                arenaPaint.style = Paint.Style.FILL
+                arenaPaint.color = 0xFFFFFFFF.toInt()
+                canvas.drawCircle(head.x, head.y, 3.2f, arenaPaint)
+            }
+            ProjectileKind.MAGIC -> {
+                arenaPaint.style = Paint.Style.FILL
+                arenaPaint.color = projectile.color
+                canvas.drawCircle(head.x, head.y, projectile.radius * .55f, arenaPaint)
+            }
+        }
+        arenaPaint.style = Paint.Style.FILL
     }
 
     private inline fun drawAtIso(canvas: Canvas, worldX: Float, worldY: Float, draw: () -> Unit) {
@@ -1542,12 +1694,7 @@ class Game(private val context: Context, private val input: InputState) {
         if (equippedWeapon == null) { toast("Equip a weapon at the campfire first"); return }
         val level = weaponLevels[weapon] ?: 1
         if (level >= 50) { toast("Weapon is max level"); return }
-        val target = level + 1
-        val base = kotlin.math.ceil(4f * 1.5f.pow(level - 1)).toInt().coerceAtLeast(4)
-        val costs = mutableListOf(ItemId.WOOD to base)
-        if (target >= 11) costs += ItemId.STONE to kotlin.math.ceil(base * .25f).toInt().coerceAtLeast(1)
-        if (target >= 30) costs += ItemId.IRON to kotlin.math.ceil(base * .2f).toInt().coerceAtLeast(1)
-        if (target in listOf(10, 20, 30, 40, 45) || (target > 40 && target % 5 == 0)) costs += ItemId.MAGIC_STONE to 1
+        val costs = weaponUpgradeCosts(weapon)
         if (costs.any { inventory.count(it.first) < it.second }) { toast("Need ${costs.joinToString { "${it.second} ${it.first.displayName}" }}"); return }
         costs.forEach { inventory.remove(it.first, it.second) }
         weaponLevels[weapon] = level + 1
@@ -1572,12 +1719,21 @@ class Game(private val context: Context, private val input: InputState) {
         val weapon = equippedWeapon ?: activeWeapon() ?: run { toast("Select a weapon first"); return }
         val level = weaponLevels[weapon] ?: 1
         val refund = kotlin.math.ceil(4f * 1.5f.pow((level - 1).coerceAtLeast(0)) * .5f).toInt()
+        val rewards = mutableListOf(ItemId.WOOD to refund)
+        if (level >= 11) rewards += ItemId.STONE to (refund / 4).coerceAtLeast(1)
+        if (level >= 30) rewards += ItemId.IRON to (refund / 5).coerceAtLeast(1)
+        if (level >= 40) rewards += ItemId.MAGIC_STONE to 1
+        if (!inventory.canFitAfterRemoving(weapon, 1, rewards)) {
+            showInventoryFull(player.x, player.y)
+            return
+        }
         if (inventory.remove(weapon, 1) == 0) { toast("Weapon not found"); return }
-        inventory.add(ItemId.WOOD, refund)
-        if (level >= 11) inventory.add(ItemId.STONE, (refund / 4).coerceAtLeast(1))
-        if (level >= 30) inventory.add(ItemId.IRON, (refund / 5).coerceAtLeast(1))
-        if (level >= 40) inventory.add(ItemId.MAGIC_STONE, 1)
-        if (inventory.count(weapon) == 0) equippedWeapon = null
+        rewards.forEach { (id, count) -> inventory.add(id, count) }
+        if (inventory.count(weapon) == 0) {
+            equippedWeapon = null
+            if (meleeWeapon == weapon) meleeWeapon = null
+            if (rangedWeapon == weapon) rangedWeapon = null
+        }
         toast("Sold ${weapon.displayName} for upgrade materials")
     }
 
@@ -1591,6 +1747,8 @@ class Game(private val context: Context, private val input: InputState) {
         player.stats.bonusHealth = state.bonusHealth; player.stats.bonusMana = state.bonusMana
         defeatedBosses.clear(); defeatedBosses.addAll(state.defeatedBosses)
         stage = state.stage
+        stageAdvancePending = false
+        dragonSpawnTimer = if (defeatedBosses.size == Bosses.ALL.size) 15f else -1f
         bosses.clear(); for (def in Bosses.ALL) bosses.add(Boss(def).also { it.setLevel(stage + defeatedBosses.size); if (defeatedBosses.contains(def.id)) it.markDefeated() })
         openedChests.clear(); openedChests.addAll(state.openedChests)
         for (chest in chests) chest.opened = openedChests.contains(chest.id)

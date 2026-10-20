@@ -80,7 +80,7 @@ class SpriteAnimation(
 }
 
 /** Optional helper for creatures with multiple animation states. */
-enum class AnimationState { IDLE, WALK, ATTACK }
+enum class AnimationState { IDLE, WALK, ATTACK, DEATH }
 
 class AnimationSet(private val animations: Map<AnimationState, SpriteAnimation>) {
 

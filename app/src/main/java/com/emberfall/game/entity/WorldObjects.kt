@@ -10,13 +10,20 @@ class Pickup(
     var count: Int,
     var x: Float,
     var y: Float,
+    var vx: Float = 0f,
+    var vy: Float = 0f,
 ) {
-    var life = 70f
+    var life = 180f
     var bob = 0f
 
     fun update(dt: Float) {
         life -= dt
         bob += dt * 3.2f
+        x += vx * dt
+        y += vy * dt
+        val drag = (1f - 7f * dt).coerceAtLeast(0f)
+        vx *= drag
+        vy *= drag
     }
 
     val bobOffset: Float get() = sin(bob) * 2.5f

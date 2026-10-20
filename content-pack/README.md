@@ -22,11 +22,15 @@ bundled APK assets untouched.
 | --- | --- |
 | `tileset` | PNG/WebP atlas at least 1024×768; the existing 8-column, 128-pixel-cell layout is retained. |
 | `sprite.player` | PNG/WebP sprite sheet exactly 384×256. |
-| `sprite.gloomfang` | PNG/WebP sprite sheet exactly 384×256. |
-| `sprite.stonewarden` | PNG/WebP sprite sheet exactly 384×256. |
-| `sprite.mirewitch` | PNG/WebP sprite sheet exactly 384×256. |
-| `sprite.ashtitan` | PNG/WebP sprite sheet exactly 384×256. |
-| `sprite.hollowking` | PNG/WebP sprite sheet exactly 384×256. |
+| `sprite.gloomfang` | PNG/WebP sprite sheet exactly 512×256. |
+| `sprite.stonewarden` | PNG/WebP sprite sheet exactly 512×256. |
+| `sprite.mirewitch` | PNG/WebP sprite sheet exactly 512×256. |
+| `sprite.ashtitan` | PNG/WebP sprite sheet exactly 512×256. |
+| `sprite.hollowking` | PNG/WebP sprite sheet exactly 512×256. |
+| `sprite.dragon` | PNG/WebP sprite sheet exactly 512×256. |
+
+Boss sheets use eight direction rows and 16 columns: four frames each for idle,
+movement, attack, and death. The player retains its 12-column sheet.
 
 Every manifest asset must have a unique, stable `id`, a safe relative `path`,
 its exact file length in `bytes`, and a lowercase SHA-256 checksum. Extra

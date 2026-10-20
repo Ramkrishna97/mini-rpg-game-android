@@ -17,6 +17,7 @@ import kotlin.math.hypot
 class TouchController(
     private val input: InputState,
     private val density: Float,
+    private val inventoryCapacity: Int,
 ) {
 
     private var joystickPointerId = -1
@@ -24,7 +25,8 @@ class TouchController(
     private var lastSettingsY = Float.NaN
     private var resolutionTap = 0
     private var fpsTap = 0
-    private var lastInventoryY = Float.NaN
+    private var inventoryPointerId = -1
+    private var inventoryStartY = Float.NaN
 
     fun handle(event: MotionEvent, width: Int, height: Int): Boolean {
         if (width == 0 || height == 0) return false
@@ -32,7 +34,7 @@ class TouchController(
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
                 if (event.actionMasked == MotionEvent.ACTION_POINTER_DOWN) {
-                    if (input.inventoryOpen || input.settingsOpen ||
+                    if (input.settingsOpen ||
                         input.spellPickerOpen || input.weaponPickerOpen || input.mapOpen || input.campMenuOpen
                     ) {
                         return true
@@ -68,8 +70,10 @@ class TouchController(
                     }
 
                     input.inventoryOpen -> {
-                        lastInventoryY = y
-                        handleInventoryTap(x, y, width, height)
+                        if (inventoryPointerId == -1) {
+                            inventoryPointerId = pointerId
+                            inventoryStartY = y
+                        }
                         return true
                     }
 
@@ -83,21 +87,25 @@ class TouchController(
                 when {
                     input.campMenuOpen -> {
                         val owned = com.emberfall.game.item.ItemId.values().filter { it.category == com.emberfall.game.item.ItemCategory.WEAPON }
-                        val panel = UiLayout.inventoryPanel(width.toFloat(), height.toFloat(), density)
+                        val panel = UiLayout.workbenchPanel(width.toFloat(), height.toFloat(), density)
                         val close = UiLayout.campCloseButton(width.toFloat(), height.toFloat(), density)
                         if (close.contains(x, y) || !panel.contains(x, y)) { input.campMenuOpen = false; return true }
                         val spellButton = UiLayout.campSpellButton(width.toFloat(), height.toFloat(), density)
                         if (spellButton.contains(x, y)) { input.campMenuOpen = false; input.spellPickerOpen = true; return true }
                         val craftButton = UiLayout.campCraftButton(width.toFloat(), height.toFloat(), density)
                         if (craftButton.contains(x, y)) { input.campMenuOpen = false; input.inventoryOpen = true; input.craftingOpen = true; input.craftScroll = 0; return true }
-                        val row = UiLayout.weaponRowAt(x, y, width.toFloat(), height.toFloat(), density)
+                        val row = UiLayout.workbenchRowAt(x, y, width.toFloat(), height.toFloat(), density)
                         if (row >= 0) {
                             val weapon = owned.getOrNull(row)
                             if (weapon != null && weapon.category == com.emberfall.game.item.ItemCategory.WEAPON) {
-                                input.pushCommand(if (x > width * .5f) UiCommand.SELL_WEAPON else UiCommand.EQUIP_WEAPON_BASE + weapon.ordinal)
+                                input.pushCommand(UiCommand.EQUIP_WEAPON_BASE + weapon.ordinal)
                             }
-                        } else if (y >= panel.bottom-52f*density) {
-                            input.pushCommand(if (x < width/2f) UiCommand.UPGRADE_WEAPON else UiCommand.COMBINE_WEAPON)
+                        } else {
+                            when {
+                                UiLayout.workbenchActionButton(0, width.toFloat(), height.toFloat(), density).contains(x, y) -> input.pushCommand(UiCommand.UPGRADE_WEAPON)
+                                UiLayout.workbenchActionButton(1, width.toFloat(), height.toFloat(), density).contains(x, y) -> input.pushCommand(UiCommand.COMBINE_WEAPON)
+                                UiLayout.workbenchActionButton(2, width.toFloat(), height.toFloat(), density).contains(x, y) -> input.pushCommand(UiCommand.SELL_WEAPON)
+                            }
                         }
                         return true
                     }
@@ -121,8 +129,6 @@ class TouchController(
 
                     isOnMagic(x, y, width, height) -> {
                         input.requestMagic()
-                        resetJoystick()
-                        joystickPointerId = -1
                     }
 
                     attackPointerId == -1 && isOnAttack(x, y, width, height) -> {
@@ -169,11 +175,6 @@ class TouchController(
                     return true
                 }
                 if (input.inventoryOpen) {
-                    val y = event.getY(event.actionIndex)
-                    if (!input.craftingOpen && !lastInventoryY.isNaN() && kotlin.math.abs(y - lastInventoryY) > 18f * density) {
-                        input.inventoryScroll = if (input.inventoryScroll == 0) 18 else 0
-                        lastInventoryY = y
-                    }
                     return true
                 }
                 if (input.spellPickerOpen || input.weaponPickerOpen || input.mapOpen || input.campMenuOpen) return true
@@ -188,27 +189,40 @@ class TouchController(
                 }
             }
 
-            MotionEvent.ACTION_POINTER_UP -> releasePointer(event.getPointerId(event.actionIndex))
+            MotionEvent.ACTION_POINTER_UP -> {
+                finishInventoryTouch(event, width, height)
+                releasePointer(event.getPointerId(event.actionIndex))
+            }
 
-            MotionEvent.ACTION_UP -> releasePointer(event.getPointerId(event.actionIndex))
+            MotionEvent.ACTION_UP -> {
+                finishInventoryTouch(event, width, height)
+                releasePointer(event.getPointerId(event.actionIndex))
+            }
 
             MotionEvent.ACTION_CANCEL -> {
                 joystickPointerId = -1
                 attackPointerId = -1
                 resetJoystick()
                 input.attackDown = false
+                inventoryPointerId = -1
+                inventoryStartY = Float.NaN
             }
         }
         return true
     }
 
     private fun handleInventoryTap(x: Float, y: Float, width: Int, height: Int) {
+        val w = width.toFloat()
+        val h = height.toFloat()
+        if (UiLayout.panelPageButton(false, w, h, density).contains(x, y)) {
+            scrollInventory(forward = false, width, height)
+            return
+        }
+        if (UiLayout.panelPageButton(true, w, h, density).contains(x, y)) {
+            scrollInventory(forward = true, width, height)
+            return
+        }
         if (input.craftingOpen) {
-            if (UiLayout.craftPageButton(width.toFloat(), height.toFloat(), density).contains(x, y)) {
-                val pageSize = UiLayout.craftRowsPerPage(width.toFloat(), height.toFloat(), density)
-                input.craftScroll = if (input.craftScroll + pageSize >= Recipes.ALL.size) 0 else input.craftScroll + pageSize
-                return
-            }
             val row = UiLayout.craftRowAt(
                 x, y, width.toFloat(), height.toFloat(), density, Recipes.ALL.size, input.craftScroll,
             )
@@ -239,6 +253,31 @@ class TouchController(
                 input.inventoryOpen = false
                 input.craftingOpen = false
             }
+        }
+    }
+
+    private fun finishInventoryTouch(event: MotionEvent, width: Int, height: Int) {
+        val index = event.actionIndex
+        if (event.getPointerId(index) != inventoryPointerId) return
+        val delta = event.getY(index) - inventoryStartY
+        if (kotlin.math.abs(delta) >= 32f * density) {
+            scrollInventory(forward = delta < 0f, width, height)
+        } else if (input.inventoryOpen) {
+            handleInventoryTap(event.getX(index), event.getY(index), width, height)
+        }
+        inventoryPointerId = -1
+        inventoryStartY = Float.NaN
+    }
+
+    private fun scrollInventory(forward: Boolean, width: Int, height: Int) {
+        if (input.craftingOpen) {
+            val pageSize = UiLayout.craftRowsPerPage(width.toFloat(), height.toFloat(), density)
+            val lastPage = ((Recipes.ALL.size - 1) / pageSize) * pageSize
+            input.craftScroll = (input.craftScroll + if (forward) pageSize else -pageSize).coerceIn(0, lastPage)
+        } else {
+            val pageSize = UiLayout.INVENTORY_COLUMNS * UiLayout.INVENTORY_ROWS
+            val lastPage = ((inventoryCapacity - 1) / pageSize) * pageSize
+            input.inventoryScroll = (input.inventoryScroll + if (forward) pageSize else -pageSize).coerceIn(0, lastPage)
         }
     }
 

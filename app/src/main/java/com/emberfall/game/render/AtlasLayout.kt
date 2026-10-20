@@ -9,7 +9,7 @@ import kotlin.math.ceil
  * Where every sprite lives inside the single atlas texture. Regions, top to bottom:
  *  A. Terrain tiles and transition overlays, 66x34 cells (64x32 art + 1px gutter).
  *  B. Props (trees, rocks, ruin walls), 98x98 cells.
- *  C. Character sprite sheets (player and bosses), 384x256 each, two per sheet
+ *  C. Character sprite sheets (384x256 player, 512x256 bosses), two per sheet
  *     slot: the normal sheet and a white silhouette used for the outline rim.
  *  D. Entity cells (creatures, chests, campfire, pickups, shadows), 64x64 each.
  */
@@ -98,7 +98,7 @@ class AtlasLayout(val masks: Int = IsoAutotile.masks.size) {
         const val PROP_ANCHOR_X = 49
         const val PROP_ANCHOR_Y = 81
 
-        const val SHEET_W = 384
+        const val SHEET_W = 512
         const val SHEET_H = 256
         const val SHEET_COLS = ATLAS_W / SHEET_W
 
@@ -109,7 +109,7 @@ class AtlasLayout(val masks: Int = IsoAutotile.masks.size) {
         const val ENT_ANCHOR_Y = 40
 
         val SHEET_NAMES: List<String> = listOf(
-            "player", "gloomfang", "stonewarden", "mirewitch", "ashtitan", "hollowking",
+            "player", "gloomfang", "stonewarden", "mirewitch", "ashtitan", "hollowking", "dragon",
         )
 
         val PROP_TYPES: List<TileType> = listOf(

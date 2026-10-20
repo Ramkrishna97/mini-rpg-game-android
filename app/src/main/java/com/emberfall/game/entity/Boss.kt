@@ -32,9 +32,8 @@ enum class BossMove {
 
 /**
  * A world boss bound to its arena. It wakes when the player enters and the
- * game seals the arena until it dies. The dragon is the exception: it appears
- * at the map centre after the other five fall, has no arena, and drifts toward
- * the player slowly.
+ * game seals the arena until it dies. The dragon is summoned after the other
+ * five fall, flies toward the player, then fights on the ground without an arena.
  */
 class Boss(val def: BossDef) : Creature(
     def.tileX * Config.TILE,
@@ -46,8 +45,11 @@ class Boss(val def: BossDef) : Creature(
     companion object {
         const val DRAGON_ID = "dragon"
 
-        /** Dragon drift speed toward the player, in px/s. */
-        const val DRAGON_APPROACH_SPEED = 14f
+        const val DRAGON_FLIGHT_SPEED = 280f
+        const val DRAGON_GROUND_SPEED = 105f
+        const val DRAGON_LAND_DISTANCE = 64f
+        const val DRAGON_ATTACK_RANGE = 120f
+        const val DRAGON_CANCEL_RANGE = 175f
 
         private val MOVESETS: Map<String, List<BossMove>> = mapOf(
             "gloomfang" to listOf(BossMove.ROLL, BossMove.SHOT, BossMove.SPINE_FAN, BossMove.RING, BossMove.MAGIC),
@@ -81,6 +83,8 @@ class Boss(val def: BossDef) : Creature(
         private set
     var defeated = false
         private set
+    /** Presentation timestamp only; saved defeats retain the default and do not replay. */
+    var defeatedAtSeconds = Float.NEGATIVE_INFINITY
     var phase = BossPhase.CHASE
         private set
     var attackType = 0
@@ -104,7 +108,8 @@ class Boss(val def: BossDef) : Creature(
     private var rollBounces = 0
     private var burrowing = false
     private var rolling = false
-    private var emergeTimer = if (isDragon) 4f else 0f
+    var dragonFlying = isDragon
+        private set
 
     val magicTargetX: Float get() = magicX
     val magicTargetY: Float get() = magicY
@@ -119,7 +124,7 @@ class Boss(val def: BossDef) : Creature(
 
     /** Pixels the sprite floats above the ground during a swoop. */
     val airborne: Float
-        get() = if (engaged && currentMove == BossMove.SWOOP &&
+        get() = if (dragonFlying) 38f else if (engaged && currentMove == BossMove.SWOOP &&
             (phase == BossPhase.TELEGRAPH || phase == BossPhase.DASH)) 26f else 0f
 
     private fun shotDamage(): Float = def.damage * 3f * (1f + .15f * (level - 1))
@@ -140,6 +145,7 @@ class Boss(val def: BossDef) : Creature(
         shotTimer = 0f
         velocityX = 0f
         velocityY = 0f
+        if (isDragon) dragonFlying = false
     }
 
     fun markDefeated() {
@@ -179,13 +185,12 @@ class Boss(val def: BossDef) : Creature(
         val dy = player.y - y
         val distance = hypot(dx.toDouble(), dy.toDouble()).toFloat()
 
+        if (dragonFlying) {
+            flyTowardsPlayer(dt, game, dx, dy, distance)
+            return
+        }
+
         if (!engaged) {
-            if (isDragon) {
-                // The dragon emerges after a short pause and has no arena seal.
-                emergeTimer -= dt
-                if (emergeTimer <= 0f) engage()
-                return
-            }
             if (distance < arenaRadius * 0.85f) {
                 engage()
                 game.onBossEngaged(this)
@@ -211,15 +216,35 @@ class Boss(val def: BossDef) : Creature(
 
     // ---- Phases ------------------------------------------------------------
 
+    private fun flyTowardsPlayer(dt: Float, game: Game, dx: Float, dy: Float, distance: Float) {
+        if (distance > .01f) {
+            faceDirection(dx, dy)
+            val onLand = !game.world.isSolid(game.world.tileX(x), game.world.tileY(y))
+            val approach = if (onLand) DRAGON_LAND_DISTANCE else 18f
+            val speed = (distance / 10f).coerceIn(DRAGON_FLIGHT_SPEED, 480f)
+            val step = (speed * dt).coerceAtMost((distance - approach).coerceAtLeast(0f))
+            x += dx / distance * step
+            y += dy / distance * step
+        }
+        val remaining = hypot((game.player.x - x).toDouble(), (game.player.y - y).toDouble()).toFloat()
+        if (remaining <= DRAGON_LAND_DISTANCE &&
+            !game.world.isSolid(game.world.tileX(x), game.world.tileY(y)) &&
+            game.campfires.none { it.isSafe(game.player.x, game.player.y) }) {
+            dragonFlying = false
+            engage()
+            game.onBossEngaged(this)
+        }
+    }
+
     private fun chase(dt: Float, game: Game, dx: Float, dy: Float, distance: Float) {
         if (distance > 1f) {
-            val targetSpeed = if (isDragon) DRAGON_APPROACH_SPEED else def.speed
+            val targetSpeed = if (isDragon) DRAGON_GROUND_SPEED else def.speed
             val blend = 1f - exp(-6f * dt)
             velocityX += (dx / distance * targetSpeed - velocityX) * blend
             velocityY += (dy / distance * targetSpeed - velocityY) * blend
             moveWithCollision(game, velocityX * dt, velocityY * dt)
         }
-        if (phaseTimer <= 0f) beginTelegraph(game, dx, dy, distance)
+        if (phaseTimer <= 0f && (!isDragon || distance <= DRAGON_ATTACK_RANGE)) beginTelegraph(game, dx, dy, distance)
     }
 
     private fun beginTelegraph(game: Game, dx: Float, dy: Float, distance: Float) {
@@ -238,6 +263,11 @@ class Boss(val def: BossDef) : Creature(
     }
 
     private fun telegraph(dt: Float, game: Game, dx: Float, dy: Float, distance: Float) {
+        if (isDragon && distance > DRAGON_CANCEL_RANGE) {
+            phase = BossPhase.CHASE
+            phaseTimer = 0f
+            return
+        }
         when (currentMove) {
             BossMove.ROLL -> moveWithCollision(game, -chargeX * 20f * dt, -chargeY * 20f * dt)
             BossMove.BURROW -> {

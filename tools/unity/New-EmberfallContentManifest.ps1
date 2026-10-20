@@ -3,10 +3,12 @@ param(
     [Parameter(Mandatory)]
     [string]$ContentVersion,
 
-    [string]$PackRoot = (Join-Path $PSScriptRoot "../../content-pack/generated")
+    [string]$PackRoot,
+    [switch]$BossesOnly
 )
 
 $ErrorActionPreference = 'Stop'
+if (-not $PackRoot) { $PackRoot = Join-Path $PSScriptRoot '../../content-pack/generated' }
 $artRoot = Join-Path $PackRoot 'art'
 $assetFiles = [ordered]@{
     'tileset'            = 'tileset.png'
@@ -16,6 +18,10 @@ $assetFiles = [ordered]@{
     'sprite.mirewitch'   = 'mirewitch.png'
     'sprite.ashtitan'    = 'ashtitan.png'
     'sprite.hollowking'  = 'hollowking.png'
+    'sprite.dragon'      = 'dragon.png'
+}
+if ($BossesOnly) {
+    foreach ($id in @('tileset', 'sprite.player')) { $assetFiles.Remove($id) }
 }
 
 if ($ContentVersion -notmatch '^[A-Za-z0-9][A-Za-z0-9._:-]{0,95}$') {
