@@ -11,5 +11,8 @@ package com.emberfall.game.core
  */
 object RendererConfig {
     @Volatile
-    var useVulkanRenderer: Boolean = true
+    // The Canvas renderer is the complete visual path (animated characters,
+    // distinct pickups, chest state, projectiles and boss effects). Keep the
+    // experimental Vulkan path opt-in until it reaches visual parity.
+    var useVulkanRenderer: Boolean = false
 }

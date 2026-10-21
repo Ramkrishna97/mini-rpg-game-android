@@ -18,15 +18,15 @@ import kotlin.math.min
 /**
  * Full-screen region map, opened by tapping the minimap.
  *
- * Samples a 256x256-tile window at 4-tile resolution into a small bitmap, then
+ * Samples a 256x256-tile window at 2-tile resolution into a small bitmap, then
  * draws all five bosses (pinned to the edge when out of range), campfires,
  * chests and the player.
  */
 class WorldMapRenderer {
 
     companion object {
-        const val SAMPLE = 64
-        const val TILES_PER_PIXEL = 4
+        const val SAMPLE = 128
+        const val TILES_PER_PIXEL = 2
         const val HALF_RANGE = SAMPLE * TILES_PER_PIXEL / 2
     }
 
@@ -66,6 +66,32 @@ class WorldMapRenderer {
         fun mapX(tileX: Int): Float = centerX + (tileX - playerTileX) * scale
         fun mapY(tileY: Int): Float = centerY + (tileY - playerTileY) * scale
 
+        canvas.save()
+        canvas.clipRect(rect)
+        paint.color = 0xFFDAE8DF.toInt()
+        paint.strokeWidth = 1.2f * density
+        val compassX = rect.left + 16f * density
+        val compassY = rect.top + 18f * density
+        canvas.drawLine(compassX, compassY - 7f * density, compassX, compassY + 7f * density, paint)
+        canvas.drawLine(compassX - 7f * density, compassY, compassX + 7f * density, compassY, paint)
+        textPaint.color = 0xFFF7F6E8.toInt()
+        textPaint.textSize = 7f * density
+        textPaint.textAlign = Paint.Align.CENTER
+        canvas.drawText("N", compassX, compassY - 9f * density, textPaint)
+        textPaint.textAlign = Paint.Align.CENTER
+        textPaint.textSize = 7f * density
+        for ((label, position, color) in listOf(
+            Triple("FROST PEAKS", -26 to -111, 0xFFECFAFF.toInt()),
+            Triple("EMBER CRATER", -107 to -76, 0xFFFFAA76.toInt()),
+            Triple("SKY RIDGE", 92 to -84, 0xFFCBDEFF.toInt()),
+            Triple("DUNE SEA", -91 to 93, 0xFFFFD99A.toInt()),
+            Triple("OLD STONES", 23 to 56, 0xFFE1D8BD.toInt()),
+        )) {
+            textPaint.color = color
+            canvas.drawText(label, mapX(position.first), mapY(position.second), textPaint)
+        }
+        textPaint.textAlign = Paint.Align.LEFT
+
         for (fire in game.campfires) {
             val point = UiLayout.regionMapPoint(game.world.tileX(fire.x), game.world.tileY(fire.y),
                 playerTileX, playerTileY, width, height, density)
@@ -83,17 +109,22 @@ class WorldMapRenderer {
 
         for (boss in Bosses.ALL) {
             if (boss.id in game.defeatedBossIds()) continue
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = 1.2f * density
+            paint.color = 0xCCF0DFB8.toInt()
+            canvas.drawCircle(mapX(boss.tileX), mapY(boss.tileY), boss.arenaRadiusTiles * scale, paint)
+            paint.style = Paint.Style.FILL
             var x = mapX(boss.tileX)
             var y = mapY(boss.tileY)
             val pad = 10f * density
             x = x.coerceIn(rect.left + pad, rect.right - pad)
             y = y.coerceIn(rect.top + pad, rect.bottom - pad)
             val iconColor = when (boss.id) {
-                "gloomfang" -> 0xFFB57C45.toInt()
-                "stonewarden" -> 0xFF7E9AA8.toInt()
-                "mirewitch" -> 0xFF9E6AD1.toInt()
-                "ashtitan" -> 0xFFE09A42.toInt()
-                else -> 0xFFE35B52.toInt()
+                "gloomfang" -> 0xFFD2C4A0.toInt()
+                "stonewarden" -> 0xFFBBD7FF.toInt()
+                "mirewitch" -> 0xFFE8B871.toInt()
+                "ashtitan" -> 0xFFFF713B.toInt()
+                else -> 0xFFD8F5FF.toInt()
             }
             mark(canvas, x, y, iconColor, 5f * density)
             paint.style = Paint.Style.STROKE
@@ -133,6 +164,7 @@ class WorldMapRenderer {
         arrow.close()
         canvas.drawPath(arrow, paint)
         canvas.restore()
+        canvas.restore()
 
         paint.style = Paint.Style.STROKE
         paint.strokeWidth = 2f * density
@@ -143,13 +175,13 @@ class WorldMapRenderer {
         textPaint.textAlign = Paint.Align.CENTER
         textPaint.color = 0xFFE8A64C.toInt()
         textPaint.textSize = 16f * density
-        canvas.drawText("REGION MAP", width / 2f, 32f * density, textPaint)
+        canvas.drawText("EMBERFALL WORLD MAP", width / 2f, 32f * density, textPaint)
 
         textPaint.color = 0xFF90A090.toInt()
         textPaint.textSize = 8.5f * density
         canvas.drawText("Tap a campfire marker to teleport", width / 2f, height - 29f * density, textPaint)
         canvas.drawText(
-            "Red boss  /  Orange campfire  /  Yellow chest  /  Tap outside to close",
+            "Arena rings  /  Orange camps  /  Yellow chests  /  Tap outside to close",
             width / 2f,
             height - 16f * density,
             textPaint,
@@ -203,5 +235,9 @@ class WorldMapRenderer {
         TileType.ROCK -> 0xFF66666E.toInt()
         TileType.RUIN_FLOOR -> 0xFF565660.toInt()
         TileType.RUIN_WALL -> 0xFF3A3A44.toInt()
+        TileType.SNOW -> 0xFFE3F2F8.toInt()
+        TileType.ASH -> 0xFF49313A.toInt()
+        TileType.LAVA -> 0xFFFF7030.toInt()
+        TileType.ARENA_STONE -> 0xFF9DB8C5.toInt()
     }
 }
