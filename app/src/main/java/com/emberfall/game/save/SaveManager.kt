@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import com.emberfall.game.core.GraphicsQuality
 import com.emberfall.game.core.GraphicsSettings
+import com.emberfall.game.core.GameMode
 import com.emberfall.game.item.ItemId
 import org.json.JSONArray
 import org.json.JSONObject
@@ -32,21 +33,37 @@ data class SaveState(
     val campfireY: Float = 0f,
     val defeatedBosses: Set<String> = emptySet(),
     val openedChests: Set<Int> = emptySet(),
+    val terrainChanges: List<Triple<Int, Int, Int>> = emptyList(),
     val equippedWeapon: String? = null,
     val meleeWeapon: String? = null,
     val rangedWeapon: String? = null,
     val weaponLevels: Map<String, Int> = emptyMap(),
     val weaponStars: Map<String, Int> = emptyMap(),
     val graphics: GraphicsSettings = GraphicsSettings(),
+    val hackBoostsEnabled: Boolean = false,
+    val hackSnapshot: HackSnapshot? = null,
+)
+
+/** Resources held before temporary hack boosts were enabled. */
+data class HackSnapshot(
+    val inventory: List<Pair<ItemId, Int>>,
+    val gold: Int,
+    val diamonds: Int,
+    val weaponLevels: Map<String, Int>,
+    val weaponStars: Map<String, Int>,
+    val equippedWeapon: String?,
+    val meleeWeapon: String?,
+    val rangedWeapon: String?,
 )
 
 /**
  * Versioned JSON save. Version 1 files (position/time only) still load: every
  * newer field falls back to a sensible default.
  */
-class SaveManager(context: Context) {
+class SaveManager(context: Context, private val mode: GameMode = GameMode.NORMAL) {
 
-    private val file = File(context.filesDir, "emberfall_save.json")
+    private val file = File(context.filesDir,
+        if (mode == GameMode.HACK) "emberfall_hack_save.json" else "emberfall_save.json")
 
     @Synchronized
     fun load(): SaveState? = try {
@@ -68,6 +85,15 @@ class SaveManager(context: Context) {
                         }.getOrNull() ?: continue
                         val count = entry.optInt("count", 0)
                         if (count > 0) inventory.add(id to count)
+                    }
+                }
+
+                val terrainChanges = mutableListOf<Triple<Int, Int, Int>>()
+                json.optJSONArray("terrainChanges")?.let { tiles ->
+                    for (i in 0 until tiles.length()) {
+                        val tile = tiles.optJSONArray(i) ?: continue
+                        if (tile.length() == 3) terrainChanges.add(
+                            Triple(tile.optInt(0), tile.optInt(1), tile.optInt(2)))
                     }
                 }
 
@@ -94,12 +120,15 @@ class SaveManager(context: Context) {
                     campfireY = json.optDouble("campfireY", 0.0).toFloat(),
                     defeatedBosses = json.optJSONArray("defeatedBosses").toStringSet(),
                     openedChests = json.optJSONArray("openedChests").toIntSet(),
+                    terrainChanges = terrainChanges,
                     equippedWeapon = json.optString("equippedWeapon").takeIf { it.isNotBlank() },
                     meleeWeapon = json.optString("meleeWeapon").takeIf { it.isNotBlank() },
                     rangedWeapon = json.optString("rangedWeapon").takeIf { it.isNotBlank() },
                     weaponLevels = json.optJSONObject("weaponLevels").toIntMap(),
                     weaponStars = json.optJSONObject("weaponStars").toIntMap(),
                     graphics = json.optJSONObject("graphics").toGraphics(),
+                    hackBoostsEnabled = if (mode == GameMode.HACK) json.optBoolean("hackBoostsEnabled", false) else false,
+                    hackSnapshot = if (mode == GameMode.HACK) json.optJSONObject("hackSnapshot").toHackSnapshot() else null,
                 )
             }
         }
@@ -110,7 +139,8 @@ class SaveManager(context: Context) {
 
     @Synchronized
     fun save(state: SaveState) {
-        try {            val inventoryJson = JSONArray()
+        try {
+            val inventoryJson = JSONArray()
             for ((id, count) in state.inventory) {
                 inventoryJson.put(JSONObject().put("id", id.name).put("count", count))
             }
@@ -118,6 +148,10 @@ class SaveManager(context: Context) {
             for (id in state.defeatedBosses) bossesJson.put(id)
             val chestsJson = JSONArray()
             for (id in state.openedChests) chestsJson.put(id)
+            val terrainJson = JSONArray()
+            for ((tx, ty, type) in state.terrainChanges) {
+                terrainJson.put(JSONArray().put(tx).put(ty).put(type))
+            }
 
             val json = JSONObject()
                 .put("version", 2)
@@ -143,6 +177,7 @@ class SaveManager(context: Context) {
                 .put("campfireY", state.campfireY.toDouble())
                 .put("defeatedBosses", bossesJson)
                 .put("openedChests", chestsJson)
+                .put("terrainChanges", terrainJson)
                 .put("equippedWeapon", state.equippedWeapon ?: "")
                 .put("meleeWeapon", state.meleeWeapon ?: "")
                 .put("rangedWeapon", state.rangedWeapon ?: "")
@@ -161,6 +196,24 @@ class SaveManager(context: Context) {
                         .put("resolutionScale", state.graphics.resolutionScale)
                         .put("targetFps", state.graphics.targetFps),
                 )
+
+            if (mode == GameMode.HACK) {
+                json.put("hackBoostsEnabled", state.hackBoostsEnabled)
+                json.put("hackSnapshot", state.hackSnapshot?.let { snapshot ->
+                    val items = JSONArray()
+                    for ((id, count) in snapshot.inventory)
+                        items.put(JSONObject().put("id", id.name).put("count", count))
+                    JSONObject()
+                        .put("inventory", items)
+                        .put("gold", snapshot.gold)
+                        .put("diamonds", snapshot.diamonds)
+                        .put("weaponLevels", JSONObject(snapshot.weaponLevels))
+                        .put("weaponStars", JSONObject(snapshot.weaponStars))
+                        .put("equippedWeapon", snapshot.equippedWeapon ?: "")
+                        .put("meleeWeapon", snapshot.meleeWeapon ?: "")
+                        .put("rangedWeapon", snapshot.rangedWeapon ?: "")
+                } ?: JSONObject.NULL)
+            }
 
             // Write-then-rename keeps the save intact if the process dies mid-write.
             val temp = File(file.parentFile, file.name + ".tmp")
@@ -194,6 +247,23 @@ class SaveManager(context: Context) {
         val keys = keys()
         while (keys.hasNext()) { val key = keys.next(); result[key] = optInt(key, 1) }
         return result
+    }
+
+    private fun JSONObject?.toHackSnapshot(): HackSnapshot? {
+        if (this == null) return null
+        val items = mutableListOf<Pair<ItemId, Int>>()
+        val array = optJSONArray("inventory")
+        if (array != null) for (i in 0 until array.length()) {
+            val entry = array.optJSONObject(i) ?: continue
+            val id = runCatching { ItemId.valueOf(entry.optString("id")) }.getOrNull() ?: continue
+            val count = entry.optInt("count", 0)
+            if (count > 0) items.add(id to count)
+        }
+        return HackSnapshot(items, optInt("gold", 0), optInt("diamonds", 0),
+            optJSONObject("weaponLevels").toIntMap(), optJSONObject("weaponStars").toIntMap(),
+            optString("equippedWeapon").takeIf { it.isNotBlank() },
+            optString("meleeWeapon").takeIf { it.isNotBlank() },
+            optString("rangedWeapon").takeIf { it.isNotBlank() })
     }
 
     private fun JSONObject?.toGraphics(): GraphicsSettings {
