@@ -6,6 +6,7 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
+import android.content.Context
 import com.emberfall.game.core.GraphicsSettings
 import com.emberfall.game.entity.Campfire
 import com.emberfall.game.entity.FloatingText
@@ -16,7 +17,9 @@ import kotlin.math.PI
 import kotlin.math.sin
 
 /** Campfires, chests, loot and floating combat text. */
-class ObjectRenderer {
+class ObjectRenderer(context: Context) {
+
+    private val art = ArtSheets.from(context)
 
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -115,80 +118,26 @@ class ObjectRenderer {
     }
 
     fun drawChest(canvas: Canvas, chest: LootChest) {
-        val x = chest.x
-        val y = chest.y
-
-        paint.color = 0x40000000
-        rect.set(x - 13f, y + 8f, x + 13f, y + 14f)
-        canvas.drawOval(rect, paint)
-
-        // Layered lid, iron bands and a bright lock keep chests readable on dark terrain.
-        paint.color = 0xFF382518.toInt()
-        rect.set(x - 14f, y - 5f, x + 14f, y + 11f)
-        canvas.drawRoundRect(rect, 3f, 3f, paint)
-        paint.color = 0xFF6B4A2A.toInt()
-        rect.set(x - 12f, y - 4f, x + 12f, y + 10f)
-        canvas.drawRoundRect(rect, 2f, 2f, paint)
-
-        paint.color = 0xFF9F7040.toInt()
-        val lidLift = if (chest.opened) 6f + chest.openTimer * 4f else 0f
-        rect.set(x - 13f, y - 9f - lidLift, x + 13f, y - 1f - lidLift)
-        canvas.drawRoundRect(rect, 3f, 3f, paint)
-
-        paint.color = 0xFF3E4A50.toInt(); paint.strokeWidth = 2f
-        canvas.drawLine(x - 8f, y - 4f, x - 8f, y + 9f, paint)
-        canvas.drawLine(x + 8f, y - 4f, x + 8f, y + 9f, paint)
-        canvas.drawLine(x - 11f, y - 3f - lidLift, x + 11f, y - 3f - lidLift, paint)
-
-        paint.color = 0xFFD9B45A.toInt()
-        rect.set(x - 2.5f, y - 4f, x + 2.5f, y + 3f)
-        canvas.drawRect(rect, paint)
-
+        val frame = if (!chest.opened) 0 else (1 + (chest.openTimer * 5f).toInt()).coerceAtMost(3)
+        art.chest(canvas, chest.x, chest.y, frame)
         if (chest.opened) {
             paint.color = 0x66FFE08A
-            canvas.drawCircle(x, y - 5f, 13f + chest.openTimer * 5f, paint)
+            canvas.drawCircle(chest.x, chest.y - 11f, 6f + chest.openTimer * 10f, paint)
         }
     }
 
     fun drawPickup(canvas: Canvas, pickup: Pickup) {
         val x = pickup.x
         val y = pickup.y + pickup.bobOffset
-        paint.color = 0x36000000
-        rect.set(x - 8f, y + 4f, x + 8f, y + 8f); canvas.drawOval(rect, paint)
-        when (pickup.item) {
-            com.emberfall.game.item.ItemId.WOOD -> {
-                paint.color = 0xFF684225.toInt(); rect.set(x - 9f, y - 3f, x + 9f, y + 3f); canvas.drawRoundRect(rect, 3f, 3f, paint)
-                paint.color = 0xFFC79457.toInt(); canvas.drawCircle(x - 7f, y, 2.2f, paint); canvas.drawCircle(x + 7f, y, 2.2f, paint)
-            }
-            com.emberfall.game.item.ItemId.STONE, com.emberfall.game.item.ItemId.IRON -> {
-                paint.color = pickup.item.color; path.reset(); path.moveTo(x - 8f, y + 5f); path.lineTo(x - 5f, y - 5f); path.lineTo(x + 4f, y - 8f); path.lineTo(x + 9f, y); path.lineTo(x + 5f, y + 6f); path.close(); canvas.drawPath(path, paint)
-                paint.color = 0x99FFFFFF.toInt(); canvas.drawCircle(x - 2f, y - 3f, 1.8f, paint)
-            }
-            com.emberfall.game.item.ItemId.MAGIC_STONE -> {
-                paint.color = 0x557A6BD9; canvas.drawCircle(x, y, 12f, paint)
-                paint.color = pickup.item.color; path.reset(); path.moveTo(x, y - 10f); path.lineTo(x + 7f, y - 2f); path.lineTo(x + 3f, y + 9f); path.lineTo(x - 5f, y + 6f); path.lineTo(x - 7f, y - 3f); path.close(); canvas.drawPath(path, paint)
-            }
-            com.emberfall.game.item.ItemId.ELIXIR, com.emberfall.game.item.ItemId.MANA_POTION,
-            com.emberfall.game.item.ItemId.POWER_POTION, com.emberfall.game.item.ItemId.REGEN_POTION -> {
-                paint.color = 0xFFE7DFC7.toInt(); rect.set(x - 3f, y - 9f, x + 3f, y - 5f); canvas.drawRect(rect, paint)
-                paint.color = pickup.item.color; rect.set(x - 6f, y - 5f, x + 6f, y + 7f); canvas.drawRoundRect(rect, 4f, 4f, paint)
-                paint.color = 0x99FFFFFF.toInt(); canvas.drawCircle(x - 2f, y - 1f, 2f, paint)
-            }
-            else -> {
-                paint.color = pickup.item.color; path.reset(); path.moveTo(x, y - 7f); path.lineTo(x + 6f, y); path.lineTo(x, y + 7f); path.lineTo(x - 6f, y); path.close(); canvas.drawPath(path, paint)
-            }
+        art.item(canvas, pickup.item, x, y - 4f, 26f)
+        if (pickup.item == com.emberfall.game.item.ItemId.MAGIC_STONE) {
+            paint.color = 0x557A6BD9
+            canvas.drawCircle(x, y - 4f, 13f, paint)
         }
-
-        paint.style = Paint.Style.STROKE
-        paint.strokeWidth = 1.2f
-        paint.color = Color.argb(200, 255, 255, 255)
-        if (pickup.item != com.emberfall.game.item.ItemId.WOOD) canvas.drawPath(path, paint)
-        paint.style = Paint.Style.FILL
-
         if (pickup.count > 1) {
             textPaint.color = 0xFFFFFFFF.toInt()
             textPaint.textSize = 7f
-            canvas.drawText("x${pickup.count}", x, y - 10f, textPaint)
+            canvas.drawText("x${pickup.count}", x, y - 15f, textPaint)
         }
     }
 
