@@ -54,5 +54,20 @@ object BiomeAtmosphere {
             soundBed = "ruin_drone",
             flavor = "Old stone hums, and embers drift up from nowhere.",
         )
+        Biome.SNOW -> AtmosphereProfile(
+            fogColor = 0xFFC4E1F0.toInt(), fogStrength = .18f, windStrength = .85f,
+            particle = AmbientParticle.DUST, particleRatePerSecond = 1f,
+            soundBed = "snow_wind", flavor = "The cold wind carries snow across the peaks.",
+        )
+        Biome.VOLCANIC -> AtmosphereProfile(
+            fogColor = 0xFF9C4931.toInt(), fogStrength = .24f, windStrength = .35f,
+            particle = AmbientParticle.EMBERS, particleRatePerSecond = 2.5f,
+            soundBed = "volcano", flavor = "Ash and embers rise from the broken earth.",
+        )
+        Biome.DESERT -> AtmosphereProfile(
+            fogColor = 0xFFE0B779.toInt(), fogStrength = .12f, windStrength = .7f,
+            particle = AmbientParticle.DUST, particleRatePerSecond = 1.8f,
+            soundBed = "desert_wind", flavor = "Warm sand drifts over old tracks.",
+        )
     }
 }
