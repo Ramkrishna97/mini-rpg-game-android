@@ -1,292 +1,261 @@
-# Emberfall — Phase 2.2 (combat, crafting & magic)
+# Emberfall
 
-A lightweight 2D top-down open-world survival RPG for Android, built with
-**Kotlin and the Android Canvas/SurfaceView stack** — no game engine, no
-AndroidX, no native libraries.
+A lightweight 2D open-world survival RPG for Android, built with
+**Kotlin, Android Canvas / SurfaceView, and an optional C++/Vulkan renderer** — no heavy game engines or third-party framework dependencies.
 
-Phase 1 delivered the infinite world, movement and render loop. Phase 2 added
-the survival layer: items, wildlife, loot, campfires, XP, a minimap and five
-bosses. 2.1 added textured materials, AGSL night lighting and sprite animation.
-**2.2 adds auto-aimed combat, harvestable wood/stone/fruit, weapon crafting with
-four attack styles, four high-cost spells, a full-screen region map and music.**
+Emberfall features infinite procedurally-generated biomes, real-time survival mechanics, gathering, weapon crafting, weapon upgrades, alchemy potions, spellcasting, shop economy, telegraphed boss encounters, downloadable content packs (DLC pipeline), and dynamic biome atmosphere.
 
 <p>
   <img src="docs/screenshot-day.png" width="49%" alt="Textured plains with campfire and chest" />
   <img src="docs/screenshot-night.png" width="49%" alt="AGSL night lighting with player and campfire light pools" />
 </p>
 
-*Captured on an Android 15 (API 35) emulator (SwiftShader). The debug APK is
-~3.2 MB, including a 1.2 MB texture atlas and a 1 MB music loop.*
+*Captured on an Android 15 (API 35) emulator. The debug APK is ~3.5 MB including texture atlases and music.*
 
-## What is implemented
+---
+
+## What is Implemented
 
 | System | Status |
 | --- | --- |
-| Open world | Infinite seeded chunks (forest / plains / highlands / shore / ocean / ruins), streamed and evicted around the player |
-| Movement | Analog acceleration, wall sliding, circle-vs-tile collision, sprint at full stick |
-| Touch | Floating joystick, attack, contextual interact, inventory and settings buttons |
-| Survival | Health, mana, hunger, regeneration, starvation damage, death and campfire respawn |
-| Items | 16 item types: wood, stone, fiber, iron, hide, magic stones, fruit, raw/cooked meat, elixir, and six weapons |
-| Inventory | 36 slots, stacking, tap-to-consume, tap-to-equip, craft tab and page arrows |
-| Combat | Separate melee and ranged buttons, each auto-aiming at the nearest target; wide-arc, 360° ring, bow and gun attacks |
-| Gathering | Chop trees, mine rocks and pick fruit with the **E** button |
-| Crafting | 8 recipes: wooden/iron/cross swords, ring blade, bow, gun, cooked meat, elixir |
-| Magic | Fireball, Ice Freeze, Water Tsunami, Wind Tornado; high mana, high damage |
-| Wildlife | Rabbits, deer, boars and wolves; kills restore health, mana and XP |
-| Loot | Eight chests, ground pickups, materials from creatures and nodes |
-| Progression | XP and levels (+8 max HP, +4 max mana), boss bonuses; **level is never lost on death** |
-| Bosses | Five named bosses in sealed arenas, telegraphed dash attacks, permanent rewards |
-| Checkpoints | Five campfires; resting heals, saves and sets the respawn point |
-| Minimap | Live terrain preview; tap it for a region map and campfire teleportation |
-| Economy | Gold from creatures and chests, diamonds from bosses; Options opens a market for item and weapon buying and selling |
-| Textures | 1024×1024 atlas, 12 material types × 4 variants at 128 px, bilinear-filtered |
-| Lighting | AGSL RuntimeShader (API 33+) with ambient darkness and three dynamic light pools; legacy fallback |
-| Animation | SpriteAnimation frame parser; 8-frame flame sheet; shimmering water variants |
-| Shadows | Soft two-layer character shadows and baked tile-object shadows |
-| Audio | 24-second generated ambient loop (`MediaPlayer`, pause on background) |
-| Loop | `lockHardwareCanvas`, `System.nanoTime`, device refresh rate up to 144 Hz, `update(deltaTime)` + `render(Canvas)` |
-| Graphics options | HIGH by default; LOW/MEDIUM/HIGH, smooth textures, anti-aliasing, particles — applied live |
-| Save | Versioned JSON, atomic write, autosave + save on pause; equipped weapon persisted |
+| **Open World** | Infinite seeded chunks (forest, plains, highlands, shore, ocean, ruins, snow, volcanic, desert), streamed and evicted seamlessly |
+| **Movement & Controls** | Dual analog touch joystick, sprint at full tilt, circle-vs-tile collision sliding |
+| **Survival Vitals** | Health, mana, hunger, starvation ticks, campfire respawning & state persistence |
+| **Items & Inventory** | 19 item types across 4 categories (materials, consumables, weapons, valuables) with 36 stackable inventory slots |
+| **Combat & Aiming** | Auto-aiming melee and ranged attacks snapping to nearest target; 4 distinct weapon attack styles |
+| **Weapon Upgrades** | Rank 1–4 upgrade paths per weapon boosting base attack damage via crafting materials |
+| **Alchemy & Potions** | Health/mana restoration, +25% attack power potions, and health regeneration potions |
+| **Gathering & Crafting** | Resource harvest nodes (trees, rocks, fruit) with 11 crafting recipes for weapons, food, and potions |
+| **Magic Spells** | Fireball, Ice Freeze, Water Tsunami, Wind Tornado; high impact spellcasting consuming mana |
+| **Wildlife & AI** | Rabbits, deer, boars, and wolves; wandering, fleeing, and aggressive pack behaviors |
+| **Boss Encounters** | 5 named bosses in sealed arenas with unique intro lines, defeat signatures, telegraphs, and permanent stat boosts |
+| **Shop Economy** | Gold from creatures/chests, Diamonds from bosses; full buy/sell market catalog in options |
+| **Map & Minimap** | Real-time minimap with full-screen region map, fog of war, and campfire fast travel |
+| **Rendering Engine** | Dual renderer support: Android Hardware Canvas (with AGSL shaders) & Native C++/Vulkan (`libemberfall_vk`) |
+| **Isometric Engine** | Optional isometric projection system (`IsoMath`, `IsoAutotile`, `IsoAnimation`) alongside standard top-down view |
+| **Game Feel & Juice** | Screen shake, hitstop freeze frames, and world-anchored floating combat text (`JuiceManager`) |
+| **Atmosphere & Particles** | Per-biome fog tinting, wind strength, and ambient particle drift (embers, pollen, sea spray, leaves, dust) |
+| **DLC / Content Pipeline**| Secure HTTPS downloadable content packs with JSON manifests, SHA-256 asset validation, and atomic staging |
+| **Audio System** | Ambient music background loops (`MusicPlayer`) with lifecycle-aware pause/resume |
+| **Save System** | Versioned JSON serialization with atomic file renames and synchronized thread locking |
 
-## Graphics & performance pass
+---
 
-**Textured materials.** `tools/gen_tileset.py` procedurally paints a 1024×1024
-atlas: 12 material types × 4 variants at 128×128 (grass, forest floor, flowers,
-dirt, sand, water, deep water, tree, rock, ruin floor, ruin wall, forest tree).
-Tiles are drawn into 32-world-unit cells with reused `RectF`s, so the renderer
-still issues one `drawBitmap` per tile. The atlas is generated from code, so it
-can be regenerated or replaced with a Kenney/itch tileset.
+## Combat, Gathering, Crafting & Alchemy
 
-**AGSL night lighting.** On Android 13+ a single `RuntimeShader` fragment pass
-computes ambient darkness and soft circular falloff for three lights (player
-torch + up to two nearby campfires), with a warm tint and dithering to prevent
-8-bit banding. Older devices automatically use the previous overlay path.
+### Auto-Aim & Weapon Styles
+Tapping the attack button snaps player orientation toward the nearest enemy within range:
+- **Melee Arc:** Wooden Sword (8 DMG), Iron Sword (14 DMG)
+- **180° Wide Sweep:** Cross Sword (22 DMG)
+- **360° Ring Spin:** Ring Blade (18 DMG)
+- **Ranged Projectiles:** Hunting Bow (16 DMG), Flintlock Gun (26 DMG, piercing)
 
-**Sprite animation.** `SpriteAnimation` slices a sheet by row/column, advances on
-a frame duration, and supports looping or one-shot clips. `AnimationSet` maps
-IDLE/WALK/ATTACK states. The campfire flame is an 8-frame generated sheet; water
-cycles atlas variants over time.
+### Weapon Upgrades
+Weapons can be upgraded up to **Rank 4** at the inventory crafting station:
+- Each rank requires specific crafting materials (e.g. Iron, Wood, Stone, Magic Stone).
+- Each rank adds +3 to +6 bonus damage depending on the weapon tier.
 
-**Frame pacing.** The render thread calls
-`SurfaceHolder.lockHardwareCanvas()` and runs a fixed 1/60 s accumulator from
-`System.nanoTime()`, clamped to 250 ms to survive app switches. `Game` exposes
-`update(deltaTime)` and `render(Canvas)`; the camera uses frame-rate-independent
-exponential smoothing with a small look-ahead. The loop sleeps out the remainder
-of each 16.6 ms budget instead of spinning.
+### Gathering
+Interact with environmental nodes using the **E** button:
+- **Trees:** Wood & Fiber
+- **Rocks:** Stone & Iron Ore
+- **Flora:** Wild Fruit
 
-## Combat, gathering & magic
+### Crafting & Alchemy Recipes
 
-**Auto-aim.** Tapping attack snaps the player toward the nearest enemy within
-melee range (14 tiles for ranged weapons) before the swing, so touch combat
-does not require precise facing.
+| Recipe | Cost | Type | Effect / Style |
+| --- | --- | --- | --- |
+| **Wooden Sword** | 4 Wood, 2 Fiber | Weapon | Melee (8 DMG) |
+| **Iron Sword** | 6 Iron, 3 Wood | Weapon | Melee (14 DMG) |
+| **Hunting Bow** | 6 Wood, 4 Fiber | Weapon | Ranged Projectile (16 DMG) |
+| **Cross Sword** | 8 Iron, 4 Wood, 2 Stone | Weapon | 180° Sweep (22 DMG) |
+| **Ring Blade** | 10 Iron, 6 Stone, 2 Magic Stone | Weapon | 360° Spin (18 DMG) |
+| **Flintlock Gun** | 12 Iron, 8 Stone, 3 Magic Stone | Weapon | Piercing Shot (26 DMG) |
+| **Cooked Meat** | 1 Raw Meat, 1 Wood | Consumable | +20 HP, +40 Hunger |
+| **Elixir** | 1 Magic Stone, 2 Fruit | Consumable | +30 HP, +50 Mana |
+| **Mana Potion** | 1 Magic Stone, 2 Fiber | Consumable | +45 Mana |
+| **Power Potion** | 1 Magic Stone, 1 Raw Meat | Consumable | +25% Attack Power for 60s |
+| **Regen Potion** | 2 Fruit, 2 Fiber | Consumable | +5 HP/sec for 15s |
 
-**Weapon styles.** Melee swords use the classic arc. The **Cross Sword** sweeps
-a 180° arc, the **Ring Blade** hits everything within 360°, the **Hunting Bow**
-fires an arrow, and the **Flintlock Gun** fires a piercing shot. Damage values:
-wooden 8, iron 14, bow 16, ring 18, cross 22, gun 26 (plus the 10 base).
+---
 
-**Gathering.** Stand near a tree, rock or flower patch and press **E**:
-- trees → Wood (+ Fiber chance)
-- rocks → Stone (+ Iron chance)
-- flowers → Wild Fruit
+## Magic Spells
 
-Harvested nodes disappear for the session; the world regrows them after a
-restart (node persistence is a Phase 3 item).
-
-**Crafting.** Open the bag and tap **CRAFT**. Recipes:
-
-| Result | Cost | Style |
-| --- | --- | --- |
-| Wooden Sword | 4 Wood, 2 Fiber | melee |
-| Iron Sword | 6 Iron, 3 Wood | melee |
-| Hunting Bow | 6 Wood, 4 Fiber | projectile |
-| Cross Sword | 8 Iron, 4 Wood, 2 Stone | wide arc |
-| Ring Blade | 10 Iron, 6 Stone, 2 Magic Stone | 360° |
-| Flintlock Gun | 12 Iron, 8 Stone, 3 Magic Stone | piercing projectile |
-| Cooked Meat | 1 Raw Meat, 1 Wood | heal |
-| Elixir | 1 Magic Stone, 2 Fruit | heal + mana |
-
-**Spells.** Tap the **FIRE/ICE/WAVE/WIND** button to open the four-spell picker:
+Cast spells using the dedicated radial picker menu:
 
 | Spell | Cost | Damage | Effect |
 | --- | --- | --- | --- |
-| Fireball | 35 MP | 78 | Exploding projectile, 95-unit blast |
-| Ice Freeze | 30 MP | 52 | Freezes a cluster for 2.6 s |
-| Water Tsunami | 45 MP | 68 | Cone wave with knockback |
-| Wind Tornado | 42 MP | 60 | 360° vortex with knockback |
+| **Fireball** | 35 MP | 78 | Exploding fireball with 95-unit splash radius |
+| **Ice Freeze** | 30 MP | 52 | Freezes enemy clusters for 2.6 seconds |
+| **Water Tsunami** | 45 MP | 68 | Wide cone wave pushing enemies back |
+| **Wind Tornado** | 42 MP | 60 | 360° vortex pulling and knocking back targets |
 
-Killing any creature restores mana (+6 to +10; bosses +60). Each boss defeated
-permanently reduces spell costs by 10% (multiplicative). Eating fruit or meat
-restores health immediately; animal kills also heal the player and grant XP.
+*Note: Defeating bosses permanently reduces all spell mana costs by 10% per boss (multiplicative).*
 
-## The five bosses
+---
 
-| Boss | Arena (tile coords) | HP | Contact damage | Reward |
-| --- | --- | --- | --- | --- |
-| Gloomfang, the Alpha | (0, −55) | 170 | 12 | +120 XP, +10 max HP, +4 max mana, elixir/meat/stone |
-| Stonewarden | (95, 30) | 280 | 16 | +190 XP, +14 max HP, +5 max mana, iron/stone |
-| Mirewitch of the Fen | (−120, 70) | 340 | 18 | +240 XP, +16 max HP, +8 max mana, elixirs/stones |
-| Ash Titan | (40, 160) | 470 | 22 | +330 XP, +20 max HP, +6 max mana, iron sword |
-| The Hollow King | (−180, −140) | 620 | 26 | +460 XP, +25 max HP, +10 max mana, elixirs/stones |
+## Boss Encounters & Signatures
 
-Stepping into an arena wakes its boss and seals the arena; the player is clamped
-inside until either side dies. Dying resets the fight and returns the player to
-the last campfire. Boss kills are saved permanently.
+| Boss | Location | HP | Contact DMG | Signature Move & Tell | Reward |
+| --- | --- | --- | --- | --- | --- |
+| **Gloomfang, the Alpha** | (0, −55) | 170 | 12 | Armoured roll charge (plates lift & rattle) | +120 XP, +10 HP, +4 MP, Elixir/Stone |
+| **Stonewarden** | (95, 30) | 280 | 16 | Dive from above (shadow grows prior to swoop) | +190 XP, +14 HP, +5 MP, Iron/Stone |
+| **Mirewitch of the Fen** | (−120, 70) | 340 | 18 | Burrows underground (dirt spits up in a ring) | +240 XP, +16 HP, +8 MP, Elixirs/Stones |
+| **Ash Titan** | (40, 160) | 470 | 22 | Scorched pounce (flanks glow before leap) | +330 XP, +20 HP, +6 MP, Iron Sword |
+| **The Hollow King** | (−180, −140) | 620 | 26 | Ambush rush (eyes flare, circles before rush) | +460 XP, +25 HP, +10 MP, Elixirs/Stones |
+
+---
 
 ## Controls
 
-| Input | Action |
+| Gesture / Button | Action |
 | --- | --- |
-| Drag on the left 60% | Floating joystick (push to the rim to sprint) |
-| Sword button | Melee swing (best owned weapon is used automatically) |
-| **E** button | Contextual interact: open chest, rest at campfire |
-| Bag button | Inventory (pauses the world) |
-| Magic button | Opens the four-spell picker (FIRE / ICE / WAVE / WIND) |
-| Tap the minimap | Opens the full-screen region map |
-| Gear button | Graphics settings |
-| Tap outside a panel | Close it |
+| **Drag Left 60% Screen** | Floating analog joystick (push to outer rim to sprint) |
+| **Attack Button** | Auto-aimed weapon swing or projectile shot |
+| **E Button** | Contextual interact (chop, mine, pick, chest loot, rest at campfire) |
+| **Bag Button** | Open inventory & crafting menu (pauses simulation) |
+| **Magic Button** | Open 4-spell radial selection picker |
+| **Minimap Tap** | Expand full-screen region map with campfire teleports |
+| **Gear Button** | Open graphics, renderer toggle, and shop market settings |
 
-## Items
+---
 
-Wood, Stone, Fiber, Iron Ore, Hide, Magic Stone, Raw Meat, Cooked Meat, Elixir,
-Wooden Sword, Iron Sword.
+## Graphics, Rendering & Content Pipeline
 
-- Meat/elixir restore hunger, health and/or mana when tapped in the inventory.
-- Weapons never stack and the highest-damage owned sword is equipped
-  automatically.
-- Chests roll 2–3 stacks from a deterministic table seeded by chest id + world
-  seed; a couple of chests guarantee a sword.
+### Dual Rendering Stack
+1. **Canvas Engine (Default):** Hardware-accelerated Android Canvas with a 1024×1024 texture atlas, bilinear filtering, and AGSL `RuntimeShader` (API 33+) dynamic night lighting with soft falloff and warm tinting.
+2. **Native Vulkan Engine (`libemberfall_vk`):** Optional C++/Vulkan 1.1 renderer via JNI (`NativeRenderer`), managing hardware swapchains, Vulkan sprite batching, and custom shader pipelines.
 
-## Build and run
+### Isometric Projection System
+Includes an optional isometric coordinate engine (`IsoMath`, `IsoAutotile`, `IsoAnimation`) providing grid-to-isometric transformations and bitmask tile blending.
 
-Requirements: Android Studio (Ladybug+) or JDK 17+ with Gradle 8.9+, Android SDK
-Platform 35, a device/emulator on Android 7.0+.
+### Content Pack / DLC System
+Allows remote content updates over HTTPS without rebuilding the application binary:
+- **JSON Manifest Schema:** Validates asset IDs, relative file paths, and maximum sizes.
+- **Security:** SHA-256 asset checksum verification and atomic staging directories to prevent corrupted packs.
+- **Unity & Python Tooling:** Art content generation tools located in `tools/unity/` and `tools/` (`gen_tileset.py`, `gen_iso_sprites.py`).
 
-```bash
-cd Emberfall
-
-# Debug APK -> app/build/outputs/apk/debug/app-debug.apk
-./gradlew :app:assembleDebug
-
-# Install + launch
-adb install -r app/build/outputs/apk/debug/app-debug.apk
-adb shell am start -n com.emberfall.game/.MainActivity
-
-# JVM unit tests (36 tests, no emulator)
-./gradlew :app:testDebugUnitTest
-```
-
-On Windows use `gradlew.bat`. `local.properties` contains the SDK path of the
-machine that generated this project — replace it with your own, or delete it and
-let Android Studio regenerate it.
-
-Regenerate the texture atlas after editing `tools/gen_tileset.py`:
-
-```bash
-python tools/gen_tileset.py
-```
+---
 
 ## Architecture
 
 ```
 app/src/main/java/com/emberfall/game/
-├── MainActivity.kt        Immersive fullscreen host, lifecycle → save
-├── GameView.kt            SurfaceView, touch dispatch, render thread
+├── MainActivity.kt            Immersive fullscreen host & lifecycle state preservation
+├── GameView.kt                SurfaceView host, touch event routing & render thread
+├── HudOverlayView.kt          Overlay view wrapper
+├── audio/
+│   └── MusicPlayer.kt         Generated ambient music loop & audio handling
+├── content/                   DLC & Content Pack pipeline
+│   ├── ContentManifest.kt     Data-only asset manifest schema & JSON parser
+│   ├── ContentRepository.kt   Local file storage & pack activation
+│   └── ContentUpdater.kt      HTTPS downloader, SHA-256 verification & atomic staging
 ├── core/
-│   ├── Game.kt            Simulation: entities, combat, bosses, saves
-│   ├── PlayerStats.kt     HP/mana/hunger/XP and level curves
-│   ├── GraphicsSettings.kt
-│   ├── Camera.kt
-│   └── Config.kt
+│   ├── Game.kt                Core loop simulation: entities, combat, bosses & saves
+│   ├── PlayerStats.kt         HP, mana, hunger, XP, level curves & stat math
+│   ├── GameModeConfig.kt      Normal and Hack game mode flags
+│   ├── GraphicsSettings.kt    Quality presets, resolution scale & particle toggles
+│   ├── JuiceManager.kt        Hitstop, screen shake & floating combat text
+│   ├── RendererConfig.kt      Canvas vs Vulkan renderer configurations
+│   ├── Spell.kt               Spell statistics, costs & splash radius definitions
+│   ├── Camera.kt              Frame-rate-independent smooth camera tracking
+│   └── Config.kt              Game constants, tile sizes & physics parameters
 ├── entity/
-│   ├── Player.kt          Movement, facing, swing, damage/invulnerability
-│   ├── Creature.kt        Shared HP, knockback, collision movement, facing
-│   ├── Animal.kt          Rabbit/deer/boar wander + flee AI
-│   ├── Wolf.kt            Aggro/chase/bite AI
-│   ├── Boss.kt            Sealed-arena boss state machine (chase/telegraph/dash)
-│   └── WorldObjects.kt    Pickup, Campfire, LootChest, FloatingText, Particle
+│   ├── Player.kt              Movement, facing, swing arcs & invulnerability
+│   ├── Creature.kt            Shared health, knockback, collision & facing AI
+│   ├── Animal.kt              Passive wildlife wander & flee behaviors
+│   ├── Wolf.kt                Hostile wolf pack aggro, chase & bite AI
+│   ├── Boss.kt                Sealed-arena boss state machines & phase transitions
+│   ├── BossSignature.kt       Intro/defeat dialogue, tells & telegraph specs
+│   ├── Projectile.kt          Arrow, bullet & spell movement & collision physics
+│   └── WorldObjects.kt        Pickups, campfires, chests, floating text & particles
+├── input/
+│   ├── InputState.kt          Analog joystick vectors & button trigger states
+│   ├── TouchController.kt     Multi-touch controls & UI panel hit testing
+│   └── UiCommand.kt           Decoupled UI interaction events
 ├── item/
-│   ├── ItemId.kt          Item stats and categories
-│   └── Inventory.kt       Stacking, removal, best weapon
-├── world/
-│   ├── Noise.kt, WorldGenerator.kt, World.kt, TileType.kt, Biome.kt
-│   ├── Bosses.kt          Boss definitions and arena coordinates
-│   ├── WorldPoints.kt     Campfire and chest placements
-│   └── Collision.kt
-├── input/                 InputState, TouchController, UiCommand
+│   ├── ItemId.kt              19 item types, stats, rarities & potion attributes
+│   ├── Inventory.kt           36-slot grid stacking, item consumption & weapon equip logic
+│   ├── Recipes.kt             11 crafting recipes for weapons, food & alchemy
+│   ├── ShopCatalog.kt         Gold & Diamond shop offer prices & sell math
+│   └── WeaponUpgrades.kt      Rank 1–4 weapon upgrade paths & material requirements
 ├── render/
-│   ├── TileAtlas.kt       Loads the 1024² atlas (procedural fallback)
-│   ├── WorldRenderer.kt   Terrain, water shimmer, day/night + AGSL lights
-│   ├── GpuLighting.kt     RuntimeShader (AGSL) night-lighting pass
-│   ├── SpriteAnimation.kt Frame parser + state-based AnimationSet
-│   ├── CreatureRenderer.kt, PlayerRenderer.kt, ObjectRenderer.kt
+│   ├── TileAtlas.kt           1024² procedural tile atlas loader & generator
+│   ├── WorldRenderer.kt       Terrain rendering, water shimmer & AGSL lighting
+│   ├── NativeRenderer.kt      JNI bridge to C++/Vulkan native renderer (`libemberfall_vk`)
+│   ├── VulkanFrameBuilder.kt  Vulkan render pass setup & sprite buffer streaming
+│   ├── IsoMath.kt             Isometric coordinate projection math
+│   ├── IsoAutotile.kt         Isometric autotiling bitmask logic
+│   ├── IsoAnimation.kt        Isometric sprite sheet state machine
+│   ├── BiomeAtmosphere.kt     Per-biome fog, wind strength & particle drift
+│   ├── GpuLighting.kt         AGSL RuntimeShader (API 33+) dynamic lighting pass
+│   ├── NightLighting.kt       Fallback ambient darkness overlay
+│   ├── SpriteAnimation.kt     Frame parsing & state-based AnimationSet
+│   ├── SpriteBatch.kt         Batch allocations & float buffer streaming
+│   ├── AtlasBuilder.kt        Procedural atlas compilation
+│   ├── AtlasLayout.kt         Sub-texture coordinate mappings
+│   ├── EntityBatchBuilder.kt  Batch rendering for game entities
+│   ├── WorldBatchBuilder.kt   Batch rendering for world terrain
+│   └── CreatureRenderer.kt, PlayerRenderer.kt, ObjectRenderer.kt
 ├── ui/
-│   ├── HudRenderer.kt     Vitals, boss bar, prompts, joystick and buttons
-│   ├── MinimapRenderer.kt
-│   ├── InventoryPanelRenderer.kt, SettingsPanelRenderer.kt
-│   └── UiLayout.kt        Single source of truth for all hit boxes
-└── save/SaveManager.kt    Versioned JSON, atomic write, synchronized
+│   ├── HudRenderer.kt         Player vitals, boss HP bar, action prompts & joysticks
+│   ├── WorldMapRenderer.kt    Full-screen region map, fog of war & teleports
+│   ├── SpellPickerRenderer.kt 4-spell radial selection menu
+│   ├── InventoryPanelRenderer.kt Inventory slots, tabs, crafting & upgrades
+│   ├── SettingsPanelRenderer.kt Quality settings, renderer toggles & shop view
+│   ├── UiArt.kt               Procedural panel borders & icon framing
+│   └── UiLayout.kt            Single source of truth for UI bounds & touch targets
+├── world/
+│   ├── Biome.kt, TileType.kt, World.kt, WorldGenerator.kt, Noise.kt
+│   ├── Bosses.kt              Boss definitions & arena coordinate placements
+│   ├── WorldPoints.kt         Campfire & loot chest placement tables
+│   └── Collision.kt           Circle-vs-tile physics & wall sliding
+├── save/
+│   └── SaveManager.kt         Versioned JSON saves with atomic file replacement
+└── util/
+    └── MathUtils.kt           Interpolation, clamping & distance utilities
 ```
 
-### Loop and performance
+---
 
-- Fixed 1/60 s simulation on a dedicated thread (`THREAD_PRIORITY_DISPLAY`),
-  one hardware-canvas draw per frame, sleep to the frame budget.
-- Tiles are pre-rendered bitmaps: one `drawBitmap` per visible tile.
-- Chunks are `ByteArray`s generated lazily and evicted past six chunks.
-- Off-screen entities are not drawn or updated; bosses only tick within range.
-- No per-frame allocations in the tile hot path; paints/rects/bitmaps are reused.
+## Build and Run
 
-### Save format (v2)
+### Requirements
+- Android Studio (Ladybug or newer) or JDK 17+ with Gradle 8.9+
+- Android SDK Platform 35
+- Android device or emulator running Android 7.0+ (API 24+)
 
-```json
-{
-  "version": 2,
-  "seed": 1763696017,
-  "x": 16, "y": -1600,
-  "minutes": 679.7, "day": 1,
-  "level": 2, "xp": 65,
-  "maxHealth": 118, "health": 118,
-  "maxMana": 58, "mana": 58,
-  "hunger": 69.2,
-  "inventory": [{"id": "IRON_SWORD", "count": 1}],
-  "campfireX": -176, "campfireY": 240,
-  "defeatedBosses": ["gloomfang"],
-  "openedChests": [1],
-  "graphics": {"quality": "MEDIUM", "smoothTextures": true,
-               "antiAliasing": true, "particles": true}
-}
+### Commands
+
+```bash
+# Build Debug APK -> app/build/outputs/apk/debug/app-debug.apk
+./gradlew :app:assembleDebug
+
+# Install and Launch on connected device/emulator
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+adb shell am start -n com.emberfall.game/.MainActivity
+
+# Run JVM Unit Tests
+./gradlew :app:testDebugUnitTest
 ```
 
-Writes go to a temp file and rename over the save, under a lock, so autosave and
-the pause-time save cannot corrupt each other.
+*On Windows, use `gradlew.bat` instead of `./gradlew`.*
 
-## Graphics notes
-
-This pass uses real GPU-side effects available to Canvas: a 1024² textured
-atlas with bilinear filtering and an AGSL `RuntimeShader` lighting pass on
-API 33+. Direct **Vulkan** control, AGDK **Swappy** frame pacing and **ASTC**
-texture upload still require a native renderer, because Canvas does not expose a
-swapchain or command buffers; **LOD meshes** do not apply to 2D sprites. The 2D
-equivalents that do apply are implemented: culling, distance-based AI updates,
-quality tiers and per-object detail switches. See [docs/GRAPHICS.md](docs/GRAPHICS.md)
-for the full breakdown, asset-import guide (Kenney / itch.io / OpenGameArt /
-CraftPix) and the native upgrade path.
+---
 
 ## Tests
 
-41 JVM tests cover noise determinism, biome/tile rules, boss-arena carving,
-chunking and eviction, spawn safety, collision/sliding, inventory stacking and
-overflow, XP/level/boss-reward math, recipe integrity, spell data and weapon styles.
+49 JVM unit tests cover noise determinism, biome/tile rules, boss-arena carving, chunking and eviction, spawn safety, collision sliding, inventory stacking and overflow, XP/level/boss-reward math, recipe integrity, weapon upgrade paths, content pack manifest parsing, and game feel mechanics.
+
+---
 
 ## Roadmap
 
-| Phase | Scope |
-| --- | --- |
-| 1 | World streaming, render loop, movement, touch, save |
-| 2 | Items/inventory, wildlife, wolves, chests, campfires, XP, minimap, 5 bosses, graphics settings |
-| **2.1 (this)** | 1024² material atlas, AGSL night lighting, sprite animation, water shimmer, frame pacing |
-| 3 | Harvestable resource nodes (trees/rocks/bushes), crafting recipes, shelter building, cooking |
-| 4 | Ranged weapons and magic (spend mana), enemy variety, equipment durability, status effects |
-| 5 | Perk tree and active abilities (dash, power strike), quests/waypoints |
-| 6 | Additional boss attack patterns, loot rarity tiers, native Vulkan renderer experiment |
+| Phase | Scope | Status |
+| --- | --- | --- |
+| **Phase 1** | Infinite world streaming, render loop, touch movement, basic saves | Completed |
+| **Phase 2** | Survival vitals, inventory, wildlife, chests, campfires, XP, minimap, 5 boss fights | Completed |
+| **Phase 2.1** | 1024² material atlas, AGSL night lighting, sprite animations, frame pacing | Completed |
+| **Phase 2.2** | Auto-aim combat, weapon styles, gathering, 11 recipes, magic spells, region map, audio | Completed |
+| **Phase 2.3** | Weapon upgrades, alchemy potions, shop economy, Vulkan renderer, isometric projection, game juice, DLC pipeline | Completed |
+| **Phase 3** | Resource node persistence across sessions, player shelter building, extended quest lines | Planned |
