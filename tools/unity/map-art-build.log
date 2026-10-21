@@ -1,0 +1,564 @@
+VBCSCompilerPreWarmer: watching VBCSCompiler (PID 21492)
+VBCSCompilerPreWarmer: pre-warm launched (dotnet PID 10908)
+VBCSCompiler prewarm took 248.00 ms
+[Licensing::Module] Trying to connect to existing licensing client channel...
+[Licensing::IpcConnector] Channel LicenseClient-ramkr doesn't exist
+Built from '6000.6/staging' branch; Version is '6000.6.6f1 (d20c9ac777da) revision 13765786'; Using compiler version '194234433'; Build Type 'Release'
+OS: 'Windows 11  (10.0.26200) CoreSingleLanguage' Language: 'en' Physical Memory: 15869 MB
+BatchMode: 1, IsHumanControllingUs: 0, StartBugReporterOnCrash: 0, Is64bit: 1
+System  architecture: x64
+Process architecture: x64
+Date: 2026-10-21T08:41:40Z
+[Licensing::Module] Successfully launched the LicensingClient (PId: 10116)
+[Licensing::IpcConnector] Successfully connected to: "LicenseClient-ramkr" at "2026-10-21T08:41:40.6320461Z"
+[Licensing::Client] Code 10 while verifying Licensing Client signature (process Id: 10116, path: "F:/Apps/Unity engine/Unity Hub/Installs/6000.6.6f1/Editor/Data/Resources/Licensing/Client/Unity.Licensing.Client.exe")
+[Licensing::Module] LicensingClient has failed validation; ignoring
+[Licensing::Client] Handshaking with LicensingClient:
+  Version:                 1.18.3+d7ffd15
+  Session Id:              0709aa99b1554decabe56329f04a06ff
+  Correlation Id:          ab1ab58ee3755edba3320840e42b2126
+  External correlation Id: 6598583441850997691
+  Machine Id:              GwZFzKqu56ZnPo0YzOP+uJGJ1N4=
+[Licensing::Module] Successfully connected to LicensingClient on channel: "LicenseClient-ramkr" (connect: 0.57s, validation: 0.27s, handshake: 0.04s)
+[Licensing::IpcConnector] Successfully connected to: "LicenseClient-ramkr-notifications" at "2026-10-21T08:41:40.9448083Z"
+[Licensing::Module] Connected to LicensingClient (PId: 10116, launch time: 0.03, total connection time: 0.88s)
+[Licensing::Module] Error: Access token is unavailable; failed to update
+[Licensing::Client] Successfully resolved entitlement details
+[Licensing::Module] License group:
+  Id: 13469986530109-UnityPersXXXX
+  Product: Unity Personal
+  Type: Assigned
+  Expiration: Unlimited
+[Licensing::Client] Successfully updated license, isAsync: True, time: 0.01
+[Licensing::Client] Successfully resolved entitlement details
+[Licensing::Module] Licensing Background thread has ended after 0.96s
+
+COMMAND LINE ARGUMENTS:
+F:\Apps\Unity engine\Unity Hub\Installs\6000.6.6f1\Editor\Unity.exe
+-batchmode
+-nographics
+-quit
+-projectPath
+F:\Apps\Unity engine\Unity projects\Emberfall
+-executeMethod
+EmberfallMapArtBuilder.BuildAll
+-emberfallOutput
+E:\Temp\Deepseek-Harness AI-Playground\Proj1\Emberfall\app\src\main\assets\terrain
+-logFile
+E:\Temp\Deepseek-Harness AI-Playground\Proj1\Emberfall\tools\unity\map-art-build.log
+Successfully changed project path to: F:\Apps\Unity engine\Unity projects\Emberfall
+F:/Apps/Unity engine/Unity projects/Emberfall
+[UnityMemory] Configuration Parameters - Can be set up in boot.config
+    "memorysetup-temp-allocator-size-gi-baking-worker=262144"
+    "memorysetup-temp-allocator-size-gi-baking-worker=262144"
+    "memorysetup-temp-allocator-size-gi-baking-worker=262144"
+    "memorysetup-temp-allocator-size-gi-baking-worker=262144"
+    "memorysetup-temp-allocator-size-gi-baking-worker=262144"
+    "memorysetup-temp-allocator-size-nav-mesh-worker=65536"
+    "memorysetup-temp-allocator-size-audio-worker=65536"
+    "memorysetup-temp-allocator-size-cloud-worker=32768"
+    "memorysetup-temp-allocator-size-gfx=262144"
+    "memorysetup-remapper-allocator-initial-capacity=32768"
+    "memorysetup-temp-allocator-size-preload-manager=33554432"
+    "memorysetup-allocator-temp-initial-block-size-main=262144"
+    "memorysetup-allocator-temp-initial-block-size-worker=262144"
+    "memorysetup-temp-allocator-size-job-worker=262144"
+    "memorysetup-temp-allocator-size-background-worker=32768"
+    "memorysetup-bucket-allocator-granularity=16"
+    "memorysetup-bucket-allocator-bucket-count=8"
+    "memorysetup-bucket-allocator-block-size=33554432"
+    "memorysetup-bucket-allocator-block-count=8"
+    "memorysetup-main-allocator-block-size=16777216"
+    "memorysetup-thread-allocator-block-size=16777216"
+    "memorysetup-main-allocator-mimalloc-enabled=1"
+    "memorysetup-gfx-main-allocator-block-size=16777216"
+    "memorysetup-gfx-thread-allocator-block-size=16777216"
+    "memorysetup-cache-allocator-block-size=4194304"
+    "memorysetup-typetree-allocator-block-size=2097152"
+    "memorysetup-profiler-bucket-allocator-granularity=16"
+    "memorysetup-profiler-bucket-allocator-bucket-count=8"
+    "memorysetup-profiler-bucket-allocator-block-size=33554432"
+    "memorysetup-profiler-bucket-allocator-block-count=8"
+    "memorysetup-profiler-allocator-block-size=16777216"
+    "memorysetup-profiler-editor-allocator-block-size=1048576"
+    "memorysetup-temp-allocator-size-main=16777216"
+    "memorysetup-job-temp-allocator-block-size=2097152"
+    "memorysetup-job-temp-allocator-block-size-background=1048576"
+    "memorysetup-job-temp-allocator-reduction-small-platforms=262144"
+Logging is directed to a specific file, skipping project log.
+Player connection [12732]  Target information:
+
+Player connection [12732]  * "[IP] 10.166.175.225 [Port] 55504 [Flags] 2 [Guid] 3967839852 [EditorId] 3967839852 [Version] 1048832 [Id] WindowsEditor(7,Ramkrishna) [Debug] 1 [PackageName] WindowsEditor [ProjectName] Editor" 
+
+Player connection [12732] Host joined multi-casting on [225.0.0.222:54997]...
+Player connection [12732] Host joined alternative multi-casting on [225.0.0.222:34997]...
+Input System module state changed to: Initialized.
+[Physics::Module] Initialized fallback backend.
+[Physics::Module] Id: 0xdecafbad
+[Package Manager] Connected to IPC stream "Upm-7008" after 0.2 seconds.
+[Licensing::Client] Successfully resolved entitlement details
+Library Redirect Path: Library/
+Launching Unity Data Store - F:/Apps/Unity engine/Unity Hub/Installs/6000.6.6f1/Editor/Data/Tools/Unity.DataStore.exe 
+Unity Data Store artifact dir = Library/DataStore, working dir = F:/Apps/Unity engine/Unity projects/EmberfallUnity Data Store running and initialised
+Refreshing native plugins compatible for Editor in 3.77 ms, found 0 plugins.
+[Physics::Module] Selected backend (deferred post-plugins).
+[Physics::Module] Name: PhysX
+[Physics::Module] Id: 0xf2b8ea05
+[Physics::Module] SDK Version: 4.1.2
+[Physics::Module] Integration Version: 1.0.0
+[Physics::Module] Threading Mode: Multi-Threaded
+Initialize engine version: 6000.6.6f1 (d20c9ac777da)
+[EntityIdStore] init: VM path (explicit commit), pageSize=4096, blockCount=1048576, entitiesPerBlock=256, slots reserved=4294967296 bytes
+[Subsystems] Discovering subsystems at path F:/Apps/Unity engine/Unity Hub/Installs/6000.6.6f1/Editor/Data/Resources/UnitySubsystems
+[Subsystems] Discovering subsystems at path F:/Apps/Unity engine/Unity projects/Emberfall/Assets
+Forcing GfxDevice: Null
+GfxDevice: creating device client; kGfxThreadingModeNonThreaded
+NullGfxDevice:
+    Version:  NULL 1.0 [1.0]
+    Renderer: Null Device
+    Vendor:   Unity Technologies
+Initialize mono
+Mono path[0] = 'F:/Apps/Unity engine/Unity Hub/Installs/6000.6.6f1/Editor/Data/Managed'
+Mono path[1] = 'F:/Apps/Unity engine/Unity Hub/Installs/6000.6.6f1/Editor/Data/BCLExtensions/runtime/netstandard2.1'
+Mono path[2] = 'F:/Apps/Unity engine/Unity Hub/Installs/6000.6.6f1/Editor/Data/MonoBleedingEdge/lib/mono/unityjit-win32'
+Mono config path = 'F:/Apps/Unity engine/Unity Hub/Installs/6000.6.6f1/Editor/Data/MonoBleedingEdge/etc'
+Using monoOptions --debugger-agent=transport=dt_socket,embedding=1,server=y,suspend=n,address=127.0.0.1:56008
+CodeReloadManager initialized
+ImportWorker Server TCP listen port: 0
+AcceleratorClientConnectionCallback - disconnected - :0
+Begin MonoManager ReloadAssembly
+Registering precompiled unity dll's ...
+Register platform support module: F:/Apps/Unity engine/Unity Hub/Installs/6000.6.6f1/Editor/Data/PlaybackEngines/WindowsStandaloneSupport/UnityEditor.WindowsStandalone.Extensions.dll
+Registered in 0.003143 seconds.
+Native extension for WindowsStandalone target not found
+Package Manager log level set to [2]
+ScheduleIndexationOnStartup MainProcess:False IndexOnStartup:True
+Scripting: successfully reloaded assembly
+- Finished resetting the current domain, in  1.446 seconds
+Domain Reload Profiling: 2541ms
+	BeginReloadAssembly (278ms)
+		CreateAndSetChildDomain (9ms)
+	RebuildCommonClasses (8ms)
+	RebuildNativeTypeToScriptingClass (24ms)
+	initialDomainReloadingComplete (138ms)
+	LoadAllAssembliesAndSetupDomain (644ms)
+		LoadAssemblies (266ms)
+		TypeCache.Refresh (418ms)
+			TypeCache.ScanAssembly (384ms)
+		AnalyzeDomain (3ms)
+	FinalizeReload (1448ms)
+		SetupLoadedEditorAssemblies (0ms)
+			LogAssemblyErrors (3ms)
+			InitializePlatformSupportModulesInManaged (3ms)
+			BeforeProcessingInitializeOnLoad (114ms)
+			ProcessInitializeOnLoadAttributes (144ms)
+			ProcessInitializeOnLoadMethodAttributes (797ms)
+			EditorAssembliesLoaded (3ms)
+[Licensing::Client] Successfully resolved entitlement details
+Application.AssetDatabase Initial Refresh Start
+[Package Manager] Restoring resolved packages state from cache
+[Licensing::Client] Successfully resolved entitlement details
+[Package Manager] Registered 66 packages:
+  Packages from [https://packages.unity.com]:
+    com.unity.ai.assistant@2.21.0-pre.1 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.ai.assistant@a0bce5f1cc56)
+    com.unity.ai.inference@2.6.1 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.ai.inference@9a123aee5df7)
+    com.unity.ide.rider@3.0.40 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.ide.rider@e4950c6d131b)
+    com.unity.ide.visualstudio@2.0.27 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.ide.visualstudio@dc1ddd4f09b6)
+    com.unity.inputsystem@1.20.0 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.inputsystem@7a4e1a2a8194)
+    com.unity.learn.iet-framework@6.0.7 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.learn.iet-framework@96330db47073)
+    com.unity.settings-manager@2.1.1 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.settings-manager@0b8638c5ce86)
+    com.unity.splines@2.9.1 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.splines@edbe9aefec91)
+    com.unity.dt.app-ui@2.2.4 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.dt.app-ui@8606a9847e5b)
+    com.unity.nuget.newtonsoft-json@3.2.2 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.nuget.newtonsoft-json@4dfd81071c64)
+    com.unity.nuget.mono-cecil@1.11.6 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.nuget.mono-cecil@ecb9724e46ff)
+    com.unity.searcher@4.9.5 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.searcher@a463122f2c00)
+    com.unity.profiling.core@1.0.3 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.profiling.core@8a49f7027d06)
+  Built-in packages:
+    com.unity.cinemachine@6.6.0 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.cinemachine@ea71a007529e)
+    com.unity.render-pipelines.universal@17.6.0 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.render-pipelines.universal@9b1eb8be54e0)
+    com.unity.ugui@2.6.0 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.ugui@0b1771797efc)
+    com.unity.modules.accessibility@1.0.0 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.modules.accessibility)
+    com.unity.modules.adaptiveperformance@1.0.0 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.modules.adaptiveperformance)
+    com.unity.modules.ai@1.0.0 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.modules.ai)
+    com.unity.modules.androidjni@1.0.0 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.modules.androidjni)
+    com.unity.modules.animation@1.0.0 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.modules.animation)
+    com.unity.modules.assetbundle@1.0.0 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.modules.assetbundle)
+    com.unity.modules.audio@1.0.0 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.modules.audio)
+    com.unity.modules.cloth@1.0.0 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.modules.cloth)
+    com.unity.modules.director@1.0.0 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.modules.director)
+    com.unity.modules.imageconversion@1.0.0 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.modules.imageconversion)
+    com.unity.modules.imgui@1.0.0 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.modules.imgui)
+    com.unity.modules.jsonserialize@1.0.0 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.modules.jsonserialize)
+    com.unity.modules.particlesystem@1.0.0 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.modules.particlesystem)
+    com.unity.modules.physics@1.0.0 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.modules.physics)
+    com.unity.modules.physics2d@1.0.0 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.modules.physics2d)
+    com.unity.modules.physicscore2d@1.0.0 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.modules.physicscore2d)
+    com.unity.modules.screencapture@1.0.0 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.modules.screencapture)
+    com.unity.modules.terrain@1.0.0 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.modules.terrain)
+    com.unity.modules.terrainphysics@1.0.0 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.modules.terrainphysics)
+    com.unity.modules.tetgen@1.0.0 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.modules.tetgen)
+    com.unity.modules.tilemap@1.0.0 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.modules.tilemap)
+    com.unity.modules.timelinefoundation@1.0.0 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.modules.timelinefoundation)
+    com.unity.modules.ui@1.0.0 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.modules.ui)
+    com.unity.modules.uielements@1.0.0 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.modules.uielements)
+    com.unity.modules.umbra@1.0.0 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.modules.umbra)
+    com.unity.modules.unityanalytics@1.0.0 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.modules.unityanalytics)
+    com.unity.modules.unitywebrequest@1.0.0 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.modules.unitywebrequest)
+    com.unity.modules.unitywebrequestassetbundle@1.0.0 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.modules.unitywebrequestassetbundle)
+    com.unity.modules.unitywebrequestaudio@1.0.0 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.modules.unitywebrequestaudio)
+    com.unity.modules.unitywebrequesttexture@1.0.0 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.modules.unitywebrequesttexture)
+    com.unity.modules.unitywebrequestwww@1.0.0 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.modules.unitywebrequestwww)
+    com.unity.modules.vectorgraphics@1.0.0 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.modules.vectorgraphics)
+    com.unity.modules.vehicles@1.0.0 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.modules.vehicles)
+    com.unity.modules.video@1.0.0 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.modules.video)
+    com.unity.modules.wind@1.0.0 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.modules.wind)
+    com.unity.modules.xr@1.0.0 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.modules.xr)
+    com.unity.modules.subsystems@1.0.0 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.modules.subsystems)
+    com.unity.modules.hierarchycore@1.0.0 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.modules.hierarchycore)
+    com.unity.render-pipelines.core@17.6.0 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.render-pipelines.core@e18bd88df4e3)
+    com.unity.shadergraph@17.6.0 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.shadergraph@0de771837e0e)
+    com.unity.render-pipelines.universal-config@17.6.0 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.render-pipelines.universal-config@561422b74439)
+    com.unity.editorcoroutines@6.6.0 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.editorcoroutines@8cd72baa102a)
+    com.unity.test-framework@1.8.0 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.test-framework@80f691d4262b)
+    com.unity.ext.nunit@2.1.0 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.ext.nunit@0198eae3b53e)
+    com.unity.burst@2.0.0 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.burst@626e66ab421b)
+    com.unity.collections@6.6.0 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.collections@10fff0607388)
+    com.unity.2d.sprite@1.0.0 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.2d.sprite@752945c75a6f)
+    com.unity.mathematics@1.4.0 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.mathematics@8306a64d0cd6)
+    com.unity.graph-authoring@1.0.0 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.graph-authoring@cfd2588851ee)
+    com.unity.test-framework.performance@6.6.0 (location: F:\Apps\Unity engine\Unity projects\Emberfall\Library\PackageCache\com.unity.test-framework.performance@54c5bd86aedb)
+[Subsystems] No new subsystems found in resolved package list.
+[Package Manager] Done registering packages in 0.02 seconds
+Asset Packages/com.unity.render-pipelines.universal/Runtime/RendererFeatures/ScreenSpaceReflectionRendererFeature/ScreenSpaceReflectionDepthNormalOnlyTransparentPass.cs has no meta file, but it's in an immutable folder. The asset will be ignored.
+Asset Packages/com.unity.render-pipelines.universal/Tests/Editor/Tools/Converters/ReadonlyMaterialConverter/ReadonlyMaterialConverterTests.MaterialReferenceBuilder.cs has no meta file, but it's in an immutable folder. The asset will be ignored.
+Asset Packages/com.unity.render-pipelines.universal/Tests/Editor/Tools/Converters/ReadonlyMaterialConverter/ReadonlyMaterialConverterTests.MaterialReferenceChanger.cs has no meta file, but it's in an immutable folder. The asset will be ignored.
+Assembly reference Packages/com.unity.cinemachine/Editor/Samples/ExposeHDRPInternals/HDRP-Editor-ref.asmref has no target assembly definition
+Assembly reference Packages/com.unity.cinemachine/Editor/Samples/ExposeHDRPInternals/HDRP-Editor-ref.asmref has no target assembly definition
+[ScriptCompilation] Requested script compilation because: AssetDatabase observed changes in script compilation related files
+Refreshing native plugins compatible for Editor in 9.48 ms, found 2 plugins.
+Starting: F:\Apps\Unity engine\Unity Hub\Installs\6000.6.6f1\Editor\Data\Tools\BuildPipeline\bee_backend.exe --ipc --defer-dag-verification --dagfile="Library/Bee/1900b0aE.dag" --continue-on-failure --profile="Library/Bee/backend1.traceevents" ScriptAssemblies
+WorkingDir: F:/Apps/Unity engine/Unity projects/Emberfall
+DisplayProgressbar: Compiling Scripts
+ExitCode: 4 Duration: 1s79ms
+Rebuilding DAG because FileSignature timestamp changed: Library/Bee/1900b0aE-inputdata.json
+[1150/1515  0s] ILPP-Configuration Library/ilpp-configuration.nevergeneratedoutput
+[1151/1515  0s] Csc Library/Bee/artifacts/1900b0aE.dag/Assembly-CSharp-Editor.dll (+2 others)
+*** Tundra requires additional run (0.87 seconds), 2 items updated, 1149 evaluated
+Starting: F:\Apps\Unity engine\Unity Hub\Installs\6000.6.6f1\Editor\Data\DotNetSdk\dotnet.exe "F:\Apps\Unity engine\Unity Hub\Installs\6000.6.6f1\Editor\Data\Tools\BuildPipeline\ScriptCompilationBuildProgram.exe" "Library/Bee/1900b0aE.dag.json" "Library/Bee/1900b0aE-inputdata.json" "Library\Bee\buildprogram0.traceevents"
+WorkingDir: F:/Apps/Unity engine/Unity projects/Emberfall
+ExitCode: 0 Duration: 1s667ms
+Starting: F:\Apps\Unity engine\Unity Hub\Installs\6000.6.6f1\Editor\Data\Tools\BuildPipeline\bee_backend.exe --ipc --defer-dag-verification --dagfile="Library/Bee/1900b0aE.dag" --continue-on-failure --dagfilejson="Library\Bee\1900b0aE.dag.json" --profile="Library/Bee/backend2.traceevents" ScriptAssemblies
+WorkingDir: F:/Apps/Unity engine/Unity projects/Emberfall
+ExitCode: 0 Duration: 1s639ms
+Finished compiling graph: 1519 nodes, 32421 flattened edges (26537 ToBuild, 248 ToUse), maximum node priority 1708
+[ 782/1515  0s] WriteText Library/Bee/artifacts/1900b0aE.dag/Assembly-CSharp-Editor.rsp
+[1150/1515  0s] ILPP-Configuration Library/ilpp-configuration.nevergeneratedoutput
+[1511/1515  0s] Csc Library/Bee/artifacts/1900b0aE.dag/Assembly-CSharp-Editor.dll (+2 others)
+[1512/1515  0s] ILPostProcess Library/Bee/artifacts/1900b0aE.dag/post-processed/Assembly-CSharp-Editor.dll (+pdb)
+Processing assembly Library/Bee/artifacts/1900b0aE.dag/Assembly-CSharp-Editor.dll, with 148 defines and 386 references
+
+processors: Unity.Jobs.CodeGen.JobsILPostProcessor, zzzUnity.Burst.CodeGen.BurstILPostProcessor
+
+1 processor(s) skipped this assembly
+
+running Unity.Jobs.CodeGen.JobsILPostProcessor
+[1513/1515  0s] CopyFiles Library/ScriptAssemblies/Assembly-CSharp-Editor.pdb
+[1514/1515  0s] CopyFiles Library/ScriptAssemblies/Assembly-CSharp-Editor.dll
+*** Tundra build success (1.61 seconds), 6 items updated, 1515 evaluated
+AssetDatabase: script compilation time: 5.387725s
+Begin MonoManager ReloadAssembly
+Total cache size 141183024
+Total cache size after purge 141183024, took 00:00:00.3266160
+Assembly reference Packages/com.unity.cinemachine/Editor/Samples/ExposeHDRPInternals/HDRP-Editor-ref.asmref has no target assembly definition
+'Packages/com.unity.render-pipelines.core/Editor/Deprecated.cs' contains partial class of Unity.Object, exactly 1 of the partial classes needs to be in a file with the same filename. This is to know the one that can be referenced from ie. GameObjects
+'Packages/com.unity.render-pipelines.core/Editor/Deprecated.cs' contains partial class of Unity.Object, exactly 1 of the partial classes needs to be in a file with the same filename. This is to know the one that can be referenced from ie. GameObjects
+'Packages/com.unity.cinemachine/Editor/Editors/CinemachineVirtualCameraBaseEditor.cs' contains partial class of Unity.Object, exactly 1 of the partial classes needs to be in a file with the same filename. This is to know the one that can be referenced from ie. GameObjects
+'Packages/com.unity.cinemachine/Editor/Obsolete/CinemachineVirtualCameraBaseEditor.cs' contains partial class of Unity.Object, exactly 1 of the partial classes needs to be in a file with the same filename. This is to know the one that can be referenced from ie. GameObjects
+Native extension for WindowsStandalone target not found
+Refreshing native plugins compatible for Editor in 2.18 ms, found 2 plugins.
+[Licensing::Client] Error: Code 404 while processing request (status: Found 0 entitlement groups and 0 free entitlements matching requested entitlement ids)
+[Licensing::Client] Error: Code 404 while processing request (status: Found 0 entitlement groups and 0 free entitlements matching requested entitlement ids)
+[Licensing::Client] Error: Code 404 while processing request (status: Found 0 entitlement groups and 0 free entitlements matching requested entitlement ids)
+ScheduleIndexationOnStartup MainProcess:True IndexOnStartup:True
+Scripting: successfully reloaded assembly
+- Finished resetting the current domain, in  2.206 seconds
+Domain Reload Profiling: 3411ms
+	BeginReloadAssembly (258ms)
+		DisableScriptedObjects (37ms)
+		CreateAndSetChildDomain (51ms)
+	RebuildCommonClasses (10ms)
+	RebuildNativeTypeToScriptingClass (14ms)
+	initialDomainReloadingComplete (75ms)
+	LoadAllAssembliesAndSetupDomain (847ms)
+		LoadAssemblies (452ms)
+		TypeCache.Refresh (257ms)
+			TypeCache.ScanAssembly (238ms)
+		AnalyzeDomain (82ms)
+			BuildScriptInfoCaches (70ms)
+			ResolveRequiredComponents (10ms)
+	FinalizeReload (2207ms)
+		SetupLoadedEditorAssemblies (0ms)
+			BeforeProcessingInitializeOnLoad (152ms)
+			ProcessInitializeOnLoadAttributes (1240ms)
+			ProcessInitializeOnLoadMethodAttributes (327ms)
+		AwakeInstancesAfterBackupRestoration (31ms)
+Starting new worker id: 0 with log in F:/Apps/Unity engine/Unity projects/Emberfall/Logs/AssetImportWorkerHW0.log
+Importing 'GUID: d19f4f8a13b6edb48b986a47ec96402e - Path: Packages/com.unity.render-pipelines.core/Runtime/PathTracing/Shaders/LightmapShadowMaskIntegration.urtshader' with importer (ScriptedImporter : Unity.Rendering.LightTransport.Editor:UnityEditor.Rendering.UnifiedRayTracing:UnifiedRTShaderImporter)
+Launched and connected shader compiler UnityShaderCompiler.exe after 0.02 seconds
+
+Compiling Ray Tracing Shader "LightmapShadowMaskIntegration.urtshader", keywords = <no keywords>
+    finished in 0.63 seconds. Local cache hits 0, remote cache hits 0, compiled 1 platform variants
+Imported 'GUID: d19f4f8a13b6edb48b986a47ec96402e' -> (Import Result ID: 'dafd590d2391337a465ae69593d8302f') in 1.485 seconds [static and dynamic dependencies]. Details - ImportResultOutputID=87431ef3e18644b7c43cfcb1371ea08d DependenciesID=ee798b4147c0523a2e71470313c50ac2 StaticDependenciesID=9fd4e9b2e1ad89e7cbffc601eff4d03f 
+Importing 'GUID: 737a1597422c12547a8714d76a9406ec - Path: Packages/com.unity.render-pipelines.core/Runtime/PathTracing/Shaders/LightmapGBufferDebug.urtshader' with importer (ScriptedImporter : Unity.Rendering.LightTransport.Editor:UnityEditor.Rendering.UnifiedRayTracing:UnifiedRTShaderImporter)
+
+Compiling Ray Tracing Shader "LightmapGBufferDebug.urtshader", keywords = <no keywords>
+    finished in 0.12 seconds. Local cache hits 0, remote cache hits 0, compiled 1 platform variants
+Imported 'GUID: 737a1597422c12547a8714d76a9406ec' -> (Import Result ID: 'bc136651d20dd1689538d95b62660551') in 0.158 seconds [static and dynamic dependencies]. Details - ImportResultOutputID=62fe39ae6f08f106b858ebaaec45c120 DependenciesID=1600f23823fe288b7c7b48b48247b012 StaticDependenciesID=b513b01e29d0aa4d28825e4d4fb57fb4 
+Importing 'GUID: f32463968f29423cad25aee15a14b9f1 - Path: Packages/com.unity.render-pipelines.core/Runtime/Lighting/SurfaceCache/PunctualLightSampling.urtshader' with importer (ScriptedImporter : Unity.Rendering.LightTransport.Editor:UnityEditor.Rendering.UnifiedRayTracing:UnifiedRTShaderImporter)
+
+Compiling Ray Tracing Shader "PunctualLightSampling.urtshader", keywords = <no keywords>
+    finished in 0.13 seconds. Local cache hits 0, remote cache hits 0, compiled 1 platform variants
+Imported 'GUID: f32463968f29423cad25aee15a14b9f1' -> (Import Result ID: '8d83dfe3433e86936dab6b3cc28f3590') in 0.241 seconds [static and dynamic dependencies]. Details - ImportResultOutputID=86a6fadd6b8c04e32f272c919d8b6f6e DependenciesID=58f005c3f91e9c75e0df9594c7a90504 StaticDependenciesID=b63d74c4e924df89cb98a36e44fc1845 
+Importing 'GUID: 1451d029813b192429211be28181beab - Path: Packages/com.unity.render-pipelines.core/Runtime/PathTracing/Shaders/LightmapNormalIntegration.urtshader' with importer (ScriptedImporter : Unity.Rendering.LightTransport.Editor:UnityEditor.Rendering.UnifiedRayTracing:UnifiedRTShaderImporter)
+
+Compiling Ray Tracing Shader "LightmapNormalIntegration.urtshader", keywords = <no keywords>
+    finished in 0.12 seconds. Local cache hits 0, remote cache hits 0, compiled 1 platform variants
+Imported 'GUID: 1451d029813b192429211be28181beab' -> (Import Result ID: 'dc54081b245ff2614a6b72294cfba5d4') in 0.148 seconds [static and dynamic dependencies]. Details - ImportResultOutputID=586feb4eadefcf330fe3445b7cc6434b DependenciesID=68347bfc4726871fddd7602ea36ecc4e StaticDependenciesID=5afd8eadeec03e368f74c3a5603c453d 
+Importing 'GUID: 94a070d33e408384bafc1dea4a565df9 - Path: Packages/com.unity.render-pipelines.core/Editor/Lighting/ProbeVolume/RenderingLayerMask/TraceRenderingLayerMask.urtshader' with importer (ScriptedImporter : Unity.Rendering.LightTransport.Editor:UnityEditor.Rendering.UnifiedRayTracing:UnifiedRTShaderImporter)
+Worker ready: AssetImportWorkerHW0 0
+
+Compiling Ray Tracing Shader "TraceRenderingLayerMask.urtshader", keywords = <no keywords>
+    finished in 0.07 seconds. Local cache hits 0, remote cache hits 0, compiled 1 platform variants
+Imported 'GUID: 94a070d33e408384bafc1dea4a565df9' -> (Import Result ID: '575939a214356f3a3f01041ff9827388') in 0.171 seconds [static and dynamic dependencies]. Details - ImportResultOutputID=7cee2528048de00e3c9b431884713e23 DependenciesID=a6ed24f2bdf656ec38a057ecda6cbb30 StaticDependenciesID=25a592d065c9c4788553066128367c57 
+Importing 'GUID: 94a39d12848d8d64ca962a72b74e7c50 - Path: Packages/com.unity.render-pipelines.core/Runtime/Lighting/SurfaceCache/Estimation.urtshader' with importer (ScriptedImporter : Unity.Rendering.LightTransport.Editor:UnityEditor.Rendering.UnifiedRayTracing:UnifiedRTShaderImporter)
+
+Compiling Ray Tracing Shader "Estimation.urtshader", keywords = <no keywords>
+    finished in 0.14 seconds. Local cache hits 0, remote cache hits 0, compiled 1 platform variants
+Imported 'GUID: 94a39d12848d8d64ca962a72b74e7c50' -> (Import Result ID: '8e45f7d94b264b900cc2730fdef51d27') in 0.183 seconds [static and dynamic dependencies]. Details - ImportResultOutputID=dd35c9d903e39c961e4da30bd9dcd33b DependenciesID=e6c861d322a0d590d8ce34ef14e8dddb StaticDependenciesID=ffb0a11028fb7b99287455d15347e1d8 
+Importing 'GUID: f5ba4d424d4566249b3d94cf81a3e916 - Path: Packages/com.unity.render-pipelines.core/Runtime/PathTracing/Shaders/LightmapDirectDirectionalAndEnvironmentIntegration.urtshader' with importer (ScriptedImporter : Unity.Rendering.LightTransport.Editor:UnityEditor.Rendering.UnifiedRayTracing:UnifiedRTShaderImporter)
+
+Compiling Ray Tracing Shader "LightmapDirectDirectionalAndEnvironmentIntegration.urtshader", keywords = <no keywords>
+    finished in 0.28 seconds. Local cache hits 0, remote cache hits 0, compiled 1 platform variants
+Imported 'GUID: f5ba4d424d4566249b3d94cf81a3e916' -> (Import Result ID: 'ac570b1ad1a0d15bb78c8fe79a717808') in 0.305 seconds [static and dynamic dependencies]. Details - ImportResultOutputID=3a58bd89af571e0a56d0266235abba16 DependenciesID=a22589d805b7065ceeedf78b7d14a453 StaticDependenciesID=d4bdfd2147f181839dcd88d16b4cc45b 
+Importing 'GUID: 7624adbeb148b5c48ab5ab660cc2602a - Path: Packages/com.unity.render-pipelines.core/Runtime/PathTracing/Shaders/LightmapIndirectIntegration.urtshader' with importer (ScriptedImporter : Unity.Rendering.LightTransport.Editor:UnityEditor.Rendering.UnifiedRayTracing:UnifiedRTShaderImporter)
+
+Compiling Ray Tracing Shader "LightmapIndirectIntegration.urtshader", keywords = <no keywords>
+    finished in 0.74 seconds. Local cache hits 0, remote cache hits 0, compiled 1 platform variants
+Imported 'GUID: 7624adbeb148b5c48ab5ab660cc2602a' -> (Import Result ID: 'ca673a6f48fbbe294e92f6d684b68f42') in 0.769 seconds [static and dynamic dependencies]. Details - ImportResultOutputID=9adeacf15a9e92caba530c19c5f5cd4c DependenciesID=297bf8aafbeb932047eefeb5897dc7c5 StaticDependenciesID=637eaa30376abb268136eb146f59c034 
+Importing 'GUID: 5951703b3d165764c95c653e98350884 - Path: Packages/com.unity.render-pipelines.core/Runtime/PathTracing/Shaders/LightmapDirectBRDFIntegration.urtshader' with importer (ScriptedImporter : Unity.Rendering.LightTransport.Editor:UnityEditor.Rendering.UnifiedRayTracing:UnifiedRTShaderImporter)
+
+Compiling Ray Tracing Shader "LightmapDirectBRDFIntegration.urtshader", keywords = <no keywords>
+    finished in 0.17 seconds. Local cache hits 0, remote cache hits 0, compiled 1 platform variants
+Imported 'GUID: 5951703b3d165764c95c653e98350884' -> (Import Result ID: '14df58ef7ebbaaebd2bf09fc5a3d77a4') in 0.193 seconds [static and dynamic dependencies]. Details - ImportResultOutputID=55b5d10cd11a3d0af18dfbedf5c22acf DependenciesID=f9a0e9b816bf14fde7432fa650b99e99 StaticDependenciesID=059ad849da4bff5dcc29e3cff7813344 
+Importing 'GUID: 99ac6221b6ecd7b479be13e8b9866300 - Path: Packages/com.unity.render-pipelines.core/Tests/Editor/PathTracing/Shaders/TerrainRayMarchingTest.urtshader' with importer (ScriptedImporter : Unity.Rendering.LightTransport.Editor:UnityEditor.Rendering.UnifiedRayTracing:UnifiedRTShaderImporter)
+
+Compiling Ray Tracing Shader "TerrainRayMarchingTest.urtshader", keywords = <no keywords>
+    finished in 0.07 seconds. Local cache hits 0, remote cache hits 0, compiled 1 platform variants
+Imported 'GUID: 99ac6221b6ecd7b479be13e8b9866300' -> (Import Result ID: '9b37bfb5414eb660b920e65ad2bad84d') in 0.095 seconds [static and dynamic dependencies]. Details - ImportResultOutputID=27a34ed6b20eb255a59fb4210f44099d DependenciesID=d833b4f93c226fb18d49e9e10158fdcd StaticDependenciesID=dc53200b7c0c8c0e6f9de4f99348b559 
+Importing 'GUID: e9f4de6d1e07fb94f9a60d35b618f724 - Path: Packages/com.unity.render-pipelines.core/Runtime/PathTracing/Shaders/LightmapGBufferIntegration.urtshader' with importer (ScriptedImporter : Unity.Rendering.LightTransport.Editor:UnityEditor.Rendering.UnifiedRayTracing:UnifiedRTShaderImporter)
+
+Compiling Ray Tracing Shader "LightmapGBufferIntegration.urtshader", keywords = <no keywords>
+    finished in 0.07 seconds. Local cache hits 0, remote cache hits 0, compiled 1 platform variants
+Imported 'GUID: e9f4de6d1e07fb94f9a60d35b618f724' -> (Import Result ID: '9ffa545e96aae3c6e29881f51419ab9a') in 0.102 seconds [static and dynamic dependencies]. Details - ImportResultOutputID=46566f2b2504bb390fccb5862c368fe5 DependenciesID=85b3e050e00a15de08993832dd66c34d StaticDependenciesID=3c625e26646b7228663e0de2b2c1d69b 
+Importing 'GUID: 5a2a534753fbdb44e96c3c78b5a6999d - Path: Packages/com.unity.render-pipelines.core/Editor/Lighting/ProbeVolume/DynamicGI/DynamicGISkyOcclusion.urtshader' with importer (ScriptedImporter : Unity.Rendering.LightTransport.Editor:UnityEditor.Rendering.UnifiedRayTracing:UnifiedRTShaderImporter)
+
+Compiling Ray Tracing Shader "DynamicGISkyOcclusion.urtshader", keywords = <no keywords>
+    finished in 0.09 seconds. Local cache hits 0, remote cache hits 0, compiled 1 platform variants
+Imported 'GUID: 5a2a534753fbdb44e96c3c78b5a6999d' -> (Import Result ID: 'bf5b3e5548e2ffd4fdb7056be02f26f4') in 0.117 seconds [static and dynamic dependencies]. Details - ImportResultOutputID=bebec64320e903413d9a8da75e5f5441 DependenciesID=d273d3b64aa2c822b845b25725a1a2f8 StaticDependenciesID=72ee5fda06862b709c15f6cbb7db6f05 
+Importing 'GUID: 5bbebdef5916845478fcef13fa10d89f - Path: Packages/com.unity.render-pipelines.core/Runtime/PathTracing/Shaders/LightmapDirectStochasticLightIntegration.urtshader' with importer (ScriptedImporter : Unity.Rendering.LightTransport.Editor:UnityEditor.Rendering.UnifiedRayTracing:UnifiedRTShaderImporter)
+
+Compiling Ray Tracing Shader "LightmapDirectStochasticLightIntegration.urtshader", keywords = <no keywords>
+    finished in 0.25 seconds. Local cache hits 0, remote cache hits 0, compiled 1 platform variants
+Imported 'GUID: 5bbebdef5916845478fcef13fa10d89f' -> (Import Result ID: 'fcf461e6f2b64cce73fb4faed66e98e6') in 0.268 seconds [static and dynamic dependencies]. Details - ImportResultOutputID=c1148ad01ee8f2c7d260756c504d1b09 DependenciesID=c7464506e0286a5c69e90f9f5fce0cbe StaticDependenciesID=471ca71b6b19c4611a46691a7356c8a6 
+Importing 'GUID: 1c410815c01ce1d4d82c645c0cd45747 - Path: Packages/com.unity.render-pipelines.core/Runtime/PathTracing/Shaders/LightmapAOIntegration.urtshader' with importer (ScriptedImporter : Unity.Rendering.LightTransport.Editor:UnityEditor.Rendering.UnifiedRayTracing:UnifiedRTShaderImporter)
+
+Compiling Ray Tracing Shader "LightmapAOIntegration.urtshader", keywords = <no keywords>
+    finished in 0.15 seconds. Local cache hits 0, remote cache hits 0, compiled 1 platform variants
+Imported 'GUID: 1c410815c01ce1d4d82c645c0cd45747' -> (Import Result ID: '8c1c7645e5cc8b646aabf2f04f595921') in 0.178 seconds [static and dynamic dependencies]. Details - ImportResultOutputID=406e03dc11817505b76c631603f27e12 DependenciesID=98b147760644f634d8b186738246461b StaticDependenciesID=219d1b7269d01f2442d424f53e04d073 
+Importing 'GUID: 2c32233d92a2d0745930664c087c5c9a - Path: Packages/com.unity.render-pipelines.core/Runtime/PathTracing/Shaders/ProbeIntegrationValidity.urtshader' with importer (ScriptedImporter : Unity.Rendering.LightTransport.Editor:UnityEditor.Rendering.UnifiedRayTracing:UnifiedRTShaderImporter)
+
+Compiling Ray Tracing Shader "ProbeIntegrationValidity.urtshader", keywords = <no keywords>
+    finished in 0.08 seconds. Local cache hits 0, remote cache hits 0, compiled 1 platform variants
+Imported 'GUID: 2c32233d92a2d0745930664c087c5c9a' -> (Import Result ID: 'f304ce5c6411a50ce6c11793c2bb5da5') in 0.102 seconds [static and dynamic dependencies]. Details - ImportResultOutputID=fb54b03892440bf6d8b82fd7c8a33ee7 DependenciesID=843170b4bdecc3603c848a6de38b8657 StaticDependenciesID=89ce6b5e76d568c473e42bb2e82d857d 
+Importing 'GUID: ace95ac84e213794891b4bd7c9b3c158 - Path: Packages/com.unity.render-pipelines.core/Runtime/PathTracing/Shaders/LightmapValidityIntegration.urtshader' with importer (ScriptedImporter : Unity.Rendering.LightTransport.Editor:UnityEditor.Rendering.UnifiedRayTracing:UnifiedRTShaderImporter)
+
+Compiling Ray Tracing Shader "LightmapValidityIntegration.urtshader", keywords = <no keywords>
+    finished in 0.17 seconds. Local cache hits 0, remote cache hits 0, compiled 1 platform variants
+Imported 'GUID: ace95ac84e213794891b4bd7c9b3c158' -> (Import Result ID: '579cb5a692a4ee99bbdd3a078d35d67b') in 0.188 seconds [static and dynamic dependencies]. Details - ImportResultOutputID=c6767c8b4dc26605e605e05a666a0bb0 DependenciesID=e78c29d4b5cd9561c22a4bfe65c91c92 StaticDependenciesID=af3a8789fbe725883be9c99ebb7cf5e2 
+Importing 'GUID: 5ecdabd800f05984696f22ba95284516 - Path: Packages/com.unity.render-pipelines.core/Runtime/PathTracing/Shaders/ProbeIntegrationIndirect.urtshader' with importer (ScriptedImporter : Unity.Rendering.LightTransport.Editor:UnityEditor.Rendering.UnifiedRayTracing:UnifiedRTShaderImporter)
+
+Compiling Ray Tracing Shader "ProbeIntegrationIndirect.urtshader", keywords = <no keywords>
+    finished in 0.74 seconds. Local cache hits 0, remote cache hits 0, compiled 1 platform variants
+Imported 'GUID: 5ecdabd800f05984696f22ba95284516' -> (Import Result ID: 'e70ffe0bd62848296026d6d2e7892bb3') in 0.780 seconds [static and dynamic dependencies]. Details - ImportResultOutputID=a2f5d4e03340cfd910ee43d60ab3c23c DependenciesID=4a36ca2c907309e3d5b3e56b91ed4110 StaticDependenciesID=1ad901001e2e557153e1de5753d25220 
+Importing 'GUID: 6e0b547bab30a804c8123974120d583f - Path: Packages/com.unity.render-pipelines.core/Tests/Runtime/PathTracing/PathIteratorTest.urtshader' with importer (ScriptedImporter : Unity.Rendering.LightTransport.Editor:UnityEditor.Rendering.UnifiedRayTracing:UnifiedRTShaderImporter)
+
+Compiling Ray Tracing Shader "PathIteratorTest.urtshader", keywords = <no keywords>
+    finished in 0.99 seconds. Local cache hits 0, remote cache hits 0, compiled 1 platform variants
+Imported 'GUID: 6e0b547bab30a804c8123974120d583f' -> (Import Result ID: '99b318b44eac12f79e9511661b1f2e97') in 1.024 seconds [static and dynamic dependencies]. Details - ImportResultOutputID=62e299ab8a06b453a7a131612b3d654e DependenciesID=79e4a317806d92a68dfef6296a690206 StaticDependenciesID=e24ea404bb4dabe55ffbcaa7b840b299 
+Importing 'GUID: de3013e16d99f2746ab1735ec06a660b - Path: Packages/com.unity.render-pipelines.core/Runtime/PathTracing/Shaders/ProbeIntegrationOcclusion.urtshader' with importer (ScriptedImporter : Unity.Rendering.LightTransport.Editor:UnityEditor.Rendering.UnifiedRayTracing:UnifiedRTShaderImporter)
+
+Compiling Ray Tracing Shader "ProbeIntegrationOcclusion.urtshader", keywords = <no keywords>
+    finished in 0.21 seconds. Local cache hits 0, remote cache hits 0, compiled 1 platform variants
+Imported 'GUID: de3013e16d99f2746ab1735ec06a660b' -> (Import Result ID: '8d753e35be2f6a79c1dfadc6e7b7c9b5') in 0.244 seconds [static and dynamic dependencies]. Details - ImportResultOutputID=cdbfcddb4045b11792cc5535fb3017dd DependenciesID=3a46bc25ea02d852bec7aa64274ef0b9 StaticDependenciesID=d23a0c4a2896e547ad436f2fd232bb27 
+Importing 'GUID: fe7f1a959d1d3f544a208b7e8805e6cd - Path: Packages/com.unity.render-pipelines.core/Runtime/PathTracing/Shaders/ProbeIntegrationDirectDirectionalAndEnvironment.urtshader' with importer (ScriptedImporter : Unity.Rendering.LightTransport.Editor:UnityEditor.Rendering.UnifiedRayTracing:UnifiedRTShaderImporter)
+
+Compiling Ray Tracing Shader "ProbeIntegrationDirectDirectionalAndEnvironment.urtshader", keywords = <no keywords>
+    finished in 0.41 seconds. Local cache hits 0, remote cache hits 0, compiled 1 platform variants
+Imported 'GUID: fe7f1a959d1d3f544a208b7e8805e6cd' -> (Import Result ID: 'ffe11fd31ea4fdea4cdc99650ad5d08e') in 0.524 seconds [static and dynamic dependencies]. Details - ImportResultOutputID=f65bb11e4d99da6ad313ec12077e7212 DependenciesID=6229bd0d7cd9116e7d6452bc32698d04 StaticDependenciesID=b8525778ccd6bf87644fae631483c773 
+Importing 'GUID: 1f9bfe60b4ad75943a5281839c1a4e5c - Path: Packages/com.unity.render-pipelines.core/Runtime/PathTracing/Shaders/ProbeIntegrationDirectStochasticLight.urtshader' with importer (ScriptedImporter : Unity.Rendering.LightTransport.Editor:UnityEditor.Rendering.UnifiedRayTracing:UnifiedRTShaderImporter)
+
+Compiling Ray Tracing Shader "ProbeIntegrationDirectStochasticLight.urtshader", keywords = <no keywords>
+    finished in 0.26 seconds. Local cache hits 0, remote cache hits 0, compiled 1 platform variants
+Imported 'GUID: 1f9bfe60b4ad75943a5281839c1a4e5c' -> (Import Result ID: '698cf050f634306416e1add19458de45') in 0.291 seconds [static and dynamic dependencies]. Details - ImportResultOutputID=f207a5c01257b99decff595fee37001f DependenciesID=69d31a82659dcfa72e5cff4dc4de8813 StaticDependenciesID=bb23e9aed0fe8778db1283cad6c57003 
+Importing 'GUID: ff2cbab5da58bf04d82c5f34037ed123 - Path: Packages/com.unity.render-pipelines.core/Editor/Lighting/ProbeVolume/VirtualOffset/TraceVirtualOffset.urtshader' with importer (ScriptedImporter : Unity.Rendering.LightTransport.Editor:UnityEditor.Rendering.UnifiedRayTracing:UnifiedRTShaderImporter)
+
+Compiling Ray Tracing Shader "TraceVirtualOffset.urtshader", keywords = <no keywords>
+    finished in 0.07 seconds. Local cache hits 0, remote cache hits 0, compiled 1 platform variants
+Imported 'GUID: ff2cbab5da58bf04d82c5f34037ed123' -> (Import Result ID: '28ca2e1c0db21ff748f09a55335a4be3') in 0.096 seconds [static and dynamic dependencies]. Details - ImportResultOutputID=28dbe8e0bd20faddbac957b0d2a2b25b DependenciesID=56a7bc9a254cc8cf556d2d71427255f5 StaticDependenciesID=577fb2ca56f9c9cef1dba593cc7f61b6 
+Refreshing native plugins compatible for Editor in 6.43 ms, found 2 plugins.
+
+Asset Pipeline Refresh (id=d284a3f11f85fcb44a0479369a304a20): Total: 18.340 seconds - Initiated by InitialRefreshV2(ForceSynchronousImport)
+	(Values over 0.05ms)
+	Summary:
+		Imports: total=22 (actual=22, local cache=0, cache server=0)
+		Asset DB Process Time: managed=4 ms, native=10820 ms
+		Asset DB Callback time: managed=716 ms, native=72 ms
+		Scripting: domain reloads=1, domain reload time=1261 ms, compile time=5390 ms, other=74 ms
+		Project Asset Count: scripts=1882, non-scripts=5185
+		Asset File Changes: new=1, changed=2, moved=0, deleted=0
+		Scan Filter Count: 0
+	InvokePackagesCallback: 22.681ms
+	ApplyChangesToAssetFolders: 0.735ms
+	Scan: 244.958ms
+	Collect global state as custom dependencies: 25.634ms
+	OnSourceAssetsModified: 3.210ms
+	CategorizeScriptCompilationAssets: 64.447ms
+	ProcessAssetsWithTransientArtifactChanges: 92.996ms
+	CategorizeAssets: 119.737ms
+	CompileScripts: 5390.199ms
+	ImportOutOfDateAssets: 9935.947ms (2220.042ms without children)
+		ImportManagerImport: 7698.244ms (3.105ms without children)
+			UpdateCategorizedAssets: 1.856ms
+		ReloadNativeAssets: 0.231ms
+		UnloadImportedAssets: 0.923ms
+		ReloadImportedAssets: 1.238ms
+		EnsureUptoDateAssetsAreRegisteredWithGuidPM: 0.779ms
+		ImportSchedulerStart: 15.716ms
+	PostProcessAllAssets: 749.513ms
+		RaytracingShaderImportPostprocess 19.748ms
+		ComputeShaderImportPostprocess 11.516ms
+		VCAutoAddAssetPostprocess 3.205ms
+		XRBuildSystem.XRAssetImported 0.430ms
+		VersionControlSettings.HiddenFilePostprocess 0.241ms
+		PostProcessCallbackCreateDeferredMaterials 0.121ms
+		AssemblyValidation.PostprocessAllAssets 0.055ms
+		BlockShaderImporter.PostprocessAllAssets 0.051ms
+		MonoPostProcessAllAssets: 711.563ms
+			AssetPostprocessor.OnPostprocessAllAssets 286.955ms
+			AssetReferenceReimportMonitor.OnPostprocessAllAssets 37.814ms
+			UniversalRenderPipelineGlobalSettingsPostprocessor.OnPostprocessAllAssets 32.539ms
+			StyleCatalogPostProcessor.OnPostprocessAllAssets 21.091ms
+			BuilderAssetPostprocessor.OnPostprocessAllAssets 7.058ms
+			AssetChangedListener.OnPostprocessAllAssets 2.696ms
+			ShaderGraphAssetPostProcessor.OnPostprocessAllAssets 2.645ms
+			SpriteSlicePostprocessor.OnPostprocessAllAssets 2.434ms
+			WindowAssetPostprocessingWatcher.OnPostprocessAllAssets 1.896ms
+			GraphRefreshPostprocessor.OnPostprocessAllAssets 1.875ms
+			SpeedTree9Postprocessor.OnPostprocessAllAssets 1.776ms
+			AssetChangeDetector.OnPostprocessAllAssets 1.645ms
+			RenderPipelineGlobalSettingsPostprocessor.OnPostprocessAllAssets 1.379ms
+			RetainedModeAssetPostprocessor.OnPostprocessAllAssets 1.319ms
+			ArtifactBrowserPostProcessor.OnPostprocessAllAssets 0.993ms
+			EditModeScopePostprocessor.OnPostprocessAllAssets 0.835ms
+			MaterialPostprocessor.OnPostprocessAllAssets 0.729ms
+			PostProcessor.OnPostprocessAllAssets 0.572ms
+			ShaderReflectionAssetPostProcessor.OnPostprocessAllAssets 0.569ms
+			SpriteEditorTexturePostprocessor.OnPostprocessAllAssets 0.491ms
+			AudioMixerPostprocessor.OnPostprocessAllAssets 0.490ms
+			ModelAssetProcessor.OnPostprocessAllAssets 0.474ms
+			InputActionAssetPostprocessor.OnPostprocessAllAssets 0.424ms
+			SkillsProjectAssetPostprocessor.OnPostprocessAllAssets 0.397ms
+			TextAssetPostProcessor.OnPostprocessAllAssets 0.338ms
+			CinemachineSettings.OnPostprocessAllAssets 0.308ms
+			InputActionJsonNameModifierAssetProcessor.OnPostprocessAllAssets 0.299ms
+			AssetEvents.OnPostprocessAllAssets 0.284ms
+			TMPro_TexturePostProcessor.OnPostprocessAllAssets 0.269ms
+			ReferencedClipsPostProcessor.OnPostprocessAllAssets 0.260ms
+			DomainReloadProcessor.OnPostprocessAllAssets 0.226ms
+			AssetDatabaseCallbacks.OnPostprocessAllAssets 0.209ms
+			TerrainToolbarOverlayPostProcessor.OnPostprocessAllAssets 0.192ms
+			ProjectSettingsPostprocessor.OnPostprocessAllAssets 0.158ms
+			ThemePostprocessor.OnPostprocessAllAssets 0.156ms
+			ConfigAssetsTracker.OnPostprocessAllAssets 0.153ms
+			SpeedTreePostProcessor.OnPostprocessAllAssets 0.144ms
+			SyncVS.PostprocessSyncProject 0.144ms
+			ScenarioDriftAssetsTracker.OnPostprocessAllAssets 0.129ms
+			SamplePostprocessor.OnPostprocessAllAssets 0.122ms
+			AudioContainerPostProcessor.OnPostprocessAllAssets 0.100ms
+			TrackSelectedAssetsProcessor.OnPostprocessAllAssets 0.058ms
+	PostAssetChangesProfiler: 15.082ms
+	UnloadStreamsBegin: 2.184ms
+	PersistCurrentRevisions: 0.653ms
+	GenerateScriptTypeHashes: 3.883ms
+	GenerateScriptTypeSerializationHashes: 6.407ms
+	Untracked: 1604.766ms
+
+Application.AssetDatabase Initial Refresh End
+Shader Hidden/ChartRasterizerHardware is not supported: GPU does not support conservative rasterization
+Shader Hidden/ChartRasterizerHardware is not supported: GPU does not support conservative rasterization
+Scanning for USB devices : 2.963ms
+Initializing Unity extensions:
+[MODES] ModeService[none].Initialize
+[MODES] ModeService[none].LoadModes
+[MODES] Loading mode Default (0) for mode-current-id-Emberfall
+Unloading 127 Unused Serialized files (Serialized files now loaded: 0)
+Unloading 8098 unused Assets / (6.0 MB). Loaded Objects now: 9044.
+Memory consumption went from 0.52 GB to 0.51 GB.
+Total: 32.335800 ms (FindLiveObjects: 1.019400 ms CreateObjectMapping: 0.410300 ms MarkObjects: 20.344900 ms  DeleteObjects: 9.685000 ms)
+
+Emberfall map terrain exported to E:\Temp\Deepseek-Harness AI-Playground\Proj1\Emberfall\app\src\main\assets\terrain
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+EmberfallMapArtBuilder:BuildAll () (at Assets/Editor/EmberfallMapArtBuilder.cs:64)
+
+(Filename: Assets/Editor/EmberfallMapArtBuilder.cs Line: 64)
+
+Batchmode quit successfully invoked - shutting down!
+Font Asset [LiberationSans SDF - Fallback] Units Per EM set to 2048. Please commit the newly serialized value.
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+TMPro.TMP_FontAsset:ReadFontAssetDefinition () (at ./Library/PackageCache/com.unity.ugui@0b1771797efc/Runtime/TMP/TMP_FontAsset.cs:846)
+TMPro.TMP_FontAsset:OnValidate () (at ./Library/PackageCache/com.unity.ugui@0b1771797efc/Runtime/TMP/TMP_FontAsset.cs:784)
+UnityEditor.AssetDatabase:LoadAssetAtPath (string,System.Type)
+UnityEditor.AssetDatabase:LoadAssetAtPath<TMPro.TMP_FontAsset> (string)
+TMPro.EditorEventCallbacks/<>c:<InitializeFontAssetResourceChangeCallBacks>b__0_0 () (at ./Library/PackageCache/com.unity.ugui@0b1771797efc/Editor/TMP/TMP_EditorResourceManager.cs:32)
+UnityEditor.EditorApplication:Internal_EditorApplicationQuit ()
+
+(Filename: ./Library/PackageCache/com.unity.ugui@0b1771797efc/Runtime/TMP/TMP_FontAsset.cs Line: 846)
+
+Importing 'GUID: 0000000000000000b000000000000000 - Path: ProjectSettings/EditorBuildSettings.asset' with importer (LibraryAssetImporter)
+Imported 'GUID: 0000000000000000b000000000000000' -> (Import Result ID: 'fc82906d9970a437d535e5bb6a93b8dc') in 0.004 seconds [static dependencies only]. Details - ImportResultOutputID=0a89a5c5f492143e0fa186859e17ba6f DependenciesID=0734dc191ef7dd36c70a7f8ce1a0e0f2 StaticDependenciesID=5f27dfe485a8832e090d7c10a437bea5 
+Asset Pipeline Refresh (id=39f9e86a1a747a34987c9e2c171927a6): Total: 0.154 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+[Physics::Module] Cleanup current backend.
+[Physics::Module] Id: 0xf2b8ea05
+Input System module state changed to: ShutdownInProgress.
+Input Polling Thread exited.
+Input System module state changed to: Shutdown.
+[Licensing::IpcConnector] LicenseClient-ramkr-notifications channel disconnected successfully.
+[Licensing::IpcConnector] LicenseClient-ramkr channel disconnected successfully.
+Lingering sessions upon destruction of worker manager
+Unity Data Store service was successfully shut down
+UDS shutting down local client system
+AcceleratorClientConnectionCallback - disconnected - :0
+Cleanup mono
+CodeReloadManager destroyed
+Exiting batchmode successfully now!
+[ExitDontLaunchBugReporter] Exiting without the bug reporter. Application will exit with return code 0
