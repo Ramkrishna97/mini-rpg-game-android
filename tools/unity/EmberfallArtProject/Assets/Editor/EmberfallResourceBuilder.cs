@@ -24,7 +24,7 @@ public static class EmberfallResourceBuilder
         Directory.CreateDirectory(output);
 
         BuildTileset(Path.Combine(output, "tileset.png"));
-        BuildSpriteSheet(Path.Combine(output, "player.png"), 0);
+        EmberfallDetailArtBuilder.BuildAll(output);
         EmberfallBossArtBuilder.BuildAll(output);
         ApplyOverrides(output);
 
@@ -38,7 +38,8 @@ public static class EmberfallResourceBuilder
     {
         var source = Path.Combine(Application.dataPath, "EmberfallArtOverrides");
         if (!Directory.Exists(source)) return;
-        foreach (var name in new[] { "tileset", "player", "gloomfang", "stonewarden", "mirewitch", "ashtitan", "hollowking", "dragon" })
+        foreach (var name in new[] { "tileset", "player", "items", "wildlife", "chests",
+                 "gloomfang", "stonewarden", "mirewitch", "ashtitan", "hollowking", "dragon" })
         {
             var path = Path.Combine(source, name + ".png");
             if (!File.Exists(path)) continue;
@@ -47,8 +48,10 @@ public static class EmberfallResourceBuilder
             try
             {
                 if (!image.LoadImage(bytes, true)) throw new InvalidDataException("Invalid PNG: " + path);
-                var width = name == "tileset" ? 1024 : name == "player" ? 384 : 512;
-                var height = name == "tileset" ? 1024 : 256;
+                var width = name == "tileset" ? 1024 : name == "player" ? 384 :
+                    name == "items" ? 256 : name == "wildlife" ? 192 : name == "chests" ? 128 : 512;
+                var height = name == "tileset" ? 1024 : name == "items" ? 96 :
+                    name == "wildlife" ? 480 : name == "chests" ? 32 : 256;
                 if (image.width != width || image.height != height)
                     throw new InvalidDataException(name + " must be " + width + "x" + height);
                 File.WriteAllBytes(Path.Combine(output, name + ".png"), bytes);
