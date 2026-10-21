@@ -103,13 +103,21 @@ class HudRenderer(context: Context) {
         val panel = UiLayout.optionsPanel(width, height, density)
         art.panel(canvas, panel, density)
         textPaint.color = 0xFFFFD08A.toInt(); textPaint.textAlign = Paint.Align.LEFT; textPaint.textSize = dp(15f)
-        canvas.drawText("OPTIONS", panel.left + dp(18f), panel.top + dp(29f), textPaint)
+        canvas.drawText(if (game.isHackMode) "OPTIONS  ·  HACK MODE" else "OPTIONS", panel.left + dp(18f), panel.top + dp(29f), textPaint)
         smallPaint.color = 0xFFE8E8DE.toInt(); smallPaint.textAlign = Paint.Align.CENTER; smallPaint.textSize = dp(9f)
         canvas.drawText("Gold ${game.gold}   |   Diamonds ${game.diamonds}", panel.centerX(), panel.top + dp(43f), smallPaint)
-        val labels = arrayOf("INVENTORY", "WEAPONS", "UPGRADE", "MARKET", "CRAFTING", "SETTINGS")
+        val labels = if (game.isHackMode) arrayOf(
+            "INVENTORY", "WEAPONS", "UPGRADE", "MARKET", "CRAFTING", "SETTINGS",
+            if (game.hackBoostsEnabled) "BOOSTS ON" else "BOOSTS OFF", "SUMMON DRAGON"
+        ) else arrayOf("INVENTORY", "WEAPONS", "UPGRADE", "MARKET", "CRAFTING", "SETTINGS")
         labels.forEachIndexed { index, label ->
-            val cell = UiLayout.optionsCell(index, width, height, density)
-            fillPaint.color = if (index == 3) 0xFF655236.toInt() else 0xFF2D4936.toInt()
+            val cell = UiLayout.optionsCell(index, width, height, density, if (game.isHackMode) 4 else 3)
+            fillPaint.color = when (index) {
+                3 -> 0xFF655236.toInt()
+                6 -> if (game.hackBoostsEnabled) 0xFF436A57.toInt() else 0xFF514C3A.toInt()
+                7 -> 0xFF6D4037.toInt()
+                else -> 0xFF2D4936.toInt()
+            }
             canvas.drawRoundRect(cell, dp(6f), dp(6f), fillPaint)
             textPaint.color = 0xFFF4E9D8.toInt(); textPaint.textAlign = Paint.Align.CENTER; textPaint.textSize = dp(10f)
             canvas.drawText(label, cell.centerX(), cell.centerY() + dp(3f), textPaint)
