@@ -6,11 +6,12 @@ import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.Typeface
 import com.emberfall.game.core.Spell
-import com.emberfall.game.item.ItemCategory
 import com.emberfall.game.item.ItemId
+import com.emberfall.game.render.ArtSheets
 
-/** Shared gold and wood UI trim plus original 32x32 icon drawings. */
+/** Shared panel trim, Unity item art, and spell icons. */
 class UiArt(context: Context) {
+    private val art = ArtSheets.from(context)
     val font: Typeface = Typeface.createFromAsset(context.assets, "fonts/MedievalSharp.ttf")
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val pixel = Paint().apply { isAntiAlias = false }
@@ -29,43 +30,7 @@ class UiArt(context: Context) {
     }
 
     fun item(canvas: Canvas, item: ItemId, cx: Float, cy: Float, size: Float) {
-        canvas.save(); canvas.translate(cx-size/2f, cy-size/2f); canvas.scale(size/32f, size/32f)
-        fun block(x1:Int,y1:Int,x2:Int,y2:Int,color:Int) { pixel.color=color; canvas.drawRect(x1.toFloat(),y1.toFloat(),x2.toFloat(),y2.toFloat(),pixel) }
-        when {
-            item.category == ItemCategory.WEAPON -> {
-                block(14,3,18,20,0xFFD5E1EA.toInt()); block(15,1,17,5,0xFFF5F9ED.toInt())
-                block(10,19,22,22,0xFFE8C073.toInt()); block(14,22,18,29,0xFF7E5130.toInt())
-                if (item == ItemId.BOW) {
-                    block(14,3,18,29,0xFF8F683B.toInt()); block(9,8,11,25,0xFFF3E7BE.toInt())
-                }
-            }
-            item.name.contains("POTION") || item == ItemId.ELIXIR -> {
-                block(13,3,19,8,0xFFD8C391.toInt()); block(10,8,22,28,0xFFCFD7D3.toInt())
-                block(12,13,20,25,item.color); block(11,10,21,12,0xFFF9F4DF.toInt())
-                block(14,15,16,22,0xAAFFFFFF.toInt())
-            }
-            item == ItemId.MAGIC_STONE -> {
-                block(14,3,18,7,0xFFE0D6FF.toInt()); block(10,7,22,24,0xFF7561BD.toInt())
-                block(13,10,18,23,0xFFB9A9F9.toInt()); block(14,24,18,29,0xFF413876.toInt())
-            }
-            item == ItemId.WOOD -> {
-                block(7,12,26,23,0xFF694527.toInt()); block(9,14,24,20,0xFFAD7945.toInt())
-                block(13,14,15,20,0xFFE3BA77.toInt())
-            }
-            item == ItemId.STONE || item == ItemId.IRON -> {
-                block(8,14,25,27,0xFF555E64.toInt()); block(12,7,22,15,item.color)
-                block(10,16,18,19,0xFFDCE2D9.toInt())
-            }
-            item == ItemId.FRUIT -> {
-                block(11,10,23,26,0xFFD6505A.toInt()); block(15,5,18,12,0xFF70472E.toInt())
-                block(18,6,24,10,0xFF66A45A.toInt())
-            }
-            else -> {
-                block(9,10,23,25,item.color); block(12,7,20,11,0xFFE8DFC5.toInt())
-                block(11,14,14,21,0x99FFFFFF.toInt())
-            }
-        }
-        canvas.restore()
+        art.item(canvas, item, cx, cy, size)
     }
 
     fun spell(canvas: Canvas, spell: Spell, cx: Float, cy: Float, size: Float) {
