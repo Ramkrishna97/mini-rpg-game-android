@@ -6,6 +6,8 @@ import com.emberfall.game.core.Game
 import com.emberfall.game.entity.Boss
 import com.emberfall.game.entity.BossPhase
 import com.emberfall.game.entity.BossSignatures
+import com.emberfall.game.entity.BossMove
+import com.emberfall.game.entity.PlayerAction
 import com.emberfall.game.entity.Projectile
 import com.emberfall.game.entity.ProjectileKind
 import com.emberfall.game.world.TileType
@@ -72,7 +74,12 @@ class EntityBatchBuilder(private val layout: AtlasLayout) {
             addItem(fire.x, fire.y) { iso -> cell("campfire", iso, 1f) }
         }
         for (chest in game.chests) {
-            addItem(chest.x, chest.y) { iso -> cell(if (chest.opened) "chest_open" else "chest", iso, 1f) }
+            addItem(chest.x, chest.y) { iso -> cell(when {
+                !chest.opened -> "chest"
+                chest.openTimer < .3f -> "chest_open"
+                chest.openTimer < .65f -> "chest_opening"
+                else -> "chest_glow"
+            }, iso, 1f) }
         }
         for (pickup in game.pickups) {
             addItem(pickup.x, pickup.y) { _ ->
@@ -81,7 +88,10 @@ class EntityBatchBuilder(private val layout: AtlasLayout) {
             }
         }
         for (animal in game.animals) {
-            addItem(animal.x, animal.y) { iso -> cell("animal_${animal.species.name}", iso, 1f) }
+            addItem(animal.x, animal.y) { iso ->
+                cell("animal_${animal.species.name}_${(animal.walkCycle * .65f).toInt() and 3}",
+                    iso, 1f, animal.facingX < -.12f)
+            }
         }
         for (wolf in game.wolves) {
             addItem(wolf.x, wolf.y) { iso -> cell("wolf", iso, 1f) }
@@ -133,7 +143,17 @@ class EntityBatchBuilder(private val layout: AtlasLayout) {
                 bar(tail.x, tail.y, vectorX, vectorY, 3.2f, projectile.color, .9f)
                 solid(head, 3.6f, 0xFFFFFFFF.toInt(), 1f)
             }
-            ProjectileKind.MAGIC -> solid(head, projectile.radius * .55f, projectile.color, 1f)
+            ProjectileKind.MAGIC -> {
+                solid(head, projectile.radius * 1.25f, projectile.color, .25f)
+                solid(head, projectile.radius * .6f, projectile.color, 1f)
+                solid(head, projectile.radius * .22f, 0xFFFFFFFF.toInt(), 1f)
+                for (i in 0..2) {
+                    val a = elapsed * 15f + i * (PI * 2.0 / 3.0).toFloat()
+                    solid(PointF(head.x + cos(a) * projectile.radius,
+                        head.y + sin(a) * projectile.radius * .6f), 1.4f,
+                        projectile.color, .8f)
+                }
+            }
         }
     }
 
@@ -147,7 +167,37 @@ class EntityBatchBuilder(private val layout: AtlasLayout) {
             player.speed > 8f -> AnimationState.WALK
             else -> AnimationState.IDLE
         }
-        sheet("player", iso, player.facingX, player.facingY, state, 42f)
+        sheet("player", iso, player.facingX, player.facingY, state, 42f,
+            if (state == AnimationState.ATTACK)
+                (1f - player.swingTimer / com.emberfall.game.entity.Player.SWING_DURATION)
+                    .coerceIn(0f, .999f) / 3f else elapsed)
+        if (player.isSwinging) {
+            val direction = IsoMath.worldToIso(player.facingX, player.facingY)
+            val length = sqrt(direction.x * direction.x + direction.y * direction.y).coerceAtLeast(.01f)
+            val fx = direction.x / length
+            val fy = direction.y / length
+            val progress = (1f - player.swingTimer / com.emberfall.game.entity.Player.SWING_DURATION).coerceIn(0f, 1f)
+            when (player.action) {
+                PlayerAction.MELEE -> {
+                    val end = PointF(iso.x + fx * (22f + progress * 9f), iso.y - 17f + fy * 18f)
+                    bar(iso.x, iso.y - 17f, end.x - iso.x, end.y - iso.y + 17f,
+                        5f, 0xFFFFE3A0.toInt(), .9f)
+                    solid(end, 3f, 0xFFFFFFFF.toInt(), 1f)
+                }
+                PlayerAction.RANGED -> {
+                    val muzzle = PointF(iso.x + fx * 23f, iso.y - 16f + fy * 15f)
+                    solid(muzzle, 6f * (1f - progress), 0xFFFFC45C.toInt(), .85f)
+                    solid(muzzle, 2.5f, 0xFFFFFFFF.toInt(), 1f)
+                }
+                PlayerAction.MAGIC -> {
+                    cellSized("magic_ring", PointF(iso.x, iso.y - 17f),
+                        22f + progress * 32f, 22f + progress * 24f,
+                        player.actionColor, .8f)
+                    solid(PointF(iso.x + fx * 16f, iso.y - 18f + fy * 10f),
+                        4f, player.actionColor, 1f)
+                }
+            }
+        }
     }
 
     private fun drawBoss(boss: Boss, iso: PointF) {
@@ -160,7 +210,54 @@ class EntityBatchBuilder(private val layout: AtlasLayout) {
         }
         sheet(boss.def.id, PointF(iso.x, iso.y - boss.airborne), boss.facingX, boss.facingY, state,
             if (boss.isDragon) 76f else 52f,
-            if (boss.defeated) elapsed - boss.defeatedAtSeconds else elapsed)
+            if (boss.defeated) elapsed - boss.defeatedAtSeconds
+                else if (state == AnimationState.ATTACK) boss.visualProgress.coerceIn(0f, .999f) / 3f
+                else elapsed)
+        drawBossAttackEffect(boss, iso)
+    }
+
+    private fun drawBossAttackEffect(boss: Boss, iso: PointF) {
+        if (!boss.engaged || boss.defeated) return
+        val color = BossSignatures.byId(boss.def.id)?.telegraphColor ?: boss.def.color
+        val releasing = boss.phase == BossPhase.DASH
+        if (boss.phase == BossPhase.TELEGRAPH || releasing) {
+            val direction = IsoMath.worldToIso(boss.chargeDirX, boss.chargeDirY)
+            val length = sqrt(direction.x * direction.x + direction.y * direction.y).coerceAtLeast(.01f)
+            val fx = direction.x / length
+            val fy = direction.y / length
+            val progress = boss.visualProgress
+            when (boss.activeMove) {
+                BossMove.RING, BossMove.HOWL, BossMove.MAGIC ->
+                    cellSized("magic_ring", PointF(iso.x, iso.y - 12f),
+                        32f + progress * (if (releasing) 125f else 30f),
+                        20f + progress * (if (releasing) 65f else 15f), color, .75f)
+                BossMove.BREATH -> {
+                    val reach = if (releasing) 75f else 30f + 30f * progress
+                    for (i in -2..2) bar(iso.x + fx * 12f, iso.y - 14f + fy * 12f,
+                        fx * reach - fy * i * 11f, fy * reach + fx * i * 7f,
+                        if (releasing) 6f else 2.5f, color, .55f)
+                }
+                BossMove.SHOT, BossMove.SPINE_FAN, BossMove.DIRT_ARC, BossMove.TALONS -> {
+                    val impact = PointF(iso.x + fx * (boss.radius + 10f),
+                        iso.y - 14f + fy * (boss.radius + 10f))
+                    solid(impact, if (releasing) 10f else 4f + progress * 5f, color, .9f)
+                    solid(impact, 2.5f, 0xFFFFFFFF.toInt(), 1f)
+                }
+                else -> {
+                    val reach = if (releasing) 35f + progress * 30f else 17f
+                    bar(iso.x, iso.y - 13f, fx * reach, fy * reach,
+                        if (releasing) 6f else 3f, color, .85f)
+                    solid(PointF(iso.x + fx * reach, iso.y - 13f + fy * reach),
+                        4f, 0xFFFFFFFF.toInt(), .8f)
+                }
+            }
+        }
+        if (boss.magicImpactTimer > 0f) {
+            val target = IsoMath.worldToIso(boss.magicTargetX, boss.magicTargetY)
+            val t = 1f - boss.magicImpactTimer / .55f
+            cellSized("magic_ring", target, 38f + t * 105f, 24f + t * 55f,
+                color, 1f - t)
+        }
     }
 
     /** Sprite sheet frame, with the same direction and frame rules as IsoAnimation. */
@@ -311,7 +408,7 @@ class EntityBatchBuilder(private val layout: AtlasLayout) {
     }
 
     /** Draws a cached entity cell, anchored at its ground point and scaled by [scale]. */
-    private fun cell(key: String, iso: PointF, scale: Float) {
+    private fun cell(key: String, iso: PointF, scale: Float, flipX: Boolean = false) {
         val index = layout.entityIndexOf(key)
         if (index < 0) return
         val x0 = layout.entityX(index)
@@ -321,8 +418,8 @@ class EntityBatchBuilder(private val layout: AtlasLayout) {
         val top = originY + iso.y * zoom - AtlasLayout.ENT_ANCHOR_Y * scale * zoom
         batch.add(
             left, top, size, size,
-            layout.uMin(x0), layout.vMin(y0),
-            layout.uMax(x0 + AtlasLayout.ENT_CELL), layout.vMax(y0 + AtlasLayout.ENT_CELL),
+            if (flipX) layout.uMax(x0 + AtlasLayout.ENT_CELL) else layout.uMin(x0), layout.vMin(y0),
+            if (flipX) layout.uMin(x0) else layout.uMax(x0 + AtlasLayout.ENT_CELL), layout.vMax(y0 + AtlasLayout.ENT_CELL),
             1f, 1f, 1f, 1f,
         )
     }
