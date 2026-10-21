@@ -16,7 +16,11 @@ enum class TileType(val id: Int, val solid: Boolean, val label: String) {
     ROCK(8, true, "Rock"),
     RUIN_FLOOR(9, false, "Ruins"),
     RUIN_WALL(10, true, "Ruin wall"),
-    FOREST_TREE(11, true, "Forest tree");
+    FOREST_TREE(11, true, "Forest tree"),
+    SNOW(12, false, "Snow"),
+    ASH(13, false, "Volcanic ash"),
+    LAVA(14, true, "Lava"),
+    ARENA_STONE(15, false, "Arena stone");
 
     companion object {
         private val ALL = values()
