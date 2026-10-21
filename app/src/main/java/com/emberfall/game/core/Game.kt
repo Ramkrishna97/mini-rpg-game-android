@@ -36,6 +36,7 @@ import com.emberfall.game.render.IsoMath
 import com.emberfall.game.render.Renderable
 import com.emberfall.game.save.SaveManager
 import com.emberfall.game.save.SaveState
+import com.emberfall.game.save.HackSnapshot
 import com.emberfall.game.ui.HudRenderer
 import com.emberfall.game.world.Bosses
 import com.emberfall.game.world.Collision
@@ -59,13 +60,17 @@ import kotlin.random.Random
  */
 class Game(private val context: Context, private val input: InputState) {
 
-    private val saveManager = SaveManager(context)
+    val isHackMode: Boolean = GameModeConfig.MODE == GameMode.HACK
+    private val saveManager = SaveManager(context, GameModeConfig.MODE)
     private val restored = saveManager.load()
 
     val world = World(restored?.seed ?: Random.nextInt())
     val player: Player
     val camera = Camera()
-    val inventory = Inventory(PackTier.LEATHER_POUCH.capacity)
+    val inventory = Inventory(if (isHackMode) PackTier.VAULT_PACK.capacity else PackTier.LEATHER_POUCH.capacity)
+    var hackBoostsEnabled = false
+        private set
+    private var hackSnapshot: HackSnapshot? = null
     var gold = restored?.gold ?: 25
         private set
     var diamonds = restored?.diamonds ?: 0
@@ -149,7 +154,7 @@ class Game(private val context: Context, private val input: InputState) {
     private var worldRenderer = WorldRenderer(context)
     private var playerRenderer = PlayerRenderer(context)
     private var creatureRenderer = CreatureRenderer(context)
-    private val objectRenderer = ObjectRenderer()
+    private val objectRenderer = ObjectRenderer(context)
     private val hud = HudRenderer(context)
     private val arenaPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     val juice = JuiceManager()
@@ -177,6 +182,7 @@ class Game(private val context: Context, private val input: InputState) {
 
     init {
         input.pushAudioState(graphics.music, graphics.sound)
+        restored?.let { world.restoreTerrain(it.terrainChanges) }
         val spawnX = (world.spawn.x + 0.5f) * Config.TILE
         val spawnY = (world.spawn.y + 0.5f) * Config.TILE
         val startX = restored?.x ?: spawnX
@@ -237,6 +243,7 @@ class Game(private val context: Context, private val input: InputState) {
         }
         camera.snapTo(player.x, player.y)
         biomeLabel = world.biomeAt(world.tileX(player.x), world.tileY(player.y)).label
+        if (isHackMode && restored == null) setHackBoosts(true)
     }
 
     private fun applySavedProgress(state: SaveState) {
@@ -273,6 +280,8 @@ class Game(private val context: Context, private val input: InputState) {
 
         for ((name, level) in state.weaponLevels) runCatching { ItemId.valueOf(name) }.getOrNull()?.let { weaponLevels[it] = level.coerceIn(1, WeaponUpgrades.MAX_RANK + 1) }
         for ((name, stars) in state.weaponStars) runCatching { ItemId.valueOf(name) }.getOrNull()?.let { weaponStars[it] = stars.coerceIn(1, 5) }
+        hackSnapshot = if (isHackMode) state.hackSnapshot else null
+        hackBoostsEnabled = isHackMode && state.hackBoostsEnabled && hackSnapshot != null
         if (state.campfireX != 0f || state.campfireY != 0f) {
             respawnX = state.campfireX
             respawnY = state.campfireY
@@ -380,6 +389,7 @@ class Game(private val context: Context, private val input: InputState) {
             }
         }
         player.stats.update(dt)
+        if (hackBoostsEnabled) refillHackBoosts()
         clampToArena()
 
         if (interactRequested) interact()
@@ -472,6 +482,8 @@ class Game(private val context: Context, private val input: InputState) {
                 command == UiCommand.LOAD_SAVE -> { loadSavedState(); toast("Saved state loaded") }
                 command == UiCommand.UPGRADE_WEAPON -> upgradeWeapon()
                 command == UiCommand.COMBINE_WEAPON -> combineWeapon()
+                command == UiCommand.HACK_TOGGLE_BOOSTS && isHackMode -> setHackBoosts(!hackBoostsEnabled)
+                command == UiCommand.HACK_SUMMON_DRAGON && isHackMode -> summonDragonForTesting()
                 command == UiCommand.UPGRADE_MAGIC -> upgradeMagic()
                 command == UiCommand.EXCHANGE_STONE -> exchangeResources(ItemId.STONE)
                 command == UiCommand.EXCHANGE_IRON -> exchangeResources(ItemId.IRON)
@@ -570,7 +582,8 @@ class Game(private val context: Context, private val input: InputState) {
         return inventory.bestWeapon()
     }
 
-    fun magicCost(spell: Spell): Float = spell.manaCost * 0.9f.pow((stage - 1) * Bosses.ALL.size + defeatedBosses.size)
+    fun magicCost(spell: Spell): Float = if (hackBoostsEnabled) 0f else
+        spell.manaCost * 0.9f.pow((stage - 1) * Bosses.ALL.size + defeatedBosses.size)
     fun magicDamage(spell: Spell): Float = spell.damage * 1.18f.pow((spellLevels[spell] ?: 1) - 1)
 
     fun upgradeMagic(spell: Spell = lastSpell) {
@@ -754,7 +767,7 @@ class Game(private val context: Context, private val input: InputState) {
         rangedWeapon = weapon
         val target = nearestEnemy(14f * Config.TILE)
         if (target != null) player.faceTowards(target.x - player.x, target.y - player.y)
-        player.swing()
+        player.shoot()
         fireProjectile(weapon)
     }
 
@@ -948,6 +961,7 @@ class Game(private val context: Context, private val input: InputState) {
 
         val target = nearestEnemy(20f * Config.TILE)
         if (target != null) player.faceTowards(target.x - player.x, target.y - player.y)
+        player.cast(spell.color)
 
         when (spell) {
             Spell.FIREBALL -> {
@@ -1132,6 +1146,7 @@ class Game(private val context: Context, private val input: InputState) {
     }
 
     fun hurtPlayer(amount: Float, sourceX: Float, sourceY: Float) {
+        if (hackBoostsEnabled) return
         if (deathTimer > 0f || !player.isAlive) return
         if (campfires.any { it.isSafe(player.x, player.y) }) return
         if (player.takeDamage(amount)) {
@@ -1169,12 +1184,14 @@ class Game(private val context: Context, private val input: InputState) {
     fun interactionPrompt(): String? {
         if (deathTimer > 0f || !player.isAlive) return null
         val pickup = nearestPickup(Config.PICKUP_REACH)
-        if (pickup != null) return "PICK UP ${pickup.item.displayName.uppercase()}"
+        if (pickup != null && inventory.hasRoomFor(pickup.item)) return "PICK UP ${pickup.item.displayName.uppercase()}"
+        val node = harvestTarget()
+        val nodeType = node?.let { world.tileAt(it.x, it.y) }
+        if (nodeType?.solid == true) return if (nodeType == TileType.ROCK) "MINE ROCK" else "CHOP TREE"
         val chest = nearestChest(Config.CHEST_REACH)
         if (chest != null) return "OPEN CHEST"
         val fire = nearestCampfire(Config.CAMP_REACH)
         if (fire != null) return "REST AT CAMPFIRE"
-        val node = harvestTarget()
         if (node != null) {
             return when (world.tileAt(node.x, node.y)) {
                 TileType.TREE, TileType.FOREST_TREE -> "CHOP TREE"
@@ -1188,8 +1205,13 @@ class Game(private val context: Context, private val input: InputState) {
 
     private fun interact() {
         val pickup = nearestPickup(Config.PICKUP_REACH)
-        if (pickup != null) {
+        if (pickup != null && inventory.hasRoomFor(pickup.item)) {
             collectPickup(pickup)
+            return
+        }
+        val node = harvestTarget()
+        if (node != null && world.tileAt(node.x, node.y).solid) {
+            harvest(node)
             return
         }
         val chest = nearestChest(Config.CHEST_REACH)
@@ -1205,7 +1227,6 @@ class Game(private val context: Context, private val input: InputState) {
             input.campMenuOpen = true
             return
         }
-        val node = harvestTarget()
         if (node != null) {
             harvest(node)
             return
@@ -1265,9 +1286,17 @@ class Game(private val context: Context, private val input: InputState) {
 
             else -> return
         }
-        if (!inventory.canFit(rewards)) { showInventoryFull(cx, cy); return }
+        // Clearing a blocking node always succeeds. A full pack only forfeits
+        // the rewards that do not fit; it must never trap the player on a path.
+        val ground = when (world.biomeAt(node.x, node.y)) {
+            com.emberfall.game.world.Biome.FOREST -> TileType.FOREST_FLOOR
+            com.emberfall.game.world.Biome.SNOW -> TileType.SNOW
+            com.emberfall.game.world.Biome.VOLCANIC -> TileType.ASH
+            com.emberfall.game.world.Biome.DESERT -> TileType.SAND
+            else -> TileType.GRASS
+        }
+        world.setTile(node.x, node.y, ground)
         rewards.forEach { (id, count) -> giveItem(id, count) }
-        world.setTile(node.x, node.y, if (type == TileType.FOREST_TREE) TileType.FOREST_FLOOR else TileType.GRASS)
         spawnParticles(cx, cy, when (type) {
             TileType.TREE, TileType.FOREST_TREE -> 0xFF8A6A43.toInt()
             TileType.ROCK -> 0xFF8C8C94.toInt()
@@ -1678,7 +1707,11 @@ class Game(private val context: Context, private val input: InputState) {
         for (animal in animals) add(animal.x, animal.y) { drawAtIso(canvas, animal.x, animal.y) { creatureRenderer.drawAnimal(canvas, animal, graphics) } }
         for (wolf in wolves) add(wolf.x, wolf.y) { drawAtIso(canvas, wolf.x, wolf.y) { creatureRenderer.drawWolf(canvas, wolf, elapsedSeconds) } }
         for (boss in bosses) if (!boss.defeated || elapsedSeconds - boss.defeatedAtSeconds < 1f) add(boss.x, boss.y) { drawAtIso(canvas, boss.x, boss.y) { creatureRenderer.drawBoss(canvas, boss, graphics, elapsedSeconds) } }
-        add(player.x, player.y) { drawAtIso(canvas, player.x, player.y) { playerRenderer.draw(canvas, player, elapsedSeconds, equippedWeapon ?: activeWeapon()) } }
+        add(player.x, player.y) { drawAtIso(canvas, player.x, player.y) {
+            playerRenderer.draw(canvas, player, elapsedSeconds,
+                if (player.isSwinging && player.action == com.emberfall.game.entity.PlayerAction.RANGED)
+                    rangedWeapon else equippedWeapon ?: activeWeapon())
+        } }
         for (projectile in projectiles) add(projectile.x, projectile.y) {
             drawProjectile(canvas, projectile)
         }
@@ -1750,9 +1783,16 @@ class Game(private val context: Context, private val input: InputState) {
                 arenaPaint.color = 0xCCFFFFFF.toInt()
                 canvas.drawCircle(head.x, head.y, projectile.radius * .7f, arenaPaint)
                 arenaPaint.style = Paint.Style.FILL
-                arenaPaint.style = Paint.Style.FILL
                 arenaPaint.color = projectile.color
                 canvas.drawCircle(head.x, head.y, projectile.radius * .55f, arenaPaint)
+                arenaPaint.color = 0xFFFFFFFF.toInt()
+                canvas.drawCircle(head.x, head.y, projectile.radius * .19f, arenaPaint)
+                arenaPaint.color = projectile.color
+                for (i in 0..2) {
+                    val angle = elapsedSeconds * 15f + i * (PI * 2.0 / 3.0).toFloat()
+                    canvas.drawCircle(head.x + cos(angle) * projectile.radius,
+                        head.y + sin(angle) * projectile.radius * .6f, 1.7f, arenaPaint)
+                }
             }
         }
         arenaPaint.style = Paint.Style.FILL
@@ -1879,6 +1919,90 @@ class Game(private val context: Context, private val input: InputState) {
             else if (it.style != WeaponStyle.PROJECTILE && meleeWeapon == null) meleeWeapon = it
         }
         camera.snapTo(player.x, player.y)
+        hackSnapshot = if (isHackMode) state.hackSnapshot else null
+        hackBoostsEnabled = isHackMode && state.hackBoostsEnabled && hackSnapshot != null
+        if (hackBoostsEnabled) refillHackBoosts()
+    }
+
+    private fun setHackBoosts(enabled: Boolean) {
+        if (!isHackMode || hackBoostsEnabled == enabled) return
+        if (enabled) {
+            hackSnapshot = HackSnapshot(
+                inventory = inventory.allStacks().filterNotNull().map { it.id to it.count },
+                gold = gold,
+                diamonds = diamonds,
+                weaponLevels = weaponLevels.mapKeys { it.key.name },
+                weaponStars = weaponStars.mapKeys { it.key.name },
+                equippedWeapon = equippedWeapon?.name,
+                meleeWeapon = meleeWeapon?.name,
+                rangedWeapon = rangedWeapon?.name,
+            )
+            hackBoostsEnabled = true
+            refillHackBoosts()
+            meleeWeapon = ItemId.CROSS_SWORD
+            rangedWeapon = ItemId.GUN
+            equippedWeapon = meleeWeapon
+            toast("Hack boosts on: resources and weapons maxed")
+        } else {
+            hackBoostsEnabled = false
+            val backup = hackSnapshot
+            if (backup != null) {
+                inventory.clear()
+                backup.inventory.forEach { (id, count) -> inventory.add(id, count) }
+                gold = backup.gold
+                diamonds = backup.diamonds
+                weaponLevels.clear()
+                backup.weaponLevels.forEach { (name, level) ->
+                    runCatching { ItemId.valueOf(name) }.getOrNull()?.let { weaponLevels[it] = level }
+                }
+                weaponStars.clear()
+                backup.weaponStars.forEach { (name, stars) ->
+                    runCatching { ItemId.valueOf(name) }.getOrNull()?.let { weaponStars[it] = stars }
+                }
+                equippedWeapon = backup.equippedWeapon?.let { runCatching { ItemId.valueOf(it) }.getOrNull() }
+                meleeWeapon = backup.meleeWeapon?.let { runCatching { ItemId.valueOf(it) }.getOrNull() }
+                rangedWeapon = backup.rangedWeapon?.let { runCatching { ItemId.valueOf(it) }.getOrNull() }
+            }
+            hackSnapshot = null
+            toast("Hack boosts off: previous resources restored")
+        }
+        saveNow()
+    }
+
+    private fun refillHackBoosts() {
+        if (!hackBoostsEnabled) return
+        val stats = player.stats
+        stats.health = stats.maxHealth
+        stats.mana = stats.maxMana
+        stats.hunger = 100f
+        for (id in ItemId.values()) {
+            val missing = id.maxStack - inventory.count(id)
+            if (missing > 0) inventory.add(id, missing)
+            if (id.category == ItemCategory.WEAPON) {
+                weaponLevels[id] = WeaponUpgrades.MAX_RANK + 1
+                weaponStars[id] = 5
+            }
+        }
+        gold = max(gold, 1_000_000)
+        diamonds = max(diamonds, 1_000_000)
+    }
+
+    private fun summonDragonForTesting() {
+        if (!isHackMode) return
+        if (bosses.any { it.isDragon && !it.defeated }) {
+            toast("The dragon is already in this world")
+            return
+        }
+        activeBoss?.resetFight()
+        activeBoss = null
+        dragonSpawnTimer = -1f
+        bosses.add(Boss(Bosses.DRAGON).also {
+            it.setLevel(stage + defeatedBosses.size + 1)
+            it.x = player.x + player.facingX * 4f * Config.TILE
+            it.y = player.y + player.facingY * 4f * Config.TILE
+        })
+        banner("THE DRAGON HAS BEEN SUMMONED")
+        toast("Dragon spawned nearby")
     }
 
     fun saveNow() {
@@ -1910,12 +2034,15 @@ class Game(private val context: Context, private val input: InputState) {
                 campfireY = respawnY,
                 defeatedBosses = defeatedBosses.toSet(),
                 openedChests = openedChests.toSet(),
+                terrainChanges = world.terrainChanges(),
                 equippedWeapon = equippedWeapon?.name,
                 meleeWeapon = meleeWeapon?.name,
                 rangedWeapon = rangedWeapon?.name,
                 weaponLevels = weaponLevels.mapKeys { it.key.name },
                 weaponStars = weaponStars.mapKeys { it.key.name },
                 graphics = graphics,
+                hackBoostsEnabled = hackBoostsEnabled,
+                hackSnapshot = hackSnapshot,
             ),
         )
     }
