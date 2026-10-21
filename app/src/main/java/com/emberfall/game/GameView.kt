@@ -155,7 +155,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
             val batch = SpriteBatch()
             val hudRenderer = HudRenderer(view.context)
             val nightLighting = NightLighting()
-            val objectRenderer = ObjectRenderer()
+            val objectRenderer = ObjectRenderer(view.context)
             val startNanos = System.nanoTime()
             var nativeWidth = -1
             var nativeHeight = -1
