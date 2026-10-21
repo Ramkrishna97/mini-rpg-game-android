@@ -360,7 +360,8 @@ class TouchController(
             input.optionsOpen = false
             return
         }
-        val choice = (0 until 6).firstOrNull { UiLayout.optionsCell(it, w, h, density).contains(x, y) } ?: return
+        val rows = if (game.isHackMode) 4 else 3
+        val choice = (0 until rows * 2).firstOrNull { UiLayout.optionsCell(it, w, h, density, rows).contains(x, y) } ?: return
         input.optionsOpen = false
         when (choice) {
             0 -> { input.inventoryOpen = true; input.craftingOpen = false }
@@ -369,6 +370,8 @@ class TouchController(
             3 -> { input.shopOpen = true; input.shopScroll = 0 }
             4 -> { input.inventoryOpen = true; input.craftingOpen = true; input.craftScroll = 0 }
             5 -> input.settingsOpen = true
+            6 -> input.pushCommand(UiCommand.HACK_TOGGLE_BOOSTS)
+            7 -> input.pushCommand(UiCommand.HACK_SUMMON_DRAGON)
         }
     }
 
