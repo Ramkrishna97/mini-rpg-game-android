@@ -8,6 +8,8 @@ import com.emberfall.game.world.TileQuery
 import kotlin.math.exp
 import kotlin.math.max
 
+enum class PlayerAction { MELEE, RANGED, MAGIC }
+
 /**
  * The player avatar. Position is the body centre in world pixels; the movement
  * model uses acceleration + damping so touch input feels analog instead of
@@ -33,6 +35,11 @@ class Player(var x: Float, var y: Float) {
     var swingTimer = 0f
         private set
 
+    var action = PlayerAction.MELEE
+        private set
+    var actionColor = 0xFF75D8FF.toInt()
+        private set
+
     var invulnTimer = 0f
         private set
 
@@ -54,7 +61,19 @@ class Player(var x: Float, var y: Float) {
     private val moveResult = Collision.MoveResult()
 
     fun swing() {
-        if (swingTimer <= 0f) swingTimer = SWING_DURATION
+        action = PlayerAction.MELEE
+        swingTimer = SWING_DURATION
+    }
+
+    fun shoot() {
+        action = PlayerAction.RANGED
+        swingTimer = SWING_DURATION
+    }
+
+    fun cast(color: Int) {
+        action = PlayerAction.MAGIC
+        actionColor = color
+        swingTimer = SWING_DURATION
     }
 
     /** Returns true when the hit landed (not blocked by invulnerability). */
