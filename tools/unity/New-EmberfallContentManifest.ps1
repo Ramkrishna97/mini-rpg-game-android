@@ -4,15 +4,20 @@ param(
     [string]$ContentVersion,
 
     [string]$PackRoot,
-    [switch]$BossesOnly
+    [switch]$BossesOnly,
+    [switch]$SpritesOnly
 )
 
 $ErrorActionPreference = 'Stop'
+if ($BossesOnly -and $SpritesOnly) { throw 'Choose either BossesOnly or SpritesOnly.' }
 if (-not $PackRoot) { $PackRoot = Join-Path $PSScriptRoot '../../content-pack/generated' }
 $artRoot = Join-Path $PackRoot 'art'
 $assetFiles = [ordered]@{
     'tileset'            = 'tileset.png'
     'sprite.player'      = 'player.png'
+    'sprite.items'       = 'items.png'
+    'sprite.wildlife'    = 'wildlife.png'
+    'sprite.chests'      = 'chests.png'
     'sprite.gloomfang'   = 'gloomfang.png'
     'sprite.stonewarden' = 'stonewarden.png'
     'sprite.mirewitch'   = 'mirewitch.png'
@@ -21,8 +26,9 @@ $assetFiles = [ordered]@{
     'sprite.dragon'      = 'dragon.png'
 }
 if ($BossesOnly) {
-    foreach ($id in @('tileset', 'sprite.player')) { $assetFiles.Remove($id) }
+    foreach ($id in @('tileset', 'sprite.player', 'sprite.items', 'sprite.wildlife', 'sprite.chests')) { $assetFiles.Remove($id) }
 }
+if ($SpritesOnly) { $assetFiles.Remove('tileset') }
 
 if ($ContentVersion -notmatch '^[A-Za-z0-9][A-Za-z0-9._:-]{0,95}$') {
     throw 'ContentVersion may contain only letters, digits, dot, underscore, colon, and hyphen.'
