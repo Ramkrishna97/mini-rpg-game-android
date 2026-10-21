@@ -11,16 +11,15 @@ import com.emberfall.game.entity.Animal
 import com.emberfall.game.entity.AnimalSpecies
 import com.emberfall.game.entity.Boss
 import com.emberfall.game.entity.BossPhase
+import com.emberfall.game.entity.BossMove
 import com.emberfall.game.entity.BossSignatures
 import com.emberfall.game.entity.Wolf
 import kotlin.math.sin
 
-/**
- * Vector creature art. Everything is drawn with antialiased primitives and
- * scales cleanly with the camera; quality settings drop small details on
- * low-end devices (the 2D equivalent of a low-poly LOD).
- */
+/** Wildlife sheets, boss sheets, and a vector fallback for hostile wolves. */
 class CreatureRenderer(context: Context) {
+
+    private val art = ArtSheets.from(context)
 
     private val bossSprites = mapOf(
         "gloomfang" to IsoAnimation(context, "gloomfang"),
@@ -42,94 +41,20 @@ class CreatureRenderer(context: Context) {
     }
 
     fun drawAnimal(canvas: Canvas, animal: Animal, graphics: GraphicsSettings) {
-        val x = animal.x
-        val y = animal.y
-        val r = animal.radius
-        val detailed = graphics.quality != com.emberfall.game.core.GraphicsQuality.LOW
-
-        shadow(canvas, x, y + r * 0.7f, r)
-
-        val bodyColor = when (animal.species) {
-            AnimalSpecies.RABBIT -> 0xFFCFC7B8.toInt()
-            AnimalSpecies.DEER -> 0xFFA97C50.toInt()
-            AnimalSpecies.BOAR -> 0xFF6E5A48.toInt()
-            AnimalSpecies.BIRD -> 0xFF8AA7B8.toInt()
-            AnimalSpecies.FOX -> 0xFFC06B3E.toInt()
-            AnimalSpecies.DOG -> 0xFF9C8469.toInt()
-            AnimalSpecies.SHARK -> 0xFF568092.toInt()
-            AnimalSpecies.RAT -> 0xFF77716D.toInt()
-            AnimalSpecies.SHEEP -> 0xFFE8E4D7.toInt()
-            AnimalSpecies.CHICKEN -> 0xFFF2D56B.toInt()
-        }
-
-        paint.color = bodyColor
-        rect.set(x - r, y - r * 0.6f, x + r, y + r * 0.55f)
-        canvas.drawOval(rect, paint)
-
-        // Head sits toward the facing direction.
-        val headX = x + animal.facingX * r * 0.85f
-        val headY = y - r * 0.55f + animal.facingY * r * 0.3f
-        canvas.drawCircle(headX, headY, r * 0.52f, paint)
-
-        paint.color = 0xFF3A2D22.toInt()
-        if (animal.species == AnimalSpecies.DEER && detailed) {
-            paint.strokeWidth = 1.6f
+        val size = if (graphics.quality == com.emberfall.game.core.GraphicsQuality.LOW) 39f else 43f
+        art.animal(canvas, animal.species, animal.x, animal.y,
+            (animal.walkCycle * .65f).toInt(), animal.facingX,
+            if (animal.species == AnimalSpecies.SHARK) size + 7f else size)
+        if (animal.species == AnimalSpecies.SHARK) {
+            paint.color = 0x997AD2E7.toInt()
             paint.style = Paint.Style.STROKE
-            canvas.drawLine(headX - 2f, headY - 4f, headX - 5f, headY - 11f, paint)
-            canvas.drawLine(headX + 2f, headY - 4f, headX + 5f, headY - 11f, paint)
-            canvas.drawLine(headX - 5f, headY - 9f, headX - 9f, headY - 12f, paint)
-            canvas.drawLine(headX + 5f, headY - 9f, headX + 9f, headY - 12f, paint)
-            paint.style = Paint.Style.FILL
-        } else if (detailed) {
-            canvas.drawCircle(headX - 2f, headY - 4f, 1.6f, paint)
-            canvas.drawCircle(headX + 2f, headY - 4f, 1.6f, paint)
-        }
-
-        paint.color = 0xFF211A14.toInt()
-        canvas.drawCircle(headX - 1.8f, headY, 0.9f, paint)
-        canvas.drawCircle(headX + 1.8f, headY, 0.9f, paint)
-
-        // Species silhouettes: these are deliberately exaggerated so animals
-        // are recognizable at the game camera's small sprite scale.
-        when (animal.species) {
-            AnimalSpecies.RABBIT -> {
-                paint.color = 0xFFCFC7B8.toInt()
-                canvas.drawOval(headX - 5f, headY - 14f, headX - 1f, headY - 3f, paint)
-                canvas.drawOval(headX + 1f, headY - 14f, headX + 5f, headY - 3f, paint)
-                paint.color = 0xFFE3A2AA.toInt(); canvas.drawLine(headX - 3f, headY - 12f, headX - 2f, headY - 5f, paint)
-            }
-            AnimalSpecies.FOX -> {
-                paint.color = 0xFFC06B3E.toInt()
-                path.reset(); path.moveTo(headX - 6f, headY - 3f); path.lineTo(headX - 3f, headY - 12f); path.lineTo(headX, headY - 4f); path.close(); canvas.drawPath(path, paint)
-                path.reset(); path.moveTo(headX + 6f, headY - 3f); path.lineTo(headX + 3f, headY - 12f); path.lineTo(headX, headY - 4f); path.close(); canvas.drawPath(path, paint)
-                paint.strokeWidth = 5f; paint.strokeCap = Paint.Cap.ROUND; canvas.drawLine(x - animal.facingX * r, y, x - animal.facingX * (r + 11f), y - 4f, paint)
-                paint.color = 0xFFFAE5D0.toInt(); canvas.drawCircle(x - animal.facingX * (r + 11f), y - 4f, 2.6f, paint)
-            }
-            AnimalSpecies.SHEEP -> {
-                paint.color = 0xFFF7F2E5.toInt()
-                canvas.drawCircle(x - r * .45f, y - r * .55f, r * .42f, paint); canvas.drawCircle(x + r * .25f, y - r * .72f, r * .46f, paint)
-                canvas.drawCircle(x + r * .55f, y - r * .35f, r * .4f, paint)
-            }
-            AnimalSpecies.SHARK -> {
-                paint.color = 0xFF3E6477.toInt()
-                path.reset(); path.moveTo(x - r*.15f, y - r*.45f); path.lineTo(x, y-r*1.35f); path.lineTo(x+r*.3f,y-r*.4f); path.close(); canvas.drawPath(path,paint)
-                path.reset(); path.moveTo(x-r, y); path.lineTo(x-r*1.65f,y-r*.55f); path.lineTo(x-r*1.4f,y+r*.15f); path.close(); canvas.drawPath(path,paint)
-                paint.color = 0xFFF0F4F1.toInt(); canvas.drawLine(headX, headY + r*.2f, headX + r*.3f, headY + r*.2f, paint)
-            }
-            else -> Unit
-        }
-
-        if (detailed) {
-            paint.color = 0xFF4A3A2C.toInt()
             paint.strokeWidth = 1.4f
-            paint.style = Paint.Style.STROKE
-            val step = sin(animal.walkCycle)
-            canvas.drawLine(x - r * 0.5f, y + r * 0.4f, x - r * 0.5f + step, y + r * 0.95f, paint)
-            canvas.drawLine(x + r * 0.4f, y + r * 0.4f, x + r * 0.4f - step, y + r * 0.95f, paint)
+            val wake = (animal.walkCycle * 5f) % 8f
+            canvas.drawOval(animal.x - 16f - wake, animal.y - 4f,
+                animal.x + 16f + wake, animal.y + 5f, paint)
             paint.style = Paint.Style.FILL
         }
-
-        flash(canvas, animal.x, animal.y, r, animal.hitFlash)
+        flash(canvas, animal.x, animal.y - 10f, animal.radius, animal.hitFlash)
     }
 
     fun drawWolf(canvas: Canvas, wolf: Wolf, elapsed: Float) {
@@ -265,11 +190,100 @@ class CreatureRenderer(context: Context) {
         when {
             boss.isBurrowed && !boss.defeated -> drawMoleMound(canvas, x, y, r, elapsed)
             sprite != null -> sprite.draw(canvas, x, y - lift, boss.facingX, boss.facingY, state,
-                if (boss.defeated) elapsed - boss.defeatedAtSeconds else elapsed,
+                if (boss.defeated) elapsed - boss.defeatedAtSeconds
+                    else if (state == AnimationState.ATTACK) boss.visualProgress.coerceIn(0f, .999f) / 3f
+                    else elapsed,
                 if (boss.isDragon) 76f else 52f)
             else -> drawDragon(canvas, x, y - lift, boss.facingX, boss.facingY, r * 1.6f, boss.def.color, elapsed)
         }
+        drawBossAttackEffect(canvas, boss, tellColor, elapsed)
         flash(canvas, x, y - 15f, r, boss.hitFlash)
+    }
+
+    /** Attack effects draw in front of the boss sprite and track the simulation phase. */
+    private fun drawBossAttackEffect(canvas: Canvas, boss: Boss, color: Int, elapsed: Float) {
+        if (!boss.engaged || boss.defeated) return
+        val active = boss.phase == BossPhase.TELEGRAPH || boss.phase == BossPhase.DASH
+        if (!active && boss.magicImpactTimer <= 0f) return
+        val x = boss.x
+        val y = boss.y - boss.airborne * .6f
+        val vx = boss.chargeDirX - boss.chargeDirY
+        val vy = (boss.chargeDirX + boss.chargeDirY) * .5f
+        val len = kotlin.math.sqrt(vx * vx + vy * vy).coerceAtLeast(.01f)
+        val fx = vx / len
+        val fy = vy / len
+        val progress = boss.visualProgress
+        val releasing = boss.phase == BossPhase.DASH
+        paint.strokeCap = Paint.Cap.ROUND
+        paint.style = Paint.Style.STROKE
+        paint.color = (color and 0x00FFFFFF) or (if (releasing) 0xDD000000.toInt() else 0x88000000.toInt())
+        paint.strokeWidth = if (releasing) 5f else 2.5f
+
+        if (active) when (boss.activeMove) {
+            BossMove.ROLL, BossMove.SWOOP, BossMove.POUNCE, BossMove.AMBUSH, BossMove.BURROW -> {
+                val reach = if (releasing) 20f + 33f * progress else 14f + 12f * progress
+                val cx = x + fx * reach
+                val cy = y - 11f + fy * reach
+                canvas.drawArc(cx - 25f, cy - 18f, cx + 25f, cy + 18f,
+                    Math.toDegrees(kotlin.math.atan2(fy.toDouble(), fx.toDouble())).toFloat() - 65f,
+                    130f, false, paint)
+                paint.strokeWidth = 1.5f; paint.color = 0xDDFFFFFF.toInt()
+                canvas.drawLine(x, y - 13f, cx, cy, paint)
+            }
+            BossMove.BREATH -> {
+                val spread = if (releasing) 30f else 13f + progress * 14f
+                val reach = if (releasing) 78f else 32f + progress * 30f
+                path.reset(); path.moveTo(x + fx * 12f, y - 12f + fy * 12f)
+                path.lineTo(x + fx * reach - fy * spread, y - 12f + fy * reach + fx * spread * .55f)
+                path.lineTo(x + fx * reach + fy * spread, y - 12f + fy * reach - fx * spread * .55f)
+                path.close()
+                paint.style = Paint.Style.FILL
+                paint.color = (color and 0x00FFFFFF) or (if (releasing) 0x99000000.toInt() else 0x55000000)
+                canvas.drawPath(path, paint)
+                paint.color = 0xCCFFE4A4.toInt()
+                canvas.drawCircle(x + fx * reach * .7f, y - 12f + fy * reach * .7f,
+                    3f + 2f * kotlin.math.sin(elapsed * 25f), paint)
+            }
+            BossMove.RING, BossMove.HOWL -> {
+                val radius = boss.radius + 10f + (if (releasing) progress * 60f else progress * 13f)
+                canvas.drawOval(x - radius, y - radius * .48f, x + radius, y + radius * .48f, paint)
+                paint.color = 0xCCFFFFFF.toInt(); paint.strokeWidth = 1.4f
+                canvas.drawOval(x - radius + 4f, y - radius * .48f + 2f,
+                    x + radius - 4f, y + radius * .48f - 2f, paint)
+            }
+            BossMove.SHOT, BossMove.SPINE_FAN, BossMove.DIRT_ARC, BossMove.TALONS -> {
+                val bx = x + fx * (boss.radius + 7f)
+                val by = y - 14f + fy * (boss.radius + 7f)
+                paint.style = Paint.Style.FILL
+                paint.color = (color and 0x00FFFFFF) or 0xCC000000.toInt()
+                canvas.drawCircle(bx, by, if (releasing) 9f else 4f + 5f * progress, paint)
+                paint.color = 0xFFFFFFFF.toInt(); canvas.drawCircle(bx, by, 2.5f, paint)
+                if (releasing) for (i in -1..1) {
+                    paint.style = Paint.Style.STROKE; paint.strokeWidth = 1.8f
+                    canvas.drawLine(bx, by, bx + fx * 25f - fy * i * 9f,
+                        by + fy * 25f + fx * i * 9f, paint)
+                }
+            }
+            BossMove.MAGIC -> {
+                paint.style = Paint.Style.STROKE
+                canvas.drawCircle(x, y - 15f, 16f + progress * 13f, paint)
+                canvas.drawLine(x - 12f, y - 14f, x + 12f, y - 14f, paint)
+            }
+        }
+        if (boss.magicImpactTimer > 0f) {
+            val offset = IsoMath.worldToIso(boss.magicTargetX - boss.x, boss.magicTargetY - boss.y)
+            val t = 1f - boss.magicImpactTimer / .55f
+            val radius = 18f + 52f * t
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = 6f * (1f - t) + 1f
+            paint.color = (color and 0x00FFFFFF) or (((180f * (1f - t)).toInt()) shl 24)
+            canvas.drawOval(x + offset.x - radius, boss.y + offset.y - radius * .48f,
+                x + offset.x + radius, boss.y + offset.y + radius * .48f, paint)
+            paint.color = 0xCCFFFFFF.toInt(); paint.strokeWidth = 2f
+            canvas.drawLine(x + offset.x - radius * .4f, boss.y + offset.y,
+                x + offset.x + radius * .4f, boss.y + offset.y, paint)
+        }
+        paint.style = Paint.Style.FILL
     }
 
     /** Dirt mound with puffs while the mole is underground. */
