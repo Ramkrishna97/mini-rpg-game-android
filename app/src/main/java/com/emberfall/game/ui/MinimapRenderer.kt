@@ -110,15 +110,23 @@ class MinimapRenderer {
         for (animal in game.animals) marker(animal.x, animal.y, 0xCCEAEAEA.toInt(), 1.5f * density)
         for (wolf in game.wolves) marker(wolf.x, wolf.y, 0xFFFF6B5A.toInt(), 1.8f * density)
 
-        // Bosses.
+        // Arena markers use each boss's home position, even while a fight moves it.
         for (boss in game.bosses) {
             if (boss.defeated) continue
-            marker(boss.x, boss.y, 0xFFFF3B30.toInt(), 3.6f * density)
+            if (boss.isDragon) continue
+            val color = when (boss.def.id) {
+                "hollowking" -> 0xFFD8F5FF.toInt()
+                "ashtitan" -> 0xFFFF713B.toInt()
+                "stonewarden" -> 0xFFBBD7FF.toInt()
+                "mirewitch" -> 0xFFE8B871.toInt()
+                else -> 0xFFD2C4A0.toInt()
+            }
+            marker(boss.arenaX, boss.arenaY, color, 3.6f * density)
             markerPaint.style = Paint.Style.STROKE
             markerPaint.strokeWidth = 1.2f * density
-            markerPaint.color = 0xAAFFB4A8.toInt()
-            val dx = (boss.x - game.player.x) / Config.TILE * scale
-            val dy = (boss.y - game.player.y) / Config.TILE * scale
+            markerPaint.color = color
+            val dx = (boss.arenaX - game.player.x) / Config.TILE * scale
+            val dy = (boss.arenaY - game.player.y) / Config.TILE * scale
             canvas.drawCircle(centerScreenX + dx, centerScreenY + dy, 6f * density, markerPaint)
             markerPaint.style = Paint.Style.FILL
         }
@@ -168,5 +176,9 @@ class MinimapRenderer {
         TileType.ROCK -> 0xFF66666E.toInt()
         TileType.RUIN_FLOOR -> 0xFF565660.toInt()
         TileType.RUIN_WALL -> 0xFF3A3A44.toInt()
+        TileType.SNOW -> 0xFFE3F2F8.toInt()
+        TileType.ASH -> 0xFF49313A.toInt()
+        TileType.LAVA -> 0xFFFF7030.toInt()
+        TileType.ARENA_STONE -> 0xFF9DB8C5.toInt()
     }
 }
