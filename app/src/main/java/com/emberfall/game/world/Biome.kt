@@ -7,4 +7,7 @@ enum class Biome(val label: String) {
     FOREST("FOREST"),
     HIGHLANDS("HIGHLANDS"),
     RUINS("RUINS"),
+    SNOW("SNOWY MOUNTAINS"),
+    VOLCANIC("VOLCANO LANDS"),
+    DESERT("DESERT LANDS"),
 }
