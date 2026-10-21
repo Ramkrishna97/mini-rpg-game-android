@@ -46,5 +46,5 @@ if ($unityProcess.ExitCode -ne 0) {
     throw "Unity art generation failed (exit $($unityProcess.ExitCode)). See $logPath"
 }
 
-& (Join-Path $toolRoot 'New-EmberfallContentManifest.ps1') -ContentVersion $ContentVersion -BossesOnly
+& (Join-Path $toolRoot 'New-EmberfallContentManifest.ps1') -ContentVersion $ContentVersion -SpritesOnly
 Write-Host "Ready to upload: $(Join-Path $toolRoot '../../content-pack/generated')"
