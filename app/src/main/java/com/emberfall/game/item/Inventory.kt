@@ -16,22 +16,28 @@ class Inventory(val capacity: Int = DEFAULT_CAPACITY) {
     /** Returns the amount that did not fit. */
     fun add(id: ItemId, amount: Int): Int {
         if (amount <= 0) return 0
+        // A type has one shared limit, even when it occupies several slots.
         var remaining = amount
+        val allowed = min(amount, (MAX_PER_ITEM - count(id)).coerceAtLeast(0))
+        if (allowed == 0) return amount
+        var toStore = allowed
 
         for (stack in slots) {
             if (stack == null || stack.id != id || stack.count >= id.maxStack) continue
-            val moved = min(id.maxStack - stack.count, remaining)
+            val moved = min(id.maxStack - stack.count, toStore)
             stack.count += moved
+            toStore -= moved
             remaining -= moved
-            if (remaining == 0) return 0
+            if (toStore == 0) return remaining
         }
 
         for (index in slots.indices) {
             if (slots[index] != null) continue
-            val moved = min(id.maxStack, remaining)
+            val moved = min(id.maxStack, toStore)
             slots[index] = ItemStack(id, moved)
+            toStore -= moved
             remaining -= moved
-            if (remaining == 0) return 0
+            if (toStore == 0) return remaining
         }
         return remaining
     }
@@ -91,6 +97,7 @@ class Inventory(val capacity: Int = DEFAULT_CAPACITY) {
     }
 
     fun hasRoomFor(id: ItemId): Boolean {
+        if (count(id) >= MAX_PER_ITEM) return false
         if (slots.any { it != null && it.id == id && it.count < id.maxStack }) return true
         return slots.any { it == null }
     }
@@ -99,6 +106,7 @@ class Inventory(val capacity: Int = DEFAULT_CAPACITY) {
     fun canFit(rewards: List<Pair<ItemId, Int>>): Boolean {
         var freeSlots = slots.count { it == null }
         for ((id, amount) in rewards.groupBy { it.first }.mapValues { entry -> entry.value.sumOf { it.second } }) {
+            if (count(id).toLong() + amount > MAX_PER_ITEM) return false
             val existingRoom = slots.sumOf { stack ->
                 if (stack?.id == id) id.maxStack - stack.count else 0
             }
@@ -123,6 +131,7 @@ class Inventory(val capacity: Int = DEFAULT_CAPACITY) {
 
     companion object {
         const val DEFAULT_CAPACITY = 18
+        const val MAX_PER_ITEM = 999
     }
 }
 
