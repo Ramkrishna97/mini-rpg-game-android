@@ -81,17 +81,17 @@ enum class ItemId(
         "+5 HP/sec for 15 sec", regenPerSecond = 5f, regenSeconds = 15f),
 
     WOODEN_SWORD("Wooden Sword", ItemCategory.WEAPON, Rarity.COMMON, 999, 40, 0xFF9A7446.toInt(),
-        "A simple blade", damage = 8f),
+        "A simple blade", damage = 4.8f),
     IRON_SWORD("Iron Sword", ItemCategory.WEAPON, Rarity.UNCOMMON, 999, 150, 0xFFB9C3D0.toInt(),
-        "Forged for the frontier", damage = 14f),
+        "Forged for the frontier", damage = 8.4f),
     CROSS_SWORD("Cross Sword", ItemCategory.WEAPON, Rarity.RARE, 999, 280, 0xFFD9DCE8.toInt(),
-        "Sweeping cross-cut", damage = 22f, style = WeaponStyle.ARC),
+        "Sweeping cross-cut", damage = 13.2f, style = WeaponStyle.ARC),
     RING_BLADE("Ring Blade", ItemCategory.WEAPON, Rarity.RARE, 999, 260, 0xFFC9A227.toInt(),
-        "Spins through everything nearby", damage = 18f, style = WeaponStyle.RING),
+        "Spins through everything nearby", damage = 10.8f, style = WeaponStyle.RING),
     BOW("Hunting Bow", ItemCategory.WEAPON, Rarity.UNCOMMON, 999, 130, 0xFF8A6238.toInt(),
-        "Fires a piercing arrow", damage = 16f, style = WeaponStyle.PROJECTILE),
+        "Fires a piercing arrow", damage = 9.6f, style = WeaponStyle.PROJECTILE),
     GUN("Flintlock Gun", ItemCategory.WEAPON, Rarity.EPIC, 999, 500, 0xFF6E7A86.toInt(),
-        "Heavy shot that punches through", diamondPrice = 4, damage = 26f,
+        "Heavy shot that punches through", diamondPrice = 4, damage = 15.6f,
         style = WeaponStyle.PROJECTILE, pierces = true);
 
     val isUsable: Boolean
