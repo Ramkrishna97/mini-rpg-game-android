@@ -110,7 +110,8 @@ object AtlasBuilder {
     private fun buildEntityCells(context: Context, pixels: IntArray, layout: AtlasLayout) {
         val width = AtlasLayout.ATLAS_W
         val creatures = CreatureRenderer(context)
-        val objects = ObjectRenderer()
+        val objects = ObjectRenderer(context)
+        val art = ArtSheets.from(context)
         val graphics = GraphicsSettings()
         val ax = AtlasLayout.ENT_ANCHOR_X.toFloat()
         val ay = AtlasLayout.ENT_ANCHOR_Y.toFloat()
@@ -123,11 +124,17 @@ object AtlasBuilder {
                 key == "wolf" -> creatures.drawWolf(canvas, Wolf(ax, ay), 0f)
                 key == "dragon" -> creatures.drawBoss(canvas,
                     BossEntity(Bosses.DRAGON).apply { x = ax; y = ay }, graphics, 0f)
-                key.startsWith("animal_") -> creatures.drawAnimal(canvas,
-                    Animal(AnimalSpecies.valueOf(key.removePrefix("animal_")), ax, ay), graphics)
+                key.startsWith("animal_") -> {
+                    val spec = key.removePrefix("animal_").substringBeforeLast('_')
+                    val frame = key.substringAfterLast('_').toInt()
+                    art.animal(canvas, AnimalSpecies.valueOf(spec), ax, ay, frame, 1f,
+                        if (spec == "SHARK") 50f else 43f)
+                }
                 key == "magic_ring" -> drawRing(canvas)
                 key == "chest" -> objects.drawChest(canvas, LootChest(0, ax, ay))
                 key == "chest_open" -> objects.drawChest(canvas, LootChest(0, ax, ay).apply { opened = true })
+                key == "chest_opening" -> art.chest(canvas, ax, ay, 2)
+                key == "chest_glow" -> art.chest(canvas, ax, ay, 3)
                 key == "campfire" -> objects.drawCampfire(canvas, Campfire(0, ax, ay), graphics)
                 key.startsWith("pickup_") -> objects.drawPickup(canvas,
                     Pickup(ItemId.valueOf(key.removePrefix("pickup_")), 1, ax, ay))
