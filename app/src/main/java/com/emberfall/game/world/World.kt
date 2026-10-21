@@ -23,6 +23,7 @@ interface TileQuery {
 class World(val seed: Int, private val generator: WorldGenerator = WorldGenerator(seed)) : TileQuery {
 
     private val chunks = HashMap<Long, ByteArray>()
+    private val changedTiles = HashMap<TilePos, TileType>()
 
     var loadedChunks = 0
         private set
@@ -88,6 +89,14 @@ class World(val seed: Int, private val generator: WorldGenerator = WorldGenerato
         val existing = chunks[key]
         if (existing != null) return existing
         val generated = generator.generateChunk(cx, cy)
+        for ((position, type) in changedTiles) {
+            if (Math.floorDiv(position.x, Config.CHUNK_TILES) == cx &&
+                Math.floorDiv(position.y, Config.CHUNK_TILES) == cy) {
+                val lx = position.x - cx * Config.CHUNK_TILES
+                val ly = position.y - cy * Config.CHUNK_TILES
+                generated[ly * Config.CHUNK_TILES + lx] = type.id.toByte()
+            }
+        }
         chunks[key] = generated
         loadedChunks = chunks.size
         return generated
@@ -138,10 +147,26 @@ class World(val seed: Int, private val generator: WorldGenerator = WorldGenerato
     }
 
     fun setTile(tx: Int, ty: Int, type: TileType) {
+        changedTiles[TilePos(tx, ty)] = type
         val cx = Math.floorDiv(tx, Config.CHUNK_TILES)
         val cy = Math.floorDiv(ty, Config.CHUNK_TILES)
         val lx = tx - cx * Config.CHUNK_TILES
         val ly = ty - cy * Config.CHUNK_TILES
         chunk(cx, cy)[ly * Config.CHUNK_TILES + lx] = type.id.toByte()
+    }
+
+    fun terrainChanges(): List<Triple<Int, Int, Int>> =
+        changedTiles.map { (position, type) -> Triple(position.x, position.y, type.id) }
+
+    fun restoreTerrain(changes: List<Triple<Int, Int, Int>>) {
+        for ((tx, ty, id) in changes) {
+            val type = TileType.values().getOrNull(id) ?: continue
+            changedTiles[TilePos(tx, ty)] = type
+            val cx = Math.floorDiv(tx, Config.CHUNK_TILES)
+            val cy = Math.floorDiv(ty, Config.CHUNK_TILES)
+            val lx = tx - cx * Config.CHUNK_TILES
+            val ly = ty - cy * Config.CHUNK_TILES
+            chunks[key(cx, cy)]?.set(ly * Config.CHUNK_TILES + lx, type.id.toByte())
+        }
     }
 }
