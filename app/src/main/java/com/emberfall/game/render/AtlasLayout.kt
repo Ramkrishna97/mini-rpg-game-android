@@ -25,8 +25,8 @@ class AtlasLayout(val masks: Int = IsoAutotile.masks.size) {
     private val entityRegionTop: Int = sheetRegionTop + sheetRows * SHEET_H
 
     val entityKeys: List<String> = listOf(
-        "wolf", "dragon", "shadow", "magic_ring", "chest", "chest_open", "campfire",
-    ) + AnimalSpecies.values().map { "animal_${it.name}" } +
+        "wolf", "dragon", "shadow", "magic_ring", "chest", "chest_open", "chest_opening", "chest_glow", "campfire",
+    ) + AnimalSpecies.values().flatMap { species -> (0..3).map { "animal_${species.name}_$it" } } +
             ItemId.values().map { "pickup_${it.name}" }
 
     private val entityIndexByKey: Map<String, Int> =
