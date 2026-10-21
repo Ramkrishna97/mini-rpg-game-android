@@ -42,20 +42,31 @@ class TileAtlas(context: Context) {
 
     init {
         val atlas = loadAtlas(context)
+        val themed = TileType.values().filter { it.ordinal >= 12 }.associateWith { type ->
+            try {
+                context.assets.open("terrain/${type.name.lowercase()}.png").use { input ->
+                    BitmapFactory.decodeStream(input)?.takeIf { it.width == ATLAS_CELL * VARIANTS && it.height == ATLAS_CELL }
+                }
+            } catch (_: Exception) { null }
+        }
         if (atlas != null) {
             for (type in TileType.values()) {
                 for (variant in 0 until VARIANTS) {
-                    val index = type.ordinal * VARIANTS + variant
-                    val x = (index % ATLAS_COLUMNS) * ATLAS_CELL
-                    val y = (index / ATLAS_COLUMNS) * ATLAS_CELL
-                    sheets[type.ordinal][variant] =
+                    sheets[type.ordinal][variant] = if (type.ordinal < 12) {
+                        val index = type.ordinal * VARIANTS + variant
+                        val x = (index % ATLAS_COLUMNS) * ATLAS_CELL
+                        val y = (index / ATLAS_COLUMNS) * ATLAS_CELL
                         Bitmap.createBitmap(atlas, x, y, ATLAS_CELL, ATLAS_CELL)
+                    } else themed[type]?.let { Bitmap.createBitmap(it, variant * ATLAS_CELL, 0, ATLAS_CELL, ATLAS_CELL) }
+                        ?: paintTile(type, variant)
                 }
             }
         } else {
             for (type in TileType.values()) {
                 for (variant in 0 until VARIANTS) {
-                    sheets[type.ordinal][variant] = paintTile(type, variant)
+                    sheets[type.ordinal][variant] = themed[type]?.let {
+                        Bitmap.createBitmap(it, variant * ATLAS_CELL, 0, ATLAS_CELL, ATLAS_CELL)
+                    } ?: paintTile(type, variant)
                 }
             }
         }
@@ -66,7 +77,7 @@ class TileAtlas(context: Context) {
         "tileset.png",
     ) { bitmap ->
         bitmap.width >= ATLAS_COLUMNS * ATLAS_CELL &&
-            bitmap.height >= ((TileType.values().size * VARIANTS + ATLAS_COLUMNS - 1) / ATLAS_COLUMNS) * ATLAS_CELL
+            bitmap.height >= ((12 * VARIANTS + ATLAS_COLUMNS - 1) / ATLAS_COLUMNS) * ATLAS_CELL
     }
 
     fun bitmap(type: TileType, variant: Int): Bitmap =
@@ -166,6 +177,30 @@ class TileAtlas(context: Context) {
             TileType.RUIN_WALL -> {
                 canvas.drawColor(Palette.RUIN_MORTAR)
                 ruinWall(canvas, paint, random)
+            }
+            TileType.SNOW -> {
+                canvas.drawColor(jitter(0xFFD8EAF2.toInt(), random))
+                pebbles(canvas, paint, random, 0xFFB7D3E3.toInt(), 0xFFF5FAFF.toInt())
+            }
+            TileType.ASH -> {
+                canvas.drawColor(jitter(0xFF372B30.toInt(), random))
+                pebbles(canvas, paint, random, 0xFF251F29.toInt(), 0xFF765044.toInt())
+            }
+            TileType.LAVA -> {
+                canvas.drawColor(0xFF5A201C.toInt())
+                paint.color = 0xFFFF7631.toInt()
+                canvas.drawLine(0f, 10f + variant, 18f, 19f, paint)
+                canvas.drawLine(18f, 19f, 32f, 6f + variant, paint)
+                paint.color = 0xFFFFC35B.toInt()
+                canvas.drawCircle(18f, 19f, 2.5f, paint)
+            }
+            TileType.ARENA_STONE -> {
+                canvas.drawColor(jitter(0xFF8796A0.toInt(), random))
+                paint.color = 0xFF526570.toInt()
+                canvas.drawLine(0f, 16f, 32f, 16f, paint)
+                canvas.drawLine(16f, 0f, 16f, 32f, paint)
+                paint.color = 0xFFB8D4DB.toInt()
+                canvas.drawCircle(16f, 16f, 2f, paint)
             }
         }
         return bitmap
