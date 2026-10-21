@@ -5,6 +5,7 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.RectF
 import com.emberfall.game.entity.Player
+import com.emberfall.game.entity.PlayerAction
 import com.emberfall.game.item.ItemId
 import com.emberfall.game.item.WeaponStyle
 import kotlin.math.atan2
@@ -28,7 +29,10 @@ class PlayerRenderer(context: Context) {
             player.speed > 8f -> AnimationState.WALK
             else -> AnimationState.IDLE
         }
-        sprite.draw(canvas, x, y, player.facingX, player.facingY, state, elapsed, 42f)
+        val animationTime = if (player.isSwinging)
+            (1f - player.swingTimer / Player.SWING_DURATION).coerceIn(0f, .999f) / 3f
+            else elapsed
+        sprite.draw(canvas, x, y, player.facingX, player.facingY, state, animationTime, 42f)
         drawWeapon(canvas, player, weapon)
         if (player.hurtFlash > 0f) {
             flash.color = 0x55FF4545
@@ -37,28 +41,90 @@ class PlayerRenderer(context: Context) {
     }
 
     private fun drawWeapon(canvas: Canvas, player: Player, weapon: ItemId?) {
-        val item = weapon ?: return
-        val x = player.x; val y = player.y - 16f
-        val angle = atan2(player.facingY, player.facingX)
-        val swing = if (player.isSwinging) (1f - player.swingTimer / Player.SWING_DURATION) else 0f
-        val a = angle + if (player.isSwinging) -1.15f + swing * 2.3f else .22f
-        val hx = x + cos(a) * 15f; val hy = y + sin(a) * 9f
-        flash.color = if (item.style == WeaponStyle.PROJECTILE) 0xFF8B623A.toInt() else 0xFF6B4228.toInt()
-        flash.strokeWidth = 3.2f; flash.strokeCap = Paint.Cap.ROUND
-        if (item.style == WeaponStyle.PROJECTILE) {
-            canvas.drawArc(x - 8f, y - 12f, x + 10f, y + 12f, -70f, 150f, false, flash)
-            flash.color = 0xFFEEDDB2.toInt(); flash.strokeWidth = 1f
-            canvas.drawLine(x - 2f, y + 6f, hx + cos(a) * 10f, hy + sin(a) * 6f, flash)
-        } else {
-            canvas.drawLine(x, y + 6f, hx, hy, flash)
-            flash.color = if (item == ItemId.WOODEN_SWORD) 0xFFD2A56B.toInt() else 0xFFE6EDF4.toInt()
-            flash.strokeWidth = 3.8f
-            canvas.drawLine(hx, hy, hx + cos(a) * 12f, hy + sin(a) * 7f, flash)
-            if (player.isSwinging) {
-                flash.style = Paint.Style.STROKE; flash.strokeWidth = 2f; flash.color = 0x99FFE5A0.toInt()
-                canvas.drawArc(x - 31f, y - 28f, x + 31f, y + 32f, Math.toDegrees((a - 1.05f).toDouble()).toFloat(), 72f, false, flash)
-                flash.style = Paint.Style.FILL
-            }
+        val x = player.x
+        val y = player.y - 16f
+        val angle = atan2((player.facingX + player.facingY) * .5f,
+            player.facingX - player.facingY)
+        val progress = (1f - player.swingTimer / Player.SWING_DURATION).coerceIn(0f, 1f)
+        flash.strokeCap = Paint.Cap.ROUND
+        flash.style = Paint.Style.STROKE
+
+        if (player.isSwinging && player.action == PlayerAction.MAGIC) {
+            val radius = 8f + 10f * progress
+            flash.color = (player.actionColor and 0x00FFFFFF) or 0xDD000000.toInt()
+            flash.strokeWidth = 3.2f
+            canvas.drawCircle(x, y - 4f, radius, flash)
+            flash.color = 0xCCFFFFFF.toInt(); flash.strokeWidth = 1.4f
+            canvas.drawArc(x - radius, y - 4f - radius, x + radius, y - 4f + radius,
+                progress * 240f, 135f, false, flash)
+            flash.style = Paint.Style.FILL
+            flash.color = player.actionColor
+            canvas.drawCircle(x + cos(angle) * 15f, y - 4f + sin(angle) * 9f,
+                4f + 3f * (1f - progress), flash)
+            return
         }
+
+        val item = weapon ?: return
+        if (item.style == WeaponStyle.PROJECTILE) {
+            val handX = x + cos(angle) * 9f
+            val handY = y + sin(angle) * 7f
+            if (item == ItemId.BOW) {
+                flash.color = 0xFF8A5D32.toInt(); flash.strokeWidth = 3f
+                canvas.drawArc(handX - 8f, handY - 12f, handX + 8f, handY + 12f,
+                    Math.toDegrees(angle.toDouble()).toFloat() - 78f, 156f, false, flash)
+                flash.color = 0xFFEADBB8.toInt(); flash.strokeWidth = 1f
+                canvas.drawLine(handX - 5f, handY - 8f, handX - 5f, handY + 8f, flash)
+                if (player.isSwinging) {
+                    flash.color = 0xFFFFE7B0.toInt(); flash.strokeWidth = 2f
+                    canvas.drawLine(handX, handY, handX + cos(angle) * (17f + progress * 14f),
+                        handY + sin(angle) * (17f + progress * 14f), flash)
+                }
+            } else {
+                flash.color = 0xFF69452E.toInt(); flash.strokeWidth = 5f
+                canvas.drawLine(handX, handY + 3f, handX + cos(angle) * 10f,
+                    handY + sin(angle) * 7f, flash)
+                flash.color = 0xFFC3D0D7.toInt(); flash.strokeWidth = 3f
+                val tipX = handX + cos(angle) * 23f
+                val tipY = handY + sin(angle) * 16f
+                canvas.drawLine(handX + cos(angle) * 8f, handY + sin(angle) * 6f, tipX, tipY, flash)
+                if (player.isSwinging && progress < .45f) {
+                    flash.style = Paint.Style.FILL; flash.color = 0xFFFFC45C.toInt()
+                    canvas.drawCircle(tipX, tipY, 7f * (1f - progress), flash)
+                    flash.color = 0xFFFFFFFF.toInt(); canvas.drawCircle(tipX, tipY, 3f, flash)
+                }
+            }
+            flash.style = Paint.Style.FILL
+            return
+        }
+
+        val sweep = if (player.isSwinging) -1.15f + progress * 2.3f else .3f
+        val bladeAngle = angle + sweep
+        val hiltX = x + cos(bladeAngle) * 12f
+        val hiltY = y + sin(bladeAngle) * 9f
+        flash.color = 0xFF704A2D.toInt(); flash.strokeWidth = 3.5f
+        canvas.drawLine(x, y + 6f, hiltX, hiltY, flash)
+        val tipX = hiltX + cos(bladeAngle) * 20f
+        val tipY = hiltY + sin(bladeAngle) * 15f
+        flash.color = if (item == ItemId.WOODEN_SWORD) 0xFFC9985D.toInt() else 0xFFE3EFF5.toInt()
+        flash.strokeWidth = if (item == ItemId.RING_BLADE) 2.5f else 4f
+        if (item == ItemId.RING_BLADE) canvas.drawCircle(hiltX + cos(bladeAngle) * 14f,
+            hiltY + sin(bladeAngle) * 11f, 9f, flash)
+        else canvas.drawLine(hiltX, hiltY, tipX, tipY, flash)
+        flash.color = 0xFFE8BD6D.toInt(); flash.strokeWidth = 3f
+        canvas.drawLine(hiltX - sin(bladeAngle) * 5f, hiltY + cos(bladeAngle) * 5f,
+            hiltX + sin(bladeAngle) * 5f, hiltY - cos(bladeAngle) * 5f, flash)
+        if (player.isSwinging) {
+            val arcColor = if (item == ItemId.CROSS_SWORD) 0xFF79D6FF.toInt() else 0xFFFFE3A0.toInt()
+            flash.color = (arcColor and 0x00FFFFFF) or 0xCC000000.toInt()
+            flash.strokeWidth = if (item.style == WeaponStyle.RING) 5f else 4f
+            val start = Math.toDegrees((angle - 1.2f + progress * 1.6f).toDouble()).toFloat()
+            val sweepAngle = if (item.style == WeaponStyle.RING) 250f else 70f
+            canvas.drawArc(x - 34f, y - 30f, x + 34f, y + 30f, start,
+                sweepAngle, false, flash)
+            flash.color = 0xCCFFFFFF.toInt(); flash.strokeWidth = 1.4f
+            canvas.drawArc(x - 32f, y - 28f, x + 32f, y + 28f, start + 9f,
+                sweepAngle - 16f, false, flash)
+        }
+        flash.style = Paint.Style.FILL
     }
 }
