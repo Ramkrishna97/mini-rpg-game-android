@@ -62,6 +62,9 @@ class Boss(val def: BossDef) : Creature(
 
         /** Moves that hurt the player on touch while they are underway. */
         private val CONTACT_MOVES = setOf(BossMove.ROLL, BossMove.SWOOP, BossMove.POUNCE, BossMove.AMBUSH)
+
+        /** Attack frequency multiplier (1.2 ~ 1.5x range). */
+        private const val ATTACK_SPEED_MULT = 1.35f
     }
 
     val arenaX: Float = def.tileX * Config.TILE
@@ -149,7 +152,7 @@ class Boss(val def: BossDef) : Creature(
         if (defeated) return
         engaged = true
         phase = BossPhase.CHASE
-        phaseTimer = 2.0f
+        phaseTimer = 2.0f / ATTACK_SPEED_MULT
         attackCycle = 0
         shotTimer = 0f
         magicImpactTimer = 0f
@@ -169,7 +172,7 @@ class Boss(val def: BossDef) : Creature(
         health = maxHp
         engaged = false
         phase = BossPhase.CHASE
-        phaseTimer = 2.4f
+        phaseTimer = 2.4f / ATTACK_SPEED_MULT
         magicImpactTimer = 0f
         velocityX = 0f
         velocityY = 0f
@@ -223,7 +226,7 @@ class Boss(val def: BossDef) : Creature(
             BossPhase.DASH -> dash(dt, game)
             BossPhase.RECOVER -> if (phaseTimer <= 0f) {
                 phase = BossPhase.CHASE
-                phaseTimer = 2.1f
+                phaseTimer = 2.1f / ATTACK_SPEED_MULT
             }
         }
 
@@ -321,7 +324,7 @@ class Boss(val def: BossDef) : Creature(
             BossMove.SPINE_FAN -> fan(game, 6, .55f, chargeX, chargeY, 120f, projectileColor, 3f, 6f)
             BossMove.DIRT_ARC -> fan(game, 5, .75f, chargeX, chargeY, 95f, projectileColor, 3.5f, 5f)
             BossMove.MAGIC -> {
-                magicImpactTimer = .55f
+                magicImpactTimer = .55f / ATTACK_SPEED_MULT
                 game.bossMagic(magicX, magicY, shotDamage())
             }
             else -> Unit
@@ -335,7 +338,7 @@ class Boss(val def: BossDef) : Creature(
             BossMove.SWOOP -> lunge(game, dt, if (isDragon) 3.6f else 5.2f)
             BossMove.POUNCE -> {
                 lunge(game, dt, 4.3f)
-                if (tick(dt, .14f)) {
+                if (tick(dt, .14f / ATTACK_SPEED_MULT)) {
                     // Embers drop behind the tiger as it runs.
                     shoot(game, -chargeX, -chargeY, speed = 40f, color = 0xFFFF8A3A.toInt(), life = 1.6f, size = 5f)
                 }
@@ -343,8 +346,8 @@ class Boss(val def: BossDef) : Creature(
             BossMove.AMBUSH -> lunge(game, dt, 5f)
             BossMove.BREATH -> breath(game, dt)
             BossMove.TALONS -> talons(game, dt)
-            BossMove.HOWL -> if (tick(dt, .5f)) ring(game, 10, dashElapsed * .6f, 110f, 0xFFB7D8FF.toInt())
-            BossMove.RING -> if (tick(dt, .4f)) ring(game, 12, 0f, 125f, projectileColor)
+            BossMove.HOWL -> if (tick(dt, .5f / ATTACK_SPEED_MULT)) ring(game, 10, dashElapsed * .6f, 110f, 0xFFB7D8FF.toInt())
+            BossMove.RING -> if (tick(dt, .4f / ATTACK_SPEED_MULT)) ring(game, 12, 0f, 125f, projectileColor)
             else -> Unit
         }
         if (currentMove in CONTACT_MOVES) checkContact(game)
@@ -365,13 +368,13 @@ class Boss(val def: BossDef) : Creature(
     // ---- Movement helpers --------------------------------------------------
 
     private fun lunge(game: Game, dt: Float, multiplier: Float) {
-        val speed = def.speed * (1f + .04f * (level - 1)) * multiplier
+        val speed = def.speed * (1f + .04f * (level - 1)) * multiplier * ATTACK_SPEED_MULT
         moveWithCollision(game, chargeX * speed * dt, chargeY * speed * dt)
     }
 
     /** Rolls straight, reversing when blocked or when it hits the arena wall. */
     private fun rollStep(game: Game, dt: Float) {
-        val speed = def.speed * 4.8f
+        val speed = def.speed * 4.8f * ATTACK_SPEED_MULT
         val moved = moveWithCollision(game, chargeX * speed * dt, chargeY * speed * dt)
         val fromCentre = hypot((x - arenaX).toDouble(), (y - arenaY).toDouble()).toFloat()
         val atWall = fromCentre > arenaRadius - radius - 6f
@@ -393,7 +396,7 @@ class Boss(val def: BossDef) : Creature(
         val nx = dx / distance
         val ny = dy / distance
         val radial = (distance - 80f) * 1.5f
-        val speed = def.speed * 1.2f
+        val speed = def.speed * 1.2f * ATTACK_SPEED_MULT
         val vx = -ny * speed - nx * radial
         val vy = nx * speed - ny * radial
         moveWithCollision(game, vx * dt, vy * dt)
@@ -411,7 +414,7 @@ class Boss(val def: BossDef) : Creature(
         val d = hypot((p.x - x).toDouble(), (p.y - y).toDouble()).toFloat()
         if (d < radius + Config.PLAYER_RADIUS + 6f) {
             game.hurtPlayer(shotDamage(), x, y)
-            contactCooldown = 1.35f
+            contactCooldown = 1.35f / ATTACK_SPEED_MULT
         }
     }
 
@@ -427,7 +430,7 @@ class Boss(val def: BossDef) : Creature(
     // ---- Attack helpers ----------------------------------------------------
 
     private fun breath(game: Game, dt: Float) {
-        if (!tick(dt, .09f)) return
+        if (!tick(dt, .09f / ATTACK_SPEED_MULT)) return
         val total = dashTime(BossMove.BREATH)
         val spread = if (isDragon) .9f else .35f
         val t = (dashElapsed / total).coerceIn(0f, 1f)
@@ -437,7 +440,7 @@ class Boss(val def: BossDef) : Creature(
     }
 
     private fun talons(game: Game, dt: Float) {
-        if (shotsFired >= 3 || !tick(dt, .28f)) return
+        if (shotsFired >= 3 || !tick(dt, .28f / ATTACK_SPEED_MULT)) return
         shotsFired++
         val (ax, ay) = dirToPlayer(game)
         shoot(game, ax, ay, speed = 170f, color = 0xFFE4E9F2.toInt(), life = 3f, size = 5f)
@@ -503,7 +506,7 @@ class Boss(val def: BossDef) : Creature(
 
     // ---- Timing tables -----------------------------------------------------
 
-    private fun telegraphTime(move: BossMove): Float = when (move) {
+    private fun telegraphTime(move: BossMove): Float = (when (move) {
         BossMove.ROLL -> .9f
         BossMove.SWOOP -> .7f
         BossMove.TALONS -> .45f
@@ -517,9 +520,9 @@ class Boss(val def: BossDef) : Creature(
         BossMove.SHOT -> .5f
         BossMove.RING -> .6f
         BossMove.MAGIC -> .75f
-    }
+    }) / ATTACK_SPEED_MULT
 
-    private fun dashTime(move: BossMove): Float = when (move) {
+    private fun dashTime(move: BossMove): Float = (when (move) {
         BossMove.ROLL -> 1.7f
         BossMove.SWOOP -> if (isDragon) .9f else .28f
         BossMove.TALONS -> .9f
@@ -533,11 +536,11 @@ class Boss(val def: BossDef) : Creature(
         BossMove.SHOT -> .38f
         BossMove.RING -> 2f
         BossMove.MAGIC -> .8f
-    }
+    }) / ATTACK_SPEED_MULT
 
-    private fun recoverTime(): Float = when {
+    private fun recoverTime(): Float = (when {
         isDragon -> 1.6f
         def.id == "mirewitch" -> 2f
         else -> .8f
-    }
+    }) / ATTACK_SPEED_MULT
 }
