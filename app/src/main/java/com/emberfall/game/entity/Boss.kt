@@ -104,6 +104,8 @@ class Boss(val def: BossDef) : Creature(
     private var velocityY = 0f
     private var shotTimer = 0f
     private var dashElapsed = 0f
+    var magicImpactTimer = 0f
+        private set
     private var shotsFired = 0
     private var rollBounces = 0
     private var burrowing = false
@@ -117,6 +119,11 @@ class Boss(val def: BossDef) : Creature(
     val chargeDirY: Float get() = chargeY
     /** Exposed for the renderer so every phase has a readable attack pose/effect. */
     val activeMove: BossMove get() = currentMove
+    val visualProgress: Float get() = when (phase) {
+        BossPhase.TELEGRAPH -> (1f - phaseTimer / telegraphTime(currentMove)).coerceIn(0f, 1f)
+        BossPhase.DASH -> (dashElapsed / dashTime(currentMove)).coerceIn(0f, 1f)
+        else -> 0f
+    }
     val displayName: String get() = def.name
 
     /** True while the mole is underground: unhittable and drawn as a mound. */
@@ -145,6 +152,7 @@ class Boss(val def: BossDef) : Creature(
         phaseTimer = 2.0f
         attackCycle = 0
         shotTimer = 0f
+        magicImpactTimer = 0f
         velocityX = 0f
         velocityY = 0f
         if (isDragon) dragonFlying = false
@@ -162,6 +170,7 @@ class Boss(val def: BossDef) : Creature(
         engaged = false
         phase = BossPhase.CHASE
         phaseTimer = 2.4f
+        magicImpactTimer = 0f
         velocityX = 0f
         velocityY = 0f
         burrowing = false
@@ -183,6 +192,7 @@ class Boss(val def: BossDef) : Creature(
 
     override fun update(dt: Float, game: Game) {
         if (defeated) return
+        magicImpactTimer = max(0f, magicImpactTimer - dt)
         super.update(dt, game)
         if (freezeTimer > 0f) { freezeTimer -= dt; return }
 
@@ -257,7 +267,7 @@ class Boss(val def: BossDef) : Creature(
     private fun beginTelegraph(game: Game, dx: Float, dy: Float, distance: Float) {
         chargeX = if (distance > .01f) dx / distance else 0f
         chargeY = if (distance > .01f) dy / distance else 1f
-        attackType = attackCycle++ % game.bossAttackCount
+        attackType = attackCycle++ % (if (isDragon && game.isHackMode) moveset.size else game.bossAttackCount)
         currentMove = moveset[attackType]
         magicX = game.player.x
         magicY = game.player.y
@@ -310,7 +320,10 @@ class Boss(val def: BossDef) : Creature(
             BossMove.SHOT -> shoot(game, chargeX, chargeY, speed = 125f)
             BossMove.SPINE_FAN -> fan(game, 6, .55f, chargeX, chargeY, 120f, projectileColor, 3f, 6f)
             BossMove.DIRT_ARC -> fan(game, 5, .75f, chargeX, chargeY, 95f, projectileColor, 3.5f, 5f)
-            BossMove.MAGIC -> game.bossMagic(magicX, magicY, shotDamage())
+            BossMove.MAGIC -> {
+                magicImpactTimer = .55f
+                game.bossMagic(magicX, magicY, shotDamage())
+            }
             else -> Unit
         }
     }
