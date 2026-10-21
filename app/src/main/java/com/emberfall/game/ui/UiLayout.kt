@@ -61,11 +61,11 @@ object UiLayout {
 
     fun optionsPanel(width: Float, height: Float, density: Float): RectF = inventoryPanel(width, height, density)
 
-    fun optionsCell(index: Int, width: Float, height: Float, density: Float): RectF {
+    fun optionsCell(index: Int, width: Float, height: Float, density: Float, rows: Int = 3): RectF {
         val panel = optionsPanel(width, height, density)
         val gap = 9f * density
         val cellWidth = (panel.width() - 36f * density - gap) / 2f
-        val cellHeight = (panel.height() - 116f * density) / 3f
+        val cellHeight = (panel.height() - 116f * density) / rows
         val x = panel.left + 18f * density + (index % 2) * (cellWidth + gap)
         val y = panel.top + 54f * density + (index / 2) * (cellHeight + gap)
         return RectF(x, y, x + cellWidth, y + cellHeight)
