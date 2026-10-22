@@ -75,8 +75,13 @@ class SettingsPanelRenderer(context: Context) {
                 8 -> "Vibration"
                 9 -> "Render scale  ${game.graphics.resolutionScale}x"
                 10 -> "Frame limit  ${game.graphics.targetFps} Hz"
-                11 -> "SAVE GAME NOW"
-                12 -> "LOAD SAVED GAME"
+                11 -> "SAVE GAME (SLOT 1)"
+                15 -> "SAVE GAME (SLOT 2)"
+                16 -> "SAVE GAME (SLOT 3)"
+                12 -> "LOAD SLOT 1: ${game.getSlotSummary(1)}"
+                17 -> "LOAD SLOT 2: ${game.getSlotSummary(2)}"
+                18 -> "LOAD SLOT 3: ${game.getSlotSummary(3)}"
+                14 -> "▶ START NEW GAME"
                 else -> "RESUME GAME"
             }
             val available = row.width() - (if(index in 3..8) 64f else 24f)*density

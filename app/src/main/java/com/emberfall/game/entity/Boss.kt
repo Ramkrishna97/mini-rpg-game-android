@@ -152,7 +152,7 @@ class Boss(val def: BossDef) : Creature(
         if (defeated) return
         engaged = true
         phase = BossPhase.CHASE
-        phaseTimer = 2.0f / ATTACK_SPEED_MULT
+        phaseTimer = (if (isDragon) 1.0f else 2.0f) / ATTACK_SPEED_MULT
         attackCycle = 0
         shotTimer = 0f
         magicImpactTimer = 0f
@@ -226,7 +226,7 @@ class Boss(val def: BossDef) : Creature(
             BossPhase.DASH -> dash(dt, game)
             BossPhase.RECOVER -> if (phaseTimer <= 0f) {
                 phase = BossPhase.CHASE
-                phaseTimer = 2.1f / ATTACK_SPEED_MULT
+                phaseTimer = (if (isDragon) 1.05f else 2.1f) / ATTACK_SPEED_MULT
             }
         }
 
@@ -430,7 +430,8 @@ class Boss(val def: BossDef) : Creature(
     // ---- Attack helpers ----------------------------------------------------
 
     private fun breath(game: Game, dt: Float) {
-        if (!tick(dt, .09f / ATTACK_SPEED_MULT)) return
+        val interval = (.09f / ATTACK_SPEED_MULT) / (if (isDragon) 2.0f else 1.0f)
+        if (!tick(dt, interval)) return
         val total = dashTime(BossMove.BREATH)
         val spread = if (isDragon) .9f else .35f
         val t = (dashElapsed / total).coerceIn(0f, 1f)
@@ -520,7 +521,7 @@ class Boss(val def: BossDef) : Creature(
         BossMove.SHOT -> .5f
         BossMove.RING -> .6f
         BossMove.MAGIC -> .75f
-    }) / ATTACK_SPEED_MULT
+    }) / (ATTACK_SPEED_MULT * if (isDragon) 2.0f else 1f)
 
     private fun dashTime(move: BossMove): Float = (when (move) {
         BossMove.ROLL -> 1.7f
@@ -536,10 +537,10 @@ class Boss(val def: BossDef) : Creature(
         BossMove.SHOT -> .38f
         BossMove.RING -> 2f
         BossMove.MAGIC -> .8f
-    }) / ATTACK_SPEED_MULT
+    }) / (ATTACK_SPEED_MULT * if (isDragon) 2.0f else 1f)
 
     private fun recoverTime(): Float = (when {
-        isDragon -> 1.6f
+        isDragon -> 0.4f
         def.id == "mirewitch" -> 2f
         else -> .8f
     }) / ATTACK_SPEED_MULT
