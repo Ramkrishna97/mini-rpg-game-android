@@ -60,13 +60,21 @@ data class HackSnapshot(
  * Versioned JSON save. Version 1 files (position/time only) still load: every
  * newer field falls back to a sensible default.
  */
-class SaveManager(context: Context, private val mode: GameMode = GameMode.NORMAL) {
+class SaveManager(private val context: Context, private val mode: GameMode = GameMode.NORMAL) {
 
-    private val file = File(context.filesDir,
-        if (mode == GameMode.HACK) "emberfall_hack_save.json" else "emberfall_save.json")
+    private fun getFile(slot: Int = 1): File {
+        val baseName = if (mode == GameMode.HACK) "emberfall_hack_save" else "emberfall_save"
+        if (slot <= 1) {
+            val legacy = File(context.filesDir, "$baseName.json")
+            if (legacy.exists()) return legacy
+            return File(context.filesDir, "${baseName}_1.json")
+        }
+        return File(context.filesDir, "${baseName}_$slot.json")
+    }
 
     @Synchronized
-    fun load(): SaveState? = try {
+    fun load(slot: Int = 1): SaveState? = try {
+        val file = getFile(slot)
         if (!file.exists()) {
             null
         } else {
@@ -138,7 +146,8 @@ class SaveManager(context: Context, private val mode: GameMode = GameMode.NORMAL
     }
 
     @Synchronized
-    fun save(state: SaveState) {
+    fun save(state: SaveState, slot: Int = 1) {
+        val file = getFile(slot)
         try {
             val inventoryJson = JSONArray()
             for ((id, count) in state.inventory) {

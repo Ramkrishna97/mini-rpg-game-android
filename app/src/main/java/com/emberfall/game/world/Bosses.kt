@@ -29,19 +29,19 @@ object Bosses {
 
     val DRAGON = BossDef(
         id = "dragon",
-        name = "Reincarnation Dragon",
+        name = "Calamity Dragon",
         tileX = 0,
         tileY = 0,
-        arenaRadiusTiles = 14f,
-        maxHealth = 600f,
-        damage = 42f,
-        speed = 82f,
+        arenaRadiusTiles = 24f,
+        maxHealth = 1600f,
+        damage = 82f,
+        speed = 90f,
         color = 0xFFE05A35.toInt(),
         xpReward = 1000,
         healthReward = 50f,
         manaReward = 30f,
         loot = listOf(ItemId.MAGIC_STONE to 10),
-        diamondReward = 1,
+        diamondReward = 2,
     )
 
     val ALL: List<BossDef> = listOf(
@@ -81,7 +81,7 @@ object Bosses {
             tileX = -94,
             tileY = 72,
             arenaRadiusTiles = 10f,
-            maxHealth = 510f,
+            maxHealth = 1510f,
             damage = 18f,
             speed = 88f,
             color = 0xFF5E8B6A.toInt(),
@@ -111,7 +111,7 @@ object Bosses {
             tileX = -26,
             tileY = -98,
             arenaRadiusTiles = 12f,
-            maxHealth = 930f,
+            maxHealth = 1930f,
             damage = 26f,
             speed = 70f,
             color = 0xFF8E7BB8.toInt(),
