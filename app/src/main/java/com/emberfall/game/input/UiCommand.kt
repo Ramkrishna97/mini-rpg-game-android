@@ -18,6 +18,13 @@ object UiCommand {
     const val FPS_BASE = 720
     const val SAVE_NOW = 730
     const val LOAD_SAVE = 731
+    const val NEW_GAME = 734
+    const val SAVE_SLOT_1 = 761
+    const val SAVE_SLOT_2 = 762
+    const val SAVE_SLOT_3 = 763
+    const val LOAD_SLOT_1 = 771
+    const val LOAD_SLOT_2 = 772
+    const val LOAD_SLOT_3 = 773
     const val UPGRADE_WEAPON = 732
     const val COMBINE_WEAPON = 733
     const val HACK_TOGGLE_BOOSTS = 740

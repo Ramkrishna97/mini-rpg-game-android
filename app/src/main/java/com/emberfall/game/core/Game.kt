@@ -478,8 +478,15 @@ class Game(private val context: Context, private val input: InputState) {
                 command in UiCommand.FPS_BASE until UiCommand.SAVE_NOW -> {
                     graphics.targetFps = listOf(30, 60, 90, 120).getOrElse(command - UiCommand.FPS_BASE) { 60 }
                 }
-                command == UiCommand.SAVE_NOW -> { saveNow(); toast("Game saved") }
-                command == UiCommand.LOAD_SAVE -> { loadSavedState(); toast("Saved state loaded") }
+                command == UiCommand.NEW_GAME -> startNewGame()
+                command == UiCommand.SAVE_NOW -> saveToSlot(activeSlot)
+                command == UiCommand.SAVE_SLOT_1 -> saveToSlot(1)
+                command == UiCommand.SAVE_SLOT_2 -> saveToSlot(2)
+                command == UiCommand.SAVE_SLOT_3 -> saveToSlot(3)
+                command == UiCommand.LOAD_SAVE -> loadFromSlot(activeSlot)
+                command == UiCommand.LOAD_SLOT_1 -> loadFromSlot(1)
+                command == UiCommand.LOAD_SLOT_2 -> loadFromSlot(2)
+                command == UiCommand.LOAD_SLOT_3 -> loadFromSlot(3)
                 command == UiCommand.UPGRADE_WEAPON -> upgradeWeapon()
                 command == UiCommand.COMBINE_WEAPON -> combineWeapon()
                 command == UiCommand.HACK_TOGGLE_BOOSTS && isHackMode -> setHackBoosts(!hackBoostsEnabled)
@@ -1875,9 +1882,102 @@ class Game(private val context: Context, private val input: InputState) {
         saveNow()
     }
 
+    var activeSlot: Int = 1
+        private set
+
+    fun getSlotSummary(slot: Int): String {
+        val state = saveManager.load(slot) ?: return "[ EMPTY SAVE SLOT ]"
+        return "Day ${state.day} | Lv.${state.level} | ${state.gold}G | ${state.health.toInt()}/${state.maxHealth.toInt()} HP"
+    }
+
+    fun startNewGame() {
+        activeBoss?.resetFight()
+        activeBoss = null
+        dragonSpawnTimer = -1f
+        projectiles.clear()
+
+        player.x = 0f
+        player.y = 0f
+        respawnX = 0f
+        respawnY = 0f
+
+        player.stats.level = 1
+        player.stats.xp = 0
+        player.stats.maxHealth = 100f
+        player.stats.health = 100f
+        player.stats.maxMana = 50f
+        player.stats.mana = 50f
+        player.stats.hunger = 100f
+        player.stats.bonusHealth = 0f
+        player.stats.bonusMana = 0f
+
+        defeatedBosses.clear()
+        openedChests.clear()
+        stage = 1
+        stageAdvancePending = false
+
+        bosses.clear()
+        for (def in Bosses.ALL) {
+            bosses.add(Boss(def).also { it.setLevel(1) })
+        }
+        for (chest in chests) chest.opened = false
+
+        weaponLevels.clear()
+        weaponStars.clear()
+
+        minutes = 450f // 7:30 AM
+        day = 1
+
+        inventory.clear()
+        inventory.add(ItemId.WOODEN_SWORD, 1)
+        inventory.add(ItemId.WOOD, 10)
+        inventory.add(ItemId.STONE, 5)
+        inventory.add(ItemId.COOKED_MEAT, 3)
+
+        gold = 50
+        diamonds = 0
+
+        equippedWeapon = ItemId.WOODEN_SWORD
+        meleeWeapon = ItemId.WOODEN_SWORD
+        rangedWeapon = null
+
+        camera.snapTo(player.x, player.y)
+        hackSnapshot = null
+        hackBoostsEnabled = false
+
+        input.settingsOpen = false
+        banner("NEW GAME STARTED")
+        toast("Welcome to Emberfall! Starter kit granted.")
+        saveNow()
+    }
+
+    fun saveToSlot(slot: Int) {
+        activeSlot = slot
+        saveNow()
+        input.settingsOpen = false
+        toast("Game saved to Slot $slot")
+    }
+
+    fun loadFromSlot(slot: Int) {
+        val state = saveManager.load(slot) ?: run {
+            toast("Slot $slot is empty")
+            return
+        }
+        if (state.seed != world.seed) {
+            toast("This save belongs to another world")
+            return
+        }
+        applySaveState(state)
+        activeSlot = slot
+        input.settingsOpen = false
+        toast("Loaded Save Slot $slot")
+    }
+
     private fun loadSavedState() {
-        val state = saveManager.load() ?: run { toast("No save found"); return }
-        if (state.seed != world.seed) { toast("This save belongs to another world"); return }
+        loadFromSlot(activeSlot)
+    }
+
+    private fun applySaveState(state: SaveState) {
         activeBoss = null; projectiles.clear()
         player.x = state.x; player.y = state.y
         player.stats.level = state.level; player.stats.xp = state.xp
@@ -2044,6 +2144,7 @@ class Game(private val context: Context, private val input: InputState) {
                 hackBoostsEnabled = hackBoostsEnabled,
                 hackSnapshot = hackSnapshot,
             ),
+            slot = activeSlot,
         )
     }
 }
