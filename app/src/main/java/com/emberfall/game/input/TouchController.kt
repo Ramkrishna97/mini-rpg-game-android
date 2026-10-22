@@ -430,8 +430,13 @@ class TouchController(
             UiLayout.SETTINGS_VIBRATION -> input.pushCommand(UiCommand.TOGGLE_VIBRATION)
             UiLayout.SETTINGS_RESOLUTION -> { resolutionTap = (resolutionTap + 1) % 5; input.pushCommand(UiCommand.RESOLUTION_BASE + resolutionTap) }
             UiLayout.SETTINGS_FPS -> { fpsTap = (fpsTap + 1) % 4; input.pushCommand(UiCommand.FPS_BASE + fpsTap) }
-            UiLayout.SETTINGS_SAVE -> input.pushCommand(UiCommand.SAVE_NOW)
-            UiLayout.SETTINGS_LOAD -> input.pushCommand(UiCommand.LOAD_SAVE)
+            UiLayout.SETTINGS_NEW_GAME -> input.pushCommand(UiCommand.NEW_GAME)
+            UiLayout.SETTINGS_SAVE -> input.pushCommand(UiCommand.SAVE_SLOT_1)
+            UiLayout.SETTINGS_SAVE_2 -> input.pushCommand(UiCommand.SAVE_SLOT_2)
+            UiLayout.SETTINGS_SAVE_3 -> input.pushCommand(UiCommand.SAVE_SLOT_3)
+            UiLayout.SETTINGS_LOAD -> input.pushCommand(UiCommand.LOAD_SLOT_1)
+            UiLayout.SETTINGS_LOAD_2 -> input.pushCommand(UiCommand.LOAD_SLOT_2)
+            UiLayout.SETTINGS_LOAD_3 -> input.pushCommand(UiCommand.LOAD_SLOT_3)
             UiLayout.SETTINGS_CLOSE -> input.settingsOpen = false
             -1 -> if (!panel.contains(x, y)) input.settingsOpen = false
         }

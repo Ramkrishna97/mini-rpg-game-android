@@ -194,6 +194,11 @@ object UiLayout {
     const val SETTINGS_SAVE = 11
     const val SETTINGS_LOAD = 12
     const val SETTINGS_CLOSE = 13
+    const val SETTINGS_NEW_GAME = 14
+    const val SETTINGS_SAVE_2 = 15
+    const val SETTINGS_SAVE_3 = 16
+    const val SETTINGS_LOAD_2 = 17
+    const val SETTINGS_LOAD_3 = 18
 
     fun settingsPanel(width: Float, height: Float, density: Float): RectF {
         val panelWidth = min(width * 0.70f, 520f * density)
@@ -205,7 +210,7 @@ object UiLayout {
 
     fun settingsIndices(tab: Int): List<Int> = when(tab) {
         1 -> listOf(6, 7, 8, 13)
-        2 -> listOf(11, 12, 13)
+        2 -> listOf(14, 11, 15, 16, 12, 17, 18, 13)
         else -> listOf(0, 1, 2, 3, 4, 5, 9, 10, 13)
     }
     fun settingsTab(index: Int, width: Float, height: Float, density: Float): RectF {
